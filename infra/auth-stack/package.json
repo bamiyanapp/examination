@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "devDependencies": {
-    "serverless": "^4.0.0"
+    "serverless": "^3.38.0"
   }
 }

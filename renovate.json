@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "matchPackageNames": ["serverless"],
+      "allowedVersions": "<4.0.0",
+      "description": "Serverless Framework v4はServerless Dashboardへのログインが必須になりOSS運用方針（infra/README.md参照）と相容れないため、v3系までに制限する"
+    }
+  ]
+}
