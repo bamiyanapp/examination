@@ -1,7 +1,9 @@
 name: Debug Matrix Skip
 
 on:
-  workflow_dispatch: {}
+  push:
+    branches:
+      - debug/matrix-skip-diagnosis
 
 jobs:
   matrix-job:
