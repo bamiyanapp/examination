@@ -19,10 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
@@ -40,14 +36,6 @@ jobs:
           pip install -r requirements.txt
           mkdocs build --strict
 
-      - name: Install auth-stack dependencies
-        working-directory: infra/auth-stack
-        run: npm ci
-
-      - name: Install site-stack dependencies
-        working-directory: infra/site-stack
-        run: npm ci
-
       # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
       # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする
       - name: Get current CloudFront domain (if the stack already exists)
@@ -58,15 +46,20 @@ jobs:
           echo "domain=${DOMAIN:-TBD.cloudfront.net}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy auth-stack (Cognito)
-        working-directory: infra/auth-stack
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        with:
+          working-directory: infra/auth-stack
+          node-version: "24"
+          deploy-command: >-
+            npx serverless deploy
+            --param="region=ap-northeast-1"
+            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}"
+            --param="cloudFrontDomain=${{ steps.current-domain.outputs.domain }}"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-        run: |
-          npx serverless deploy \
-            --param="region=ap-northeast-1" \
-            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}" \
-            --param="cloudFrontDomain=${{ steps.current-domain.outputs.domain }}"
 
       - name: Read auth-stack outputs
         id: auth-outputs
@@ -90,10 +83,15 @@ jobs:
         run: node scripts/generate-config.js
 
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
-        working-directory: infra/site-stack
-        run: |
-          npx serverless deploy \
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        with:
+          working-directory: infra/site-stack
+          node-version: "24"
+          deploy-command: >-
+            npx serverless deploy
             --param="bucketName=${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Get real CloudFront domain
         id: real-domain
@@ -107,15 +105,20 @@ jobs:
       # 確定させるためもう一度deployする（2回目以降の通常デプロイでは差分が無いためスキップされる）
       - name: Re-deploy auth-stack with the real CloudFront domain (first-time bootstrap only)
         if: steps.current-domain.outputs.domain != steps.real-domain.outputs.domain
-        working-directory: infra/auth-stack
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        with:
+          working-directory: infra/auth-stack
+          node-version: "24"
+          deploy-command: >-
+            npx serverless deploy
+            --param="region=ap-northeast-1"
+            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}"
+            --param="cloudFrontDomain=${{ steps.real-domain.outputs.domain }}"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-        run: |
-          npx serverless deploy \
-            --param="region=ap-northeast-1" \
-            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}" \
-            --param="cloudFrontDomain=${{ steps.real-domain.outputs.domain }}"
 
       - name: Sync site to S3
         run: |
