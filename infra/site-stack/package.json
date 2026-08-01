@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^6.0.0"
   },
   "devDependencies": {
     "serverless": "^4.0.0",
