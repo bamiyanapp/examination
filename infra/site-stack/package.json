@@ -6,7 +6,7 @@
     "jose": "^5.9.6"
   },
   "devDependencies": {
-    "serverless": "^3.38.0",
+    "serverless": "^4.0.0",
     "@silvermine/serverless-plugin-cloudfront-lambda-edge": "^2.2.3"
   }
 }
