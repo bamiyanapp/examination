@@ -1,0 +1,92 @@
+service: examination-site
+
+frameworkVersion: "3"
+
+plugins:
+  - "@silvermine/serverless-plugin-cloudfront-lambda-edge"
+
+provider:
+  name: aws
+  # Lambda@Edgeはus-east-1へのデプロイが必須（CloudFrontが各エッジへ自動複製する）
+  region: us-east-1
+  stage: prod
+  runtime: nodejs20.x
+
+functions:
+  checkAuth:
+    handler: functions/checkAuth.handler
+    memorySize: 128
+    timeout: 5
+    lambdaAtEdge:
+      distribution: "SiteDistribution"
+      eventType: "viewer-request"
+
+resources:
+  Resources:
+    SiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${param:bucketName, 'bamiyanapp-examination-knowledge'}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+
+    CloudFrontOAC:
+      Type: AWS::CloudFront::OriginAccessControl
+      Properties:
+        OriginAccessControlConfig:
+          Name: examination-site-oac
+          OriginAccessControlOriginType: s3
+          SigningBehavior: always
+          SigningProtocol: sigv4
+
+    SiteDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          DefaultRootObject: index.html
+          Origins:
+            - Id: s3origin
+              DomainName: !GetAtt SiteBucket.RegionalDomainName
+              S3OriginConfig: {}
+              OriginAccessControlId: !Ref CloudFrontOAC
+          DefaultCacheBehavior:
+            TargetOriginId: s3origin
+            ViewerProtocolPolicy: redirect-to-https
+            # Managed-CachingOptimized（AWSマネージドポリシー、全アカウント共通の固定ID）
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            Compress: true
+          CustomErrorResponses:
+            - ErrorCode: 403
+              ResponseCode: 404
+              ResponsePagePath: /404.html
+            - ErrorCode: 404
+              ResponseCode: 404
+              ResponsePagePath: /404.html
+
+    SiteBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref SiteBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: cloudfront.amazonaws.com
+              Action: s3:GetObject
+              Resource: !Sub "${SiteBucket.Arn}/*"
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}"
+
+  Outputs:
+    BucketName:
+      Value: !Ref SiteBucket
+    DistributionId:
+      Value: !Ref SiteDistribution
+    DistributionDomainName:
+      Value: !GetAtt SiteDistribution.DomainName

@@ -34,3 +34,8 @@ commit_msg*.txt
 
 # MkDocsビルド出力
 site/
+
+# Serverless Framework
+.serverless/
+# deploy時にscripts/generate-config.jsが生成する（Cognitoクライアントシークレットを含むため）
+infra/site-stack/functions/configuration.json

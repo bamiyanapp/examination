@@ -1,0 +1,76 @@
+service: examination-auth
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  region: ${param:region, 'ap-northeast-1'}
+  stage: prod
+
+resources:
+  Resources:
+    UserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: examination-family-knowledge
+        AutoVerifiedAttributes:
+          - email
+
+    UserPoolDomain:
+      Type: AWS::Cognito::UserPoolDomain
+      Properties:
+        Domain: ${param:cognitoDomainPrefix, 'bamiyanapp-examination'}
+        UserPoolId: !Ref UserPool
+
+    # Cognitoの前段でGoogleアカウントによるログインのみを許可する（パスワード認証は提供しない）
+    GoogleIdentityProvider:
+      Type: AWS::Cognito::UserPoolIdentityProvider
+      Properties:
+        UserPoolId: !Ref UserPool
+        ProviderName: Google
+        ProviderType: Google
+        ProviderDetails:
+          client_id: ${env:GOOGLE_OAUTH_CLIENT_ID}
+          client_secret: ${env:GOOGLE_OAUTH_CLIENT_SECRET}
+          authorize_scopes: "openid email profile"
+        AttributeMapping:
+          email: email
+          username: sub
+
+    # CloudFrontドメインは作成後不変のため、初回ブートストラップ時のみプレースホルダーを使い、
+    # 実際のドメイン判明後にCallbackURLs/LogoutURLsを更新するため2回deployする
+    # （.github/workflows/deploy.yml参照）
+    UserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      DependsOn: GoogleIdentityProvider
+      Properties:
+        UserPoolId: !Ref UserPool
+        GenerateSecret: true
+        SupportedIdentityProviders:
+          - Google
+        AllowedOAuthFlows:
+          - code
+        AllowedOAuthScopes:
+          - openid
+          - email
+          - profile
+        AllowedOAuthFlowsUserPoolClient: true
+        CallbackURLs:
+          - https://${param:cloudFrontDomain, 'TBD.cloudfront.net'}/_callback
+        LogoutURLs:
+          - https://${param:cloudFrontDomain, 'TBD.cloudfront.net'}/
+        ExplicitAuthFlows:
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+
+  Outputs:
+    UserPoolId:
+      Value: !Ref UserPool
+    UserPoolClientId:
+      Value: !Ref UserPoolClient
+    UserPoolClientSecret:
+      Value: !GetAtt UserPoolClient.ClientSecret
+    CognitoDomain:
+      # !Ref UserPoolDomainの戻り値の仕様に依存せず、実際に指定したドメインprefixから
+      # 直接組み立てる（serverless.ymlの${param:...}はCFNテンプレート合成時に文字列展開される）
+      Value: "https://${param:cognitoDomainPrefix, 'bamiyanapp-examination'}.auth.${param:region, 'ap-northeast-1'}.amazoncognito.com"
