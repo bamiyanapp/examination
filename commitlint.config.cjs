@@ -1,0 +1,1 @@
+dev-standards/commitlint.config.cjs

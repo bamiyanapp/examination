@@ -1,0 +1,1 @@
+../dev-standards/.clinerules/03-safe-bash-commands.md
