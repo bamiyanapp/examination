@@ -35,6 +35,8 @@ nav:
   - 教育:
       - 概要: education/index.md
       - "想定問答（保護者面接: よーすけ）": education/interview-yosuke.md
+      - "想定問答（保護者面接: ともよ）": education/interview-tomoyo.md
+      - "想定問答（本人面接: りつ）": education/interview-ritsu.md
       - 模擬面接記録: education/mock-interviews.md
   - 家族:
       - プロフィール: family/profile.md
