@@ -1,0 +1,1 @@
+../dev-standards/.clinerules/02-git-conventions.md

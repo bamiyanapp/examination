@@ -1,0 +1,1 @@
+../dev-standards/.clinerules/01-development-process.md

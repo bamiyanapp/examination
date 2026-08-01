@@ -1,0 +1,26 @@
+name: CI
+run-name: >-
+  CI (${{ github.event_name == 'pull_request' && 'PR' || 'push-to-main' }})
+  ${{ github.event.head_commit.message || github.event.pull_request.title }}
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  ci:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v1.14.0
+    with:
+      # frontend/backendのアプリケーションコードを持たないコンテンツリポジトリのため、
+      # lint/test/buildは行わずcommitlint・standards-checkのみ実行する
+      packages: "[]"
+      enable_standards_check: true
+    secrets:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
