@@ -1,0 +1,47 @@
+site_name: examination 家族ナレッジベース
+site_description: 家族向けナレッジサイト（Issue #4）
+docs_dir: knowledge
+repo_url: https://github.com/bamiyanapp/examination
+repo_name: bamiyanapp/examination
+
+theme:
+  name: material
+  language: ja
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: ダークモードに切り替え
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: ライトモードに切り替え
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: ja
+
+nav:
+  - ホーム: index.md
+  - 教育:
+      - 概要: education/index.md
+      - "想定問答（保護者面接: よーすけ）": education/interview-yosuke.md
+      - "想定問答（保護者面接: ともよ）": education/interview-tomoyo.md
+      - "想定問答（本人面接: りつ）": education/interview-ritsu.md
+      - 模擬面接記録: education/mock-interviews.md
+  - 家族:
+      - プロフィール: family/profile.md
+  - 保育園: childcare/index.md
+  - 旅行: travel/index.md
+  - 住まい: home/index.md
+  - 車: cars/index.md
+  - AI活用: ai/index.md
