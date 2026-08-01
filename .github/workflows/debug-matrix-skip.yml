@@ -23,4 +23,4 @@ jobs:
           echo "result=[${{ needs.matrix-job.result }}]"
           echo "equals-skipped=${{ needs.matrix-job.result == 'skipped' }}"
           echo "equals-success=${{ needs.matrix-job.result == 'success' }}"
-          echo "contains-failure-cancelled=${{ contains(fromJSON('[\"failure\",\"cancelled\"]'), needs.matrix-job.result) }}"
+          echo "contains-failure-cancelled=${{ contains(fromJSON('["failure", "cancelled"]'), needs.matrix-job.result) }}"
