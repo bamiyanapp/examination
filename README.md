@@ -1,52 +1,47 @@
 # examination
 
-小学校受験対策リポジトリ
+家族向けナレッジベース（[Issue #4](https://github.com/bamiyanapp/examination/issues/4)）
 
 ## 概要
 
-このリポジトリは、小学校受験（本番: 今年度）に向けた対策をまとめるためのものです。
-主に以下の2つを管理します。
+このリポジトリはGitを正本（Single Source of Truth）とした家族向けナレッジベースです。小学校受験対策のほか、家族マニュアル・保育園・旅行・住まい・車などの情報を`knowledge/`配下のMarkdownで管理し、[MkDocs Material](https://squidfunk.github.io/mkdocs-material/)で静的サイトとしてビルドします（`docs/`はdev-standards共通規約に基づくCI/CD仕様ドキュメント専用のディレクトリのため、サイトコンテンツとは分離している）。
 
-- 保護者面接・本人面接で聞かれうる**想定問題**とその回答案
-- **模擬面接**を実施した記録と、そこから得られた気づきによる想定問題のアップデート
-
-想定問題は一度作って終わりではなく、模擬面接を重ねるたびに内容を見直し、改善していくことを前提としています。
-
-## 家族構成
-
-| 続柄 | 名前 | 備考 |
-| --- | --- | --- |
-| 受験者（本人） | りつ | 今年度受験 |
-| 父 | よーすけ | 保護者面接 対象 |
-| 母 | ともよ | 保護者面接 対象 |
-| 妹 | あん | 未就学 |
+コンテンツはClaude Codeと自分が更新し、GitHub Pushで反映します。妻・子どもなど閲覧側はGitを意識せず、ブラウザからサイトを見るだけで最新の内容を確認できることを目指しています（サイトの公開先・認証は[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で別途整備予定）。
 
 ## ディレクトリ構成
 
 ```
 .
-├── README.md
-├── questions/         # 想定問題・回答案（本人面接／保護者面接）
-└── mock-interviews/    # 模擬面接の実施記録（振り返り・改善点）
+├── mkdocs.yml
+├── requirements.txt
+├── docs/
+│   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
+└── knowledge/
+    ├── index.md          # サイトのホーム
+    ├── education/         # 小学校受験対策（想定問答・模擬面接記録）
+    ├── family/             # 家族プロフィール
+    ├── childcare/          # 保育園
+    ├── travel/             # 旅行
+    ├── home/               # 住まい・家電
+    ├── cars/               # 車
+    └── ai/                 # AI（Claude Code）活用
 ```
 
-- `questions/`
-  - 想定される質問と、現時点でのベストな回答案をまとめる
-  - 対象者（りつ／よーすけ／ともよ）ごと、テーマごとにファイルを分けていく想定
-- `mock-interviews/`
-  - 模擬面接を実施した日付ごとに記録を残す
-  - よかった点・改善が必要な点・次回までのアクションを記録する
+## サイトのローカル確認
 
-## 運用フロー
+```
+pip install -r requirements.txt
+mkdocs serve
+```
 
-1. `questions/` に想定問題と回答案を用意する
+## 教育（小学校受験対策）の運用フロー
+
+1. `knowledge/education/`に想定問題と回答案を用意する
 2. 想定問題をもとに模擬面接を実施する
-3. 実施結果を `mock-interviews/` に記録する（気づき・改善点）
-4. 記録をもとに `questions/` の回答案を更新する
+3. 実施結果を`knowledge/education/mock-interviews.md`に記録する（気づき・改善点）
+4. 記録をもとに想定問答の回答案を更新する
 5. 2〜4を本番まで繰り返す
 
-## 今後の準備
+## 家族構成
 
-- [ ] 想定問題リストの初版作成（本人面接）
-- [ ] 想定問題リストの初版作成（保護者面接）
-- [ ] 模擬面接の実施・記録
+家族構成は[knowledge/family/profile.md](knowledge/family/profile.md)を参照してください。
