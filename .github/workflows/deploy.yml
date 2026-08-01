@@ -1,0 +1,133 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+# 複数回のpushが短時間に重なった場合、AWSリソースへの同時デプロイで競合しないよう直列化する
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Build MkDocs site
+        run: |
+          pip install -r requirements.txt
+          mkdocs build --strict
+
+      - name: Install auth-stack dependencies
+        working-directory: infra/auth-stack
+        run: npm ci
+
+      - name: Install site-stack dependencies
+        working-directory: infra/site-stack
+        run: npm ci
+
+      # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
+      # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする
+      - name: Get current CloudFront domain (if the stack already exists)
+        id: current-domain
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" --output text 2>/dev/null || true)
+          echo "domain=${DOMAIN:-TBD.cloudfront.net}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy auth-stack (Cognito)
+        working-directory: infra/auth-stack
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          npx serverless deploy \
+            --param="region=ap-northeast-1" \
+            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}" \
+            --param="cloudFrontDomain=${{ steps.current-domain.outputs.domain }}"
+
+      - name: Read auth-stack outputs
+        id: auth-outputs
+        run: |
+          OUT=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-auth-prod --query "Stacks[0].Outputs")
+          echo "user_pool_id=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          echo "client_id=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientId") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          echo "cognito_domain=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="CognitoDomain") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          SECRET=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientSecret") | .OutputValue')
+          echo "::add-mask::$SECRET"
+          echo "client_secret=$SECRET" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Lambda@Edge configuration
+        working-directory: infra/site-stack
+        env:
+          AWS_REGION: ap-northeast-1
+          COGNITO_USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+          COGNITO_CLIENT_ID: ${{ steps.auth-outputs.outputs.client_id }}
+          COGNITO_CLIENT_SECRET: ${{ steps.auth-outputs.outputs.client_secret }}
+          COGNITO_DOMAIN: ${{ steps.auth-outputs.outputs.cognito_domain }}
+        run: node scripts/generate-config.js
+
+      - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
+        working-directory: infra/site-stack
+        run: |
+          npx serverless deploy \
+            --param="bucketName=${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}"
+
+      - name: Get real CloudFront domain
+        id: real-domain
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" --output text)
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+
+      # 初回ブートストラップ時のみ、上のauth-stackデプロイ時点ではCloudFrontドメインが
+      # プレースホルダーだったため、実ドメイン判明後にCallbackURLs/LogoutURLsを
+      # 確定させるためもう一度deployする（2回目以降の通常デプロイでは差分が無いためスキップされる）
+      - name: Re-deploy auth-stack with the real CloudFront domain (first-time bootstrap only)
+        if: steps.current-domain.outputs.domain != steps.real-domain.outputs.domain
+        working-directory: infra/auth-stack
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: |
+          npx serverless deploy \
+            --param="region=ap-northeast-1" \
+            --param="cognitoDomainPrefix=${{ vars.COGNITO_DOMAIN_PREFIX || 'bamiyanapp-examination' }}" \
+            --param="cloudFrontDomain=${{ steps.real-domain.outputs.domain }}"
+
+      - name: Sync site to S3
+        run: |
+          aws s3 sync site/ "s3://${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DIST_ID=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+
+      - name: Show site URL
+        run: |
+          echo "### サイトURL" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://${{ steps.real-domain.outputs.domain }}" >> "$GITHUB_STEP_SUMMARY"

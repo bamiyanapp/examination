@@ -19,8 +19,16 @@
 - `push`（`main`）・`pull_request`の両方で実行
 - Python環境をセットアップし、`requirements.txt`（`mkdocs-material`）をインストールした上で`mkdocs build --strict`を実行する
 - `--strict`により、壊れた内部リンクや`nav`に存在しないページ等があればビルド自体を失敗させる
-- 実際のS3/CloudFrontへのデプロイは含まない（[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で追加予定）
+- 実際のS3/CloudFrontへのデプロイは含まない（下記「デプロイワークフロー」参照）
 
-## CDワークフロー
+## デプロイワークフロー（`.github/workflows/deploy.yml`）
 
-導入していない。本リポジトリはバージョン管理・デプロイの対象となる配布物（npmパッケージ、デプロイ可能なビルド成果物等）を持たないため、`reusable-cd.yml`（semantic-releaseによるバージョン自動採番・GitHub Release作成）を適用する意味が無い。将来アプリケーションコード（frontend/backend）を追加し、リリース運用が必要になった時点で `.github/workflows/cd.yml` を追加し、`packages` 入力も実際のパッケージ構成に更新する。
+`main`へのpush時に、MkDocsビルド成果物をAWS（S3 + CloudFront + Cognito Google認証）へ自動デプロイする（Issue #6）。AWSリソース自体はTerraformではなくServerless Framework v3系（OSS版）で定義しており、詳細は[infra/README.md](../infra/README.md)を参照する。
+
+- AWSへの認証はIAMユーザーの長期アクセスキー（`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`）を使用する（OIDCロールではない）
+- `infra/auth-stack`（Cognito）→ `infra/site-stack`（S3・CloudFront・Lambda@Edge）の順にデプロイし、CloudFrontドメイン確定後に`auth-stack`を再デプロイしてCallback URLを確定させる（`infra/README.md`「なぜ2つのスタックに分けているか」参照）
+- サイト本体は`mkdocs build`の成果物を`aws s3 sync`でS3へ同期し、CloudFrontのキャッシュを無効化して反映する
+
+## CDワークフロー（semantic-release）
+
+導入していない。本リポジトリはnpmパッケージとしてのバージョン管理・GitHub Release作成の対象となる配布物を持たないため、`reusable-cd.yml`（semantic-releaseによるバージョン自動採番）を適用する意味が無い。AWSへのデプロイは上記の専用`deploy.yml`で行う（`reusable-cd.yml`とは無関係）。

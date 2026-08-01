@@ -1,0 +1,12 @@
+{
+  "name": "examination-site-stack",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "@silvermine/serverless-plugin-cloudfront-lambda-edge": "^2.2.3"
+  }
+}
