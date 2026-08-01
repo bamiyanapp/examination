@@ -21,6 +21,6 @@ jobs:
     steps:
       - run: |
           echo "result=[${{ needs.matrix-job.result }}]"
-          echo "equals-skipped=${{ needs.matrix-job.result == 'skipped' }}"
-          echo "equals-success=${{ needs.matrix-job.result == 'success' }}"
-          echo "contains-failure-cancelled=${{ contains(fromJSON('["failure", "cancelled"]'), needs.matrix-job.result) }}"
+          echo "empty-array-first-elem-is-null=${{ fromJSON('[]')[0] == null }}"
+          echo "nonempty-array-first-elem-is-null=${{ fromJSON('[{"a":1}]')[0] == null }}"
+          echo "packages-empty-string-check=${{ '' == '' }}"
