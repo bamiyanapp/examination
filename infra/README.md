@@ -62,9 +62,20 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 LINE botはLINEアカウント自体に閲覧許可の概念を持たない（誰でもLINE公式アカウントを友だち追加できてしまう）ため、botの機能（練習・登録）を使う前にサイトの閲覧許可（Google/Cognitoログイン）済みアカウントとの紐付けを必須とする。ワンタイムコード方式で、既存のCognito認証をそのまま流用する。
 
 1. サイトの「設定 → LINE連携」ページ（`knowledge/settings/line-link.md`）で「コードを発行」を押すと、`site-stack`（`checkAuth.js`）の`POST /_link-line` APIが呼ばれる。ログイン中のメールアドレスと紐付けた6桁のワンタイムコードを発行し、DynamoDBテーブル`examination-line-link-codes`（パーティションキー: `code`、TTL 10分）へ保存する
-2. 発行されたコードをLINE公式アカウントのトークへ送信すると、`bot-stack`（`lineWebhook.js`）が`examination-line-link-codes`をクロスリージョン（us-east-1）で検証し、有効であれば消費（削除）した上で、そのメールアドレスが`examination-allowed-emails`に存在するかを確認する。許可されていれば`examination-line-links`（パーティションキー: `lineUserId`）へLINEユーザーIDとメールアドレスの紐付けを保存する
+2. 発行されたコードをLINE公式アカウントのトークへ送信すると、`bot-stack`（`lineWebhook.js`）が`examination-line-link-codes`をクロススタックで検証し、有効であれば消費（削除）した上で、そのメールアドレスが`examination-allowed-emails`に存在するかを確認する。許可されていれば`examination-line-links`（パーティションキー: `lineUserId`）へLINEユーザーIDとメールアドレスの紐付けを保存する
 3. 以降、そのLINEアカウントからのメッセージは`examination-line-links`で紐付け先メールアドレスを引き、`examination-allowed-emails`での許可を都度確認した上で練習・登録機能を提供する。未連携のアカウント、コードが無効/期限切れの場合、紐付け先メールアドレスの許可が取り消された場合は、それぞれ案内メッセージを返して機能を提供しない
-4. `bot-stack`のLambda実行ロールには、`site-stack`が所有する`examination-line-link-codes`・`examination-allowed-emails`（いずれもus-east-1）への最小権限（コード側はGetItem/DeleteItem、許可メール側はGetItemのみ）を、別Serverless serviceへのARNを`Fn::Sub`で直接組み立てて付与している（同一CloudFormationスタックでないためExportsは使えない）
+4. `bot-stack`のLambda実行ロールには、`site-stack`が所有する`examination-line-link-codes`・`examination-allowed-emails`への最小権限（コード側はGetItem/DeleteItem、許可メール側はGetItemのみ）を、別Serverless serviceへのARNを`Fn::Sub`で直接組み立てて付与している（同一CloudFormationスタックでないためExportsは使えない。`bot-stack`を`site-stack`と同じ`us-east-1`に統一済み（Issue #63）のため、クロススタックではあるがクロスリージョンではない）
+
+## 音声で面接練習（[Issue #62](https://github.com/bamiyanapp/examination/issues/62)）
+
+サイトのページ（`knowledge/education/voice-practice.md`）から、ブラウザ標準の音声認識（Web Speech API）・音声合成（SpeechSynthesis API）を使って声で面接練習ができる。LINE botの練習モードとは別の、ブラウザだけで完結する会話形式の機能。
+
+- リアルタイム音声ストリーミング（OpenAI Realtime API等）は採用しない。AI利用料が数倍になる、WebRTC等の実装・運用が複雑になる、Lambdaベースの現在構成との親和性が低い、家族利用規模では費用対効果が低いため。バックエンドとの通信は常にテキストとし、音声処理はブラウザ側（クライアント）に寄せる設計とした
+- 認証: `bot-stack`のAPI（`voiceChat.js`、`POST /voice-chat`）はブラウザから直接呼ばれるクロスオリジンのAPIで、`site-stack`のHttpOnly Cookie（`id_token`）はクロスオリジンでは自動送信されないため、専用の短期トークン方式を採る
+  1. サイトの音声練習ページを開いた状態で「会話を始める」を押すと、同一オリジンの`site-stack`（`checkAuth.js`）の`POST /_voice-token` APIがログイン中のユーザーを確認した上で短期トークン（有効期限1時間）を発行し、`examination-voice-tokens`（パーティションキー: `token`、TTLで自動失効）へ保存する
+  2. ブラウザのJSがそのトークンをBearerトークンとして`bot-stack`の`POST /voice-chat`へ送る。`voiceChat.js`がトークンを検証（クロススタック、有効期限確認）した上で、紐づくメールアドレスが`examination-allowed-emails`に存在するかを確認する
+  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）に応じたシステムプロンプトとともにOpenAI APIへ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
+- `bot-stack`のHTTP APIはCORSを有効化している（`provider.httpApi.cors: true`）。LINE Webhook（`/webhook`）はサーバー間通信のためCORSヘッダーの付与自体は影響しない
 
 ## 必要なGitHub Secrets / Variables
 
@@ -81,6 +92,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | `LINE_CHANNEL_SECRET` | LINE Developers ConsoleでMessaging APIチャネルを作成して取得するChannel Secret |
 | `LINE_CHANNEL_ACCESS_TOKEN` | 同チャネルのChannel Access Token（長期） |
 | `GEMINI_API_KEY` | Google AI StudioでLINE bot用に発行するGemini APIキー |
+| `OPENAI_API_KEY` | OpenAI Platformで音声対話機能用に発行するAPIキー（任意。未設定の場合は音声対話機能のみ動作せず、他のbot-stack機能のデプロイはブロックされない） |
 
 ### Variables（任意、既定値あり）
 

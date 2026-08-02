@@ -10,6 +10,11 @@ provider:
   region: us-east-1
   stage: prod
   runtime: nodejs20.x
+  httpApi:
+    # 音声対話ページ（examination#62）はブラウザから直接このAPIをfetchするクロス
+    # オリジンのHTTP APIのためCORSが必要。lineWebhookはサーバー間通信でブラウザを
+    # 経由しないためCORSヘッダーの付与自体は無害（認証はBearerトークン/署名検証で行う）
+    cors: true
   iam:
     role:
       statements:
@@ -35,6 +40,11 @@ provider:
           Action:
             - dynamodb:GetItem
           Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/examination-allowed-emails"
+        # 音声対話ページ用の短期トークン（site-stack所有、examination#62）
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+          Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/examination-voice-tokens"
 
 functions:
   lineWebhook:
@@ -52,6 +62,18 @@ functions:
     events:
       - httpApi:
           path: /webhook
+          method: POST
+
+  # 音声対話機能（examination#62）。ブラウザ（PWA）のWeb Speech APIで文字起こしした
+  # テキストをOpenAI APIへ中継し、応答テキストを返す。音声処理自体はクライアント側で
+  # 完結させ、バックエンドは常にテキストのみを扱う
+  voiceChat:
+    handler: functions/voiceChat.handler
+    memorySize: 256
+    timeout: 25
+    events:
+      - httpApi:
+          path: /voice-chat
           method: POST
 
 resources:
