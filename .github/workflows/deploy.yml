@@ -46,7 +46,7 @@ jobs:
           echo "domain=${DOMAIN:-TBD.cloudfront.net}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy auth-stack (Cognito)
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
         with:
           working-directory: infra/auth-stack
           node-version: "24"
@@ -83,7 +83,7 @@ jobs:
         run: node scripts/generate-config.js
 
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
         with:
           working-directory: infra/site-stack
           node-version: "24"
@@ -122,7 +122,7 @@ jobs:
       # 確定させるためもう一度deployする（2回目以降の通常デプロイでは差分が無いためスキップされる）
       - name: Re-deploy auth-stack with the real CloudFront domain (first-time bootstrap only)
         if: steps.current-domain.outputs.domain != steps.real-domain.outputs.domain
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.0
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
         with:
           working-directory: infra/auth-stack
           node-version: "24"
