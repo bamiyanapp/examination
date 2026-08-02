@@ -7,8 +7,10 @@ const config = require("./configuration.json");
 
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
-// lineWebhook.jsと同じGemini APIを使う（新規Secretを増やさないため）
-const GEMINI_MODEL = "gemini-2.0-flash";
+// lineWebhook.jsと同じGemini APIを使う（新規Secretを増やさないため）。
+// gemini-2.0-flashはGoogle側で廃止(404 NOT_FOUND)されたため後継モデルに変更した
+// （examination#74）
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
 

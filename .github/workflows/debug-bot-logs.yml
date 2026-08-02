@@ -25,6 +25,20 @@ jobs:
           # bot-stackはus-east-1に統一済み（examination#63）
           aws-region: us-east-1
 
+      # Gemini APIが"gemini-2.0-flash"モデルを404 NOT_FOUNDで拒否するようになった
+      # 事象の調査用（lineWebhook.js/voiceChat.jsで現在利用可能なモデル名を確認する）
+      - name: List available Gemini models
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          {
+            echo "### 利用可能なGeminiモデル一覧（generateContent対応）"
+            echo '```'
+            curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}" \
+              | jq -r '.models[] | select(.supportedGenerationMethods[]? == "generateContent") | .name'
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Show recent lineWebhook Lambda logs
         run: |
           SINCE="${{ github.event.inputs.since }}"
