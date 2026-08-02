@@ -37,34 +37,16 @@ jobs:
           fi
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-      # ログに一切Invocationが無い場合、403はLambdaに到達する前（Function URL/AWS側）で
-      # 発生している可能性がある。GitHub Actionsランナー（インターネットに直接アクセス可能）
-      # から直接叩き、AWS側の生のレスポンスを確認する（examination#52）
-      - name: Check Function URL config and direct connectivity
+      # Lambda Function URLの匿名アクセスがAWS側で403 Forbiddenになる問題（examination#52）
+      # を受けて、実績のあるAPI Gateway（HTTP API）経由に切り替えた。GitHub Actionsランナー
+      # （インターネットに直接アクセス可能）から直接叩き、疎通を確認する
+      - name: Check API Gateway endpoint connectivity
         run: |
           {
-            echo "### Function URL設定"
-            echo '```json'
-            aws lambda get-function-url-config --region ap-northeast-1 \
-              --function-name examination-bot-prod-lineWebhook 2>&1
-            echo '```'
-
-            echo "### リソースベースポリシー（get-policy）"
-            echo '```json'
-            aws lambda get-policy --region ap-northeast-1 \
-              --function-name examination-bot-prod-lineWebhook 2>&1
-            echo '```'
-
-            echo "### 関数の状態（State/LastUpdateStatus）"
-            echo '```json'
-            aws lambda get-function-configuration --region ap-northeast-1 \
-              --function-name examination-bot-prod-lineWebhook \
-              --query "{State:State,LastUpdateStatus:LastUpdateStatus,LastModified:LastModified}" 2>&1
-            echo '```'
-
-            WEBHOOK_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
-              --query "Stacks[0].Outputs[?OutputKey=='LineWebhookLambdaFunctionUrl'].OutputValue" --output text)
-            echo "### Function URLへの直接リクエスト結果"
+            API_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+              --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" --output text)
+            WEBHOOK_URL="${API_URL}/webhook"
+            echo "### Webhook URLへの直接リクエスト結果"
             echo "対象URL: $WEBHOOK_URL"
             echo '```'
             curl -s -D - -o /tmp/curl-body.txt -w "\nHTTP_STATUS:%{http_code}\n" \
@@ -74,36 +56,5 @@ jobs:
               -d '{"events":[]}'
             echo "--- body ---"
             cat /tmp/curl-body.txt
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      # 直接curlでAWSの生の403（AccessDeniedException）を確認した場合の追加切り分け。
-      # AWS Organizationsのリソースコントロールポリシー(RCP)が原因かどうかを判定する
-      # （examination#52）。IAMユーザーにorganizations:*権限が無ければAccessDeniedが
-      # 返るだけで、その場合はこのIAMユーザーからは判定不可であることが分かる
-      - name: Check AWS Organizations membership (RCP candidate)
-        run: |
-          {
-            echo "### AWS Organizations所属確認"
-            echo '```json'
-            aws organizations describe-organization 2>&1
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      # Organizations未所属と判明したため（examination#52）、アカウント固有の制限か
-      # どうかをLambdaアカウント設定とCloudTrailの実際の拒否イベントから確認する
-      - name: Check Lambda account settings and CloudTrail denial reason
-        run: |
-          {
-            echo "### Lambdaアカウント設定"
-            echo '```json'
-            aws lambda get-account-settings --region ap-northeast-1 2>&1
-            echo '```'
-
-            echo "### CloudTrailのInvokeFunctionUrl拒否イベント（直近）"
-            echo '```json'
-            aws cloudtrail lookup-events --region ap-northeast-1 \
-              --lookup-attributes AttributeKey=EventName,AttributeValue=InvokeFunctionUrl \
-              --max-results 5 2>&1
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
