@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { useWhisper } from "../stt/useWhisper.js";
+import { usePiperTts } from "../tts/usePiperTts.js";
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（Job Summaryの「LINE bot Webhook URL」と同じAPI）
@@ -6,22 +8,17 @@ const VOICE_CHAT_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.c
 
 const DEFAULT_SITUATION = "小学校受験の面接";
 
-function getSpeechRecognitionCtor() {
-  if (typeof window === "undefined") return undefined;
-  return window.SpeechRecognition || window.webkitSpeechRecognition;
-}
-
-function speak(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const utterance = new window.SpeechSynthesisUtterance(text);
-  utterance.lang = "ja-JP";
-  window.speechSynthesis.speak(utterance);
+function getMicrophoneCtor() {
+  if (typeof navigator === "undefined") return undefined;
+  return navigator.mediaDevices?.getUserMedia ? navigator.mediaDevices : undefined;
 }
 
 // 音声対話ページ（examination#62）。チャット風UIでユーザー自身の発言も画面に表示し、
 // シチュエーション・志望先の特色を自由入力できるようにして汎用的な受験・面接練習
-// アプリへ拡張した（examination#76）。旧: knowledge/education/voice-practice.md
-// に埋め込まれていた素の<script>実装をReactへ移植した
+// アプリへ拡張した（examination#76）。音声認識・音声合成は当初ブラウザ標準API
+// （SpeechRecognition/SpeechSynthesis）を使っていたが、ブラウザ依存の低減・認識精度
+// 向上のため、ONNX Runtime Web（kotoba-whisper）+ Piper（ブラウザ内実行）へ
+// 置き換えた（examination#73）
 export default function VoicePractice() {
   const [role, setRole] = useState("本人");
   const [situation, setSituation] = useState(DEFAULT_SITUATION);
@@ -31,11 +28,17 @@ export default function VoicePractice() {
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   const voiceTokenRef = useRef(null);
   const historyRef = useRef([]);
-  const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const mediaStreamRef = useRef(null);
+
+  const mediaDevices = getMicrophoneCtor();
+  const { transcribe, modelStatus: sttStatus, downloadProgress: sttProgress } = useWhisper();
+  const { speak, prepare: prepareTts, modelStatus: ttsStatus, downloadProgress: ttsProgress } = usePiperTts();
 
   async function issueVoiceToken() {
     const res = await fetch("/_voice-token", { method: "POST" });
@@ -65,25 +68,33 @@ export default function VoicePractice() {
     return data;
   }
 
+  async function speakSafely(text) {
+    try {
+      await speak(text);
+    } catch (error) {
+      console.error("TTS failed", error);
+    }
+  }
+
   async function handleStart() {
     setIsError(false);
     setMessages([]);
     historyRef.current = [];
     setIsBusy(true);
-    setStatus("会話を準備中...");
+    setStatus("モデルを準備し、会話を開始しています...（初回は音声モデルのダウンロードのため時間がかかります）");
     try {
-      await issueVoiceToken();
+      await Promise.all([issueVoiceToken(), prepareTts()]);
       const data = await sendToVoiceChat(null);
       historyRef.current = data.history;
       setMessages([{ speaker: "面接官", text: data.reply }]);
-      speak(data.reply);
       setStarted(true);
-      if (!SpeechRecognitionCtor) {
+      if (!mediaDevices) {
         setIsError(true);
-        setStatus("このブラウザは音声認識に対応していません。Google Chrome等をお試しください。");
+        setStatus("このブラウザ・端末はマイクに対応していません。");
       } else {
         setStatus("");
       }
+      await speakSafely(data.reply);
     } catch (error) {
       setIsError(true);
       setStatus(error.message);
@@ -92,63 +103,81 @@ export default function VoicePractice() {
     }
   }
 
-  function handleSpeak() {
-    if (!SpeechRecognitionCtor) return;
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = false;
-    let resultReceived = false;
-
+  async function handleStartRecording() {
+    if (!mediaDevices) return;
     setIsError(false);
-    setIsListening(true);
-    setStatus("聞き取り中...");
-
-    recognition.onresult = async (event) => {
-      resultReceived = true;
-      const said = event.results[0][0].transcript;
-      setMessages((prev) => [...prev, { speaker: "あなた", text: said }]);
-      setStatus("AIが応答を考えています...");
-      try {
-        const data = await sendToVoiceChat(said);
-        historyRef.current = data.history;
-        setMessages((prev) => [...prev, { speaker: "面接官", text: data.reply }]);
-        speak(data.reply);
-        setStatus("");
-      } catch (error) {
-        setIsError(true);
-        setStatus(error.message);
-      } finally {
-        setIsListening(false);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      resultReceived = true;
+    try {
+      const stream = await mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setStatus("録音中...話し終わったら「話し終わった」を押してください");
+    } catch (error) {
       setIsError(true);
-      setStatus(`音声認識でエラーが発生しました（${event.error}）`);
-      setIsListening(false);
-    };
+      setStatus(`マイクを使用できませんでした（${error.message}）`);
+    }
+  }
 
-    recognition.onend = () => {
-      if (!resultReceived) {
+  async function handleStopRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    setIsRecording(false);
+    setStatus("音声を認識しています...");
+
+    const audioUrl = await new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        resolve(URL.createObjectURL(blob));
+      };
+      recorder.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    });
+
+    try {
+      const said = (await transcribe(audioUrl)).trim();
+      URL.revokeObjectURL(audioUrl);
+      if (!said) {
         setIsError(true);
         setStatus("音声を認識できませんでした。もう一度お試しください。");
-        setIsListening(false);
+        return;
       }
-    };
-
-    recognition.start();
+      setMessages((prev) => [...prev, { speaker: "あなた", text: said }]);
+      setStatus("AIが応答を考えています...");
+      const data = await sendToVoiceChat(said);
+      historyRef.current = data.history;
+      setMessages((prev) => [...prev, { speaker: "面接官", text: data.reply }]);
+      setStatus("");
+      await speakSafely(data.reply);
+    } catch (error) {
+      URL.revokeObjectURL(audioUrl);
+      setIsError(true);
+      setStatus(error.message);
+    }
   }
+
+  const modelLoadingText =
+    sttStatus === "loading"
+      ? `音声認識モデルを読み込み中...（${sttProgress}%）`
+      : ttsStatus === "loading"
+        ? `音声合成モデルを読み込み中...（${ttsProgress}%）`
+        : "";
 
   return (
     <main>
       <h1>音声で面接練習</h1>
       <p>
-        ブラウザの音声認識・音声合成機能を使って、声に出しながら面接練習ができます。マイクとスピーカーが使えるスマートフォン・PCのブラウザで利用してください。
+        声に出しながら面接練習ができます。マイクとスピーカーが使えるスマートフォン・PCのブラウザで利用してください。
       </p>
       <ul>
-        <li>音声認識・音声合成はブラウザ標準機能を使うため追加費用はかかりません</li>
-        <li>対応ブラウザ: Google Chrome、Microsoft Edge等（Safari・Firefoxは音声認識に対応していない場合があります）</li>
+        <li>音声認識・音声合成はブラウザ内で動作するAIモデル（kotoba-whisper・Piper）を使用します。初回利用時にモデルのダウンロードが発生します</li>
+        <li>録音は手動操作です。話し終わったらボタンを押して送信してください</li>
         <li>LINE botの面接練習とは別の、ブラウザだけで完結する会話形式の練習です</li>
       </ul>
 
@@ -197,12 +226,19 @@ export default function VoicePractice() {
               </div>
             ))}
           </div>
-          <button type="button" onClick={handleSpeak} disabled={!SpeechRecognitionCtor || isListening || isBusy}>
-            話す
-          </button>
+          {!isRecording ? (
+            <button type="button" onClick={handleStartRecording} disabled={!mediaDevices || isBusy}>
+              話す
+            </button>
+          ) : (
+            <button type="button" onClick={handleStopRecording}>
+              話し終わった
+            </button>
+          )}
         </div>
       )}
 
+      {modelLoadingText && <p>{modelLoadingText}</p>}
       <p style={{ color: isError ? "crimson" : undefined }}>{status}</p>
     </main>
   );
