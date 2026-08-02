@@ -47,7 +47,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 ## LINE bot（`bot-stack/`）
 
-面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックで、リージョン制約（Lambda@Edgeのus-east-1縛り）が無いため`ap-northeast-1`にデプロイする。Webhookは**API Gateway（HTTP API）**経由で公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
+面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックだが、`site-stack`が所有するテーブル（`examination-line-link-codes`・`examination-allowed-emails`）へのクロスリージョンアクセスを無くすため、`site-stack`と同じ`us-east-1`にデプロイする（[Issue #63](https://github.com/bamiyanapp/examination/issues/63)。`bot-stack`自体にはLambda@Edgeのようなリージョン制約は無いが、統一した方がシンプルなため）。Webhookは**API Gateway（HTTP API）**経由で公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
 
 > 当初はLambda Function URL（`AuthType: NONE`）で直接公開していたが、このAWSアカウントではFunction URLの匿名アクセスがAWS側で`403 Forbidden`（`AccessDeniedException`）を返す状態にあり、`AuthType`・リソースベースポリシー・関数の状態はすべて正しいにもかかわらず解消しなかった（[Issue #52](https://github.com/bamiyanapp/examination/issues/52)）。同一アカウントでAPI Gateway経由の公開エンドポイントは実績があるため、HTTP APIへ切り替えた。HTTP APIのペイロード形式（payload format 2.0）はFunction URLと同一のため、`functions/lineWebhook.js`のハンドラー側の変更は不要だった。
 

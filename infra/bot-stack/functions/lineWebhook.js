@@ -20,12 +20,13 @@ const FAMILY_SLUG = "chofu-suzuki";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 const GEMINI_MODEL = "gemini-2.0-flash";
 
-// site-stack（us-east-1）が所有するテーブル名（examination#49、クロススタックアクセス）
+// site-stackが所有するテーブル名（examination#49、クロススタックアクセス）。
+// bot-stackはus-east-1に統一済み（examination#63）のため、site-stackのテーブルも
+// 同一リージョンにあり、クライアントは1つで済む
 const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 
-const ddb = new DynamoDBClient({ region: "ap-northeast-1" });
-const ddbUsEast1 = new DynamoDBClient({ region: "us-east-1" });
+const ddb = new DynamoDBClient({ region: "us-east-1" });
 
 function verifySignature(rawBody, signatureHeader) {
   if (!signatureHeader) return false;
@@ -148,12 +149,12 @@ async function linkLineAccount(lineUserId, email) {
 // サイト（checkAuth.js）が発行したワンタイムコードを検証・消費する。有効なら紐付け先の
 // メールアドレスを返し、コードは使い切りのため削除する。無効・期限切れならnullを返す
 async function consumeLinkCode(code) {
-  const result = await ddbUsEast1.send(
+  const result = await ddb.send(
     new GetItemCommand({ TableName: LINE_LINK_CODES_TABLE, Key: { code: { S: code } } })
   );
   if (!result.Item) return null;
   const expiresAt = Number(result.Item.expiresAt?.N || 0);
-  await ddbUsEast1.send(new DeleteItemCommand({ TableName: LINE_LINK_CODES_TABLE, Key: { code: { S: code } } }));
+  await ddb.send(new DeleteItemCommand({ TableName: LINE_LINK_CODES_TABLE, Key: { code: { S: code } } }));
   if (expiresAt < Math.floor(Date.now() / 1000)) return null;
   return result.Item.email.S;
 }
@@ -161,7 +162,7 @@ async function consumeLinkCode(code) {
 // site-stackのexamination-allowed-emailsをクロススタックで参照する（examination#49）。
 // 連携済みでもallowlistから削除されていれば毎回ここでブロックされる
 async function isEmailAllowed(email) {
-  const result = await ddbUsEast1.send(
+  const result = await ddb.send(
     new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } })
   );
   return Boolean(result.Item);

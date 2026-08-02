@@ -22,7 +22,8 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-1
+          # bot-stackはus-east-1に統一済み（examination#63）
+          aws-region: us-east-1
 
       - name: Show recent lineWebhook Lambda logs
         run: |
@@ -43,7 +44,7 @@ jobs:
       - name: Check API Gateway endpoint connectivity
         run: |
           {
-            API_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+            API_URL=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-bot-prod \
               --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" --output text)
             WEBHOOK_URL="${API_URL}/webhook"
             echo "### Webhook URLへの直接リクエスト結果"
