@@ -51,8 +51,8 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 > 当初はLambda Function URL（`AuthType: NONE`）で直接公開していたが、このAWSアカウントではFunction URLの匿名アクセスがAWS側で`403 Forbidden`（`AccessDeniedException`）を返す状態にあり、`AuthType`・リソースベースポリシー・関数の状態はすべて正しいにもかかわらず解消しなかった（[Issue #52](https://github.com/bamiyanapp/examination/issues/52)）。同一アカウントでAPI Gateway経由の公開エンドポイントは実績があるため、HTTP APIへ切り替えた。HTTP APIのペイロード形式（payload format 2.0）はFunction URLと同一のため、`functions/lineWebhook.js`のハンドラー側の変更は不要だった。
 
-- 会話フロー: 「面接練習」で「本人」「父」「母」のいずれの練習かを確認し、選択されたロールに対応するカテゴリからランダムに想定問答を出題し回答へGemini APIでフィードバックする「練習モード」（[Issue #60](https://github.com/bamiyanapp/examination/issues/60)）、「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」の2つ（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
-- データ: `examination-interview-questions`（想定問答本体）・`examination-bot-sessions`（会話状態、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）
+- 会話フロー: 「面接練習」で「本人」「父」「母」のいずれの練習か・シチュエーション（例: 小学校受験の面接、就職の面接）・志望先の特色（任意）を順に確認した上で、Gemini APIとのマルチターン会話（質問→回答→フィードバックと次の質問、を繰り返す）を開始する「練習モード」。「終了」と送ると練習を終了する。会話ロジックは音声対話（`voiceChat.js`）と共通化しており（`geminiConversation.js`、[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）、AIがその場で質問を生成するため、練習の出題内容自体は`examination-interview-questions`のデータに依存しない。もう1つは「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
+- データ: `examination-interview-questions`（登録モードで蓄積する想定問答本体。練習モードの出題には現在使用していない）・`examination-bot-sessions`（会話状態。練習モード中は選択したロール・シチュエーション・志望先特色・会話履歴を`practiceState`属性にJSON文字列として保持し、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）
 - 初期値: `deploy.yml`の「Seed initial interview questions」ステップが、テーブルが空の場合のみ既存の`knowledge/education/interview-*.md`から一度だけ投入する（`scripts/seed-interview-questions.js`）
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
 - 初回デプロイ後、Job Summaryに表示されるWebhook URL（`<HTTP APIのURL>/webhook`）を、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（URLが変わった場合のみ再登録が必要）
