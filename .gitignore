@@ -39,3 +39,5 @@ site/
 .serverless/
 # deploy時にscripts/generate-config.jsが生成する（Cognitoクライアントシークレットを含むため）
 infra/site-stack/functions/configuration.json
+# deploy時にscripts/generate-config.jsが生成する（LINE・Gemini APIの認証情報を含むため）
+infra/bot-stack/functions/configuration.json
