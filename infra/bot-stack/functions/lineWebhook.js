@@ -18,7 +18,9 @@ const LINE_LINKS_TABLE = "examination-line-links";
 // 複数家族対応(examination#44)が実装されるまでは固定値として扱う
 const FAMILY_SLUG = "chofu-suzuki";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
-const GEMINI_MODEL = "gemini-2.0-flash";
+// gemini-2.0-flashはGoogle側で廃止(404 NOT_FOUND)されたため後継モデルに変更した
+// （examination#74）
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 // site-stackが所有するテーブル名（examination#49、クロススタックアクセス）。
 // bot-stackはus-east-1に統一済み（examination#63）のため、site-stackのテーブルも
