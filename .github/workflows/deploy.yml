@@ -165,8 +165,13 @@ jobs:
       # 再デプロイで復活することはない（allowed-emailsの初期シードと同じ考え方）
       - name: Seed initial interview questions (only if table is empty)
         working-directory: infra/bot-stack
+        env:
+          # bot-stackはus-east-1に統一済み（examination#63）。他のAWS CLI呼び出しは
+          # auth-stack（ap-northeast-1）向けのグローバル設定を引き継ぐため、
+          # このステップのみ明示的に上書きする
+          AWS_REGION: us-east-1
         run: |
-          COUNT=$(aws dynamodb scan --region ap-northeast-1 --table-name examination-interview-questions \
+          COUNT=$(aws dynamodb scan --region us-east-1 --table-name examination-interview-questions \
             --select COUNT --query "Count" --output text)
           if [ "$COUNT" = "0" ]; then
             echo "Seeding initial interview questions"
@@ -179,7 +184,7 @@ jobs:
       # （examination#52）のため、実績のあるAPI Gateway（HTTP API）経由に切り替えた
       - name: Show LINE bot webhook URL
         run: |
-          API_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+          API_URL=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-bot-prod \
             --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" --output text)
           echo "### LINE bot Webhook URL" >> "$GITHUB_STEP_SUMMARY"
           echo "${API_URL}/webhook" >> "$GITHUB_STEP_SUMMARY"
