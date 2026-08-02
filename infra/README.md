@@ -6,6 +6,7 @@ Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のイン�
 
 - `auth-stack/`: Amazon Cognito（User Pool・Google Identity Provider・User Pool Client・Cognitoドメイン）
 - `site-stack/`: S3バケット（MkDocsビルド成果物の格納先）・CloudFrontディストリビューション（Origin Access Control経由でS3へアクセス）・Lambda@Edge（`functions/checkAuth.js`、CloudFrontの`viewer-request`イベントで全リクエストの認証チェックを行う）・DynamoDBテーブル（`examination-allowed-emails`、閲覧許可メールアドレス一覧）
+- `bot-stack/`: LINE bot（面接練習・想定問答の登録。[Issue #43](https://github.com/bamiyanapp/examination/issues/43)）。Lambda（`functions/lineWebhook.js`）をLambda Function URLで公開し、LINE Messaging APIのWebhookを受ける。DynamoDBテーブル（`examination-interview-questions`・`examination-bot-sessions`）を持つ
 
 デプロイは`.github/workflows/deploy.yml`が`main`へのpush時に自動実行する。
 
@@ -44,6 +45,16 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 - 初期値: `deploy.yml`の「Seed initial allowed emails」ステップが、テーブルが空の場合のみ投入する（既存ユーザーが削除した後の再デプロイで復活することはない。全件削除された場合のみ、締め出し防止のため次回デプロイで初期値に戻る）
 - 反映タイミング: `checkAuth.js`はLambda@Edgeの実行環境（エッジロケーションごとに独立）内で許可判定を60秒キャッシュするため、追加・削除は最大60秒程度で全世界に反映される（即時ではない）
 
+## LINE bot（`bot-stack/`）
+
+面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックで、リージョン制約（Lambda@Edgeのus-east-1縛り）が無いため`ap-northeast-1`にデプロイする。API Gatewayは使わず、Lambda Function URLでWebhookを直接公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
+
+- 会話フロー: 「面接練習」でランダムな想定問答を出題し回答へGemini APIでフィードバックする「練習モード」、「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」の2つ
+- データ: `examination-interview-questions`（想定問答本体）・`examination-bot-sessions`（会話状態、TTLで自動失効）
+- 初期値: `deploy.yml`の「Seed initial interview questions」ステップが、テーブルが空の場合のみ既存の`knowledge/education/interview-*.md`から一度だけ投入する（`scripts/seed-interview-questions.js`）
+- 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
+- 初回デプロイ後、Job Summaryに表示されるLambda Function URLを、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（人手による一度きりの作業）
+
 ## 必要なGitHub Secrets / Variables
 
 参照側リポジトリ（このリポジトリ）の Settings → Secrets and variables → Actions で設定する。
@@ -56,6 +67,9 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 | `AWS_SECRET_ACCESS_KEY` | 同シークレットアクセスキー |
 | `GOOGLE_OAUTH_CLIENT_ID` | Google Cloud ConsoleでCognito連携用に作成したOAuthクライアントID |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | 同クライアントシークレット |
+| `LINE_CHANNEL_SECRET` | LINE Developers ConsoleでMessaging APIチャネルを作成して取得するChannel Secret |
+| `LINE_CHANNEL_ACCESS_TOKEN` | 同チャネルのChannel Access Token（長期） |
+| `GEMINI_API_KEY` | Google AI StudioでLINE bot用に発行するGemini APIキー |
 
 ### Variables（任意、既定値あり）
 
@@ -68,4 +82,4 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 - **S3バケット名/Cognitoドメインprefixの重複**: エラーメッセージに`already exists`と出た場合、上記Variablesで別名を指定して再実行する
 - **Lambda@Edgeの反映の遅延**: Lambda@Edge関数の作成・更新はCloudFrontの全エッジロケーションへ複製されるまで数分〜十数分かかることがある。デプロイ直後にアクセスして想定と異なる挙動になる場合は、少し時間を置いてから再度確認する
-- **IAMユーザーの権限不足**: `AWS_ACCESS_KEY_ID`のIAMユーザーには、S3・CloudFront・Cognito・Lambda・IAM（Lambda実行ロール作成用）・CloudFormationへの十分な権限が必要
+- **IAMユーザーの権限不足**: `AWS_ACCESS_KEY_ID`のIAMユーザーには、S3・CloudFront・Cognito・Lambda・DynamoDB・IAM（Lambda実行ロール作成用）・CloudFormationへの十分な権限が必要

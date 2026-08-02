@@ -137,6 +137,46 @@ jobs:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
+      - name: Generate bot-stack configuration
+        working-directory: infra/bot-stack
+        env:
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/generate-config.js
+
+      - name: Deploy bot-stack (LINE bot)
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
+        with:
+          working-directory: infra/bot-stack
+          node-version: "24"
+          deploy-command: npx serverless deploy
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 想定問答テーブルへの初期値投入。既存Markdown（interview-yosuke/tomoyo/ritsu.md）を
+      # 一度だけ取り込む。テーブルが空の場合のみ実行するため、botで登録・削除した後の
+      # 再デプロイで復活することはない（allowed-emailsの初期シードと同じ考え方）
+      - name: Seed initial interview questions (only if table is empty)
+        working-directory: infra/bot-stack
+        run: |
+          COUNT=$(aws dynamodb scan --region ap-northeast-1 --table-name examination-interview-questions \
+            --select COUNT --query "Count" --output text)
+          if [ "$COUNT" = "0" ]; then
+            echo "Seeding initial interview questions"
+            node scripts/seed-interview-questions.js
+          else
+            echo "Table already has $COUNT item(s), skipping seed"
+          fi
+
+      - name: Show LINE bot webhook URL
+        run: |
+          WEBHOOK_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='LineWebhookLambdaFunctionUrl'].OutputValue" --output text)
+          echo "### LINE bot Webhook URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "$WEBHOOK_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "（初回のみ、LINE Developers ConsoleのMessaging API設定でこのURLをWebhook URLとして登録してください）" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Sync site to S3
         run: |
           aws s3 sync site/ "s3://${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}" --delete

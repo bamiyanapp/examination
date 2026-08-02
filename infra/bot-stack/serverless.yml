@@ -1,0 +1,68 @@
+service: examination-bot
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  region: ap-northeast-1
+  stage: prod
+  runtime: nodejs20.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+          Resource:
+            - !GetAtt InterviewQuestionsTable.Arn
+            - !GetAtt BotSessionsTable.Arn
+
+functions:
+  lineWebhook:
+    handler: functions/lineWebhook.handler
+    memorySize: 256
+    timeout: 30
+    # LINE Messaging APIのWebhookを直接公開する。API Gatewayは導入せず、
+    # Function URLで十分（認証はLINEの署名検証(X-Line-Signature)で行う）
+    url:
+      cors: false
+
+resources:
+  Resources:
+    # 面接想定問答（ユーザー登録データ）。familySlugは複数家族対応(examination#44)を
+    # 見据えたキー設計だが、v1では常に"chofu-suzuki"固定で扱う
+    InterviewQuestionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-interview-questions
+        AttributeDefinitions:
+          - AttributeName: familySlug
+            AttributeType: S
+          - AttributeName: questionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: familySlug
+            KeyType: HASH
+          - AttributeName: questionId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    # LINEユーザーごとの会話状態（面接練習中/登録確認待ち等）。放置されたセッションを
+    # 自動的に片付けるためTTLを設定する
+    BotSessionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-bot-sessions
+        AttributeDefinitions:
+          - AttributeName: lineUserId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: lineUserId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
