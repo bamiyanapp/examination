@@ -61,6 +61,11 @@ async function callGemini(messages) {
   const contents = messages
     .filter((m) => m.role !== "system")
     .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+  // Gemini APIはsystemInstructionのみでcontentsが空だと400を返すため、会話開始時
+  // （履歴が無い最初のターン）は開始を促すユーザーターンを補う
+  if (contents.length === 0) {
+    contents.push({ role: "user", parts: [{ text: "面接を始めてください。最初の質問をお願いします。" }] });
+  }
   const response = await postJson(
     "generativelanguage.googleapis.com",
     `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${config.geminiApiKey}`,
