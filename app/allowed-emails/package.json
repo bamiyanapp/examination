@@ -1,5 +1,5 @@
 {
-  "name": "examination-app",
+  "name": "examination-app-allowed-emails",
   "private": true,
   "version": "0.0.0",
   "type": "module",
