@@ -19,6 +19,18 @@ provider:
           Resource:
             - !GetAtt InterviewQuestionsTable.Arn
             - !GetAtt BotSessionsTable.Arn
+            - !GetAtt LineLinksTable.Arn
+        # site-stack（us-east-1）が所有するテーブルへのクロススタックアクセス（examination#49）。
+        # 別Serverless serviceのため、CloudFormationのFn::ImportValueではなくARNを直接組み立てる
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+          Resource: !Sub "arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/examination-line-link-codes"
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+          Resource: !Sub "arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/examination-allowed-emails"
 
 functions:
   lineWebhook:
@@ -66,3 +78,17 @@ resources:
         TimeToLiveSpecification:
           AttributeName: expiresAt
           Enabled: true
+
+    # LINEアカウント(lineUserId)とGoogleアカウント(email)の永続的な紐付け（examination#49）。
+    # サイト側で発行したワンタイムコードの検証に成功した時点で書き込む
+    LineLinksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-line-links
+        AttributeDefinitions:
+          - AttributeName: lineUserId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: lineUserId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

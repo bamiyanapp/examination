@@ -14,12 +14,18 @@ const config = require("./configuration.json");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
 const BOT_SESSIONS_TABLE = "examination-bot-sessions";
+const LINE_LINKS_TABLE = "examination-line-links";
 // 複数家族対応(examination#44)が実装されるまでは固定値として扱う
 const FAMILY_SLUG = "chofu-suzuki";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 const GEMINI_MODEL = "gemini-2.0-flash";
 
+// site-stack（us-east-1）が所有するテーブル名（examination#49、クロススタックアクセス）
+const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
+const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
+
 const ddb = new DynamoDBClient({ region: "ap-northeast-1" });
+const ddbUsEast1 = new DynamoDBClient({ region: "us-east-1" });
 
 function verifySignature(rawBody, signatureHeader) {
   if (!signatureHeader) return false;
@@ -116,6 +122,49 @@ async function saveSession(lineUserId, session) {
 
 async function clearSession(lineUserId) {
   await ddb.send(new DeleteItemCommand({ TableName: BOT_SESSIONS_TABLE, Key: { lineUserId: { S: lineUserId } } }));
+}
+
+// LINEアカウントに紐付いたメールアドレスを取得する（examination#49）。未連携ならnull
+async function getLinkedEmail(lineUserId) {
+  const result = await ddb.send(
+    new GetItemCommand({ TableName: LINE_LINKS_TABLE, Key: { lineUserId: { S: lineUserId } } })
+  );
+  return result.Item ? result.Item.email.S : null;
+}
+
+async function linkLineAccount(lineUserId, email) {
+  await ddb.send(
+    new PutItemCommand({
+      TableName: LINE_LINKS_TABLE,
+      Item: {
+        lineUserId: { S: lineUserId },
+        email: { S: email },
+        linkedAt: { S: new Date().toISOString() },
+      },
+    })
+  );
+}
+
+// サイト（checkAuth.js）が発行したワンタイムコードを検証・消費する。有効なら紐付け先の
+// メールアドレスを返し、コードは使い切りのため削除する。無効・期限切れならnullを返す
+async function consumeLinkCode(code) {
+  const result = await ddbUsEast1.send(
+    new GetItemCommand({ TableName: LINE_LINK_CODES_TABLE, Key: { code: { S: code } } })
+  );
+  if (!result.Item) return null;
+  const expiresAt = Number(result.Item.expiresAt?.N || 0);
+  await ddbUsEast1.send(new DeleteItemCommand({ TableName: LINE_LINK_CODES_TABLE, Key: { code: { S: code } } }));
+  if (expiresAt < Math.floor(Date.now() / 1000)) return null;
+  return result.Item.email.S;
+}
+
+// site-stackのexamination-allowed-emailsをクロススタックで参照する（examination#49）。
+// 連携済みでもallowlistから削除されていれば毎回ここでブロックされる
+async function isEmailAllowed(email) {
+  const result = await ddbUsEast1.send(
+    new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } })
+  );
+  return Boolean(result.Item);
 }
 
 async function listQuestions() {
@@ -236,7 +285,37 @@ async function handleRegisterConfirm(lineUserId, session, text) {
   return "「はい」か「いいえ」で答えてください。";
 }
 
+const LINK_CODE_PATTERN = /^\d{6}$/;
+
+// 未連携のLINEアカウントからのメッセージを処理する（examination#49）。6桁の数字が
+// 送られてきたらワンタイムコードとして検証し、成功すればGoogleアカウントと紐付ける
+async function handleUnlinkedMessage(lineUserId, text) {
+  if (LINK_CODE_PATTERN.test(text.trim())) {
+    const email = await consumeLinkCode(text.trim());
+    if (!email) {
+      return "コードが無効か期限切れです。サイトの「設定 → LINE連携」でもう一度発行してください。";
+    }
+    if (!(await isEmailAllowed(email))) {
+      return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
+    }
+    await linkLineAccount(lineUserId, email);
+    return "連携が完了しました。「面接練習」または「質問を登録」と送ってください。";
+  }
+  return (
+    "このLINEアカウントはまだ連携されていません。" +
+    "サイトの「設定 → LINE連携」でワンタイムコードを発行し、6桁の数字をこのトークに送ってください。"
+  );
+}
+
 async function handleTextMessage(lineUserId, text) {
+  const linkedEmail = await getLinkedEmail(lineUserId);
+  if (!linkedEmail) {
+    return handleUnlinkedMessage(lineUserId, text);
+  }
+  if (!(await isEmailAllowed(linkedEmail))) {
+    return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
+  }
+
   const session = await getSession(lineUserId);
 
   if (text.includes("面接練習")) {

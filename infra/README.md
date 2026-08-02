@@ -49,11 +49,20 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックで、リージョン制約（Lambda@Edgeのus-east-1縛り）が無いため`ap-northeast-1`にデプロイする。API Gatewayは使わず、Lambda Function URLでWebhookを直接公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
 
-- 会話フロー: 「面接練習」でランダムな想定問答を出題し回答へGemini APIでフィードバックする「練習モード」、「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」の2つ
-- データ: `examination-interview-questions`（想定問答本体）・`examination-bot-sessions`（会話状態、TTLで自動失効）
+- 会話フロー: 「面接練習」でランダムな想定問答を出題し回答へGemini APIでフィードバックする「練習モード」、「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」の2つ（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
+- データ: `examination-interview-questions`（想定問答本体）・`examination-bot-sessions`（会話状態、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）
 - 初期値: `deploy.yml`の「Seed initial interview questions」ステップが、テーブルが空の場合のみ既存の`knowledge/education/interview-*.md`から一度だけ投入する（`scripts/seed-interview-questions.js`）
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
 - 初回デプロイ後、Job Summaryに表示されるLambda Function URLを、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（人手による一度きりの作業）
+
+## LINEアカウントとGoogleアカウントの紐付け（[Issue #49](https://github.com/bamiyanapp/examination/issues/49)）
+
+LINE botはLINEアカウント自体に閲覧許可の概念を持たない（誰でもLINE公式アカウントを友だち追加できてしまう）ため、botの機能（練習・登録）を使う前にサイトの閲覧許可（Google/Cognitoログイン）済みアカウントとの紐付けを必須とする。ワンタイムコード方式で、既存のCognito認証をそのまま流用する。
+
+1. サイトの「設定 → LINE連携」ページ（`knowledge/settings/line-link.md`）で「コードを発行」を押すと、`site-stack`（`checkAuth.js`）の`POST /_link-line` APIが呼ばれる。ログイン中のメールアドレスと紐付けた6桁のワンタイムコードを発行し、DynamoDBテーブル`examination-line-link-codes`（パーティションキー: `code`、TTL 10分）へ保存する
+2. 発行されたコードをLINE公式アカウントのトークへ送信すると、`bot-stack`（`lineWebhook.js`）が`examination-line-link-codes`をクロスリージョン（us-east-1）で検証し、有効であれば消費（削除）した上で、そのメールアドレスが`examination-allowed-emails`に存在するかを確認する。許可されていれば`examination-line-links`（パーティションキー: `lineUserId`）へLINEユーザーIDとメールアドレスの紐付けを保存する
+3. 以降、そのLINEアカウントからのメッセージは`examination-line-links`で紐付け先メールアドレスを引き、`examination-allowed-emails`での許可を都度確認した上で練習・登録機能を提供する。未連携のアカウント、コードが無効/期限切れの場合、紐付け先メールアドレスの許可が取り消された場合は、それぞれ案内メッセージを返して機能を提供しない
+4. `bot-stack`のLambda実行ロールには、`site-stack`が所有する`examination-line-link-codes`・`examination-allowed-emails`（いずれもus-east-1）への最小権限（コード側はGetItem/DeleteItem、許可メール側はGetItemのみ）を、別Serverless serviceへのARNを`Fn::Sub`で直接組み立てて付与している（同一CloudFormationスタックでないためExportsは使えない）
 
 ## 必要なGitHub Secrets / Variables
 
