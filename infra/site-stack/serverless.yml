@@ -23,6 +23,7 @@ provider:
           Resource:
             - !GetAtt AllowedEmailsTable.Arn
             - !GetAtt LineLinkCodesTable.Arn
+            - !GetAtt VoiceTokensTable.Arn
 
 functions:
   checkAuth:
@@ -64,6 +65,23 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: code
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+
+    # 音声対話ページ（examination#62）用の短期トークン。checkAuth.jsが/_voice-tokenで
+    # 発行し、bot-stackのvoiceChat.jsがクロススタックで検証する。TTLで自動失効させる
+    VoiceTokensTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-voice-tokens
+        AttributeDefinitions:
+          - AttributeName: token
+            AttributeType: S
+        KeySchema:
+          - AttributeName: token
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:

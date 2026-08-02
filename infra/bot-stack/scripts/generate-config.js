@@ -15,6 +15,9 @@ const config = {
   lineChannelSecret: process.env.LINE_CHANNEL_SECRET,
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   geminiApiKey: process.env.GEMINI_API_KEY,
+  // 音声対話機能（examination#62）用。未設定でもLINE bot本体のデプロイを
+  // ブロックしないよう必須環境変数には含めない（examination#51の教訓）
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
 };
 
 const outPath = path.join(__dirname, "..", "functions", "configuration.json");

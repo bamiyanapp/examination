@@ -16,6 +16,8 @@ const config = require("./configuration.json");
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
 const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
+const VOICE_TOKENS_TABLE = "examination-voice-tokens";
+const VOICE_TOKEN_TTL_SECONDS = 60 * 60;
 // checkAuth.jsはLambda@Edgeとしてus-east-1にのみデプロイされ、テーブルも同じ
 // スタック（us-east-1）内に存在するためリージョンを固定する
 const ddb = new DynamoDBClient({ region: "us-east-1" });
@@ -304,6 +306,37 @@ async function handleLinkLineApi(request) {
   return jsonResponse(200, "OK", { code, expiresInSeconds: LINE_LINK_CODE_TTL_SECONDS });
 }
 
+// 音声対話ページ（クロスオリジンのbot-stack API）用の短期トークンを発行する
+// （examination#62）。HttpOnlyのid_tokenクッキーはクロスオリジンでは送られないため、
+// 同一オリジンのこのAPIでログイン中のユーザーを確認した上でBearerトークンを発行し、
+// ブラウザのJSがそれをAPI Gateway経由のLambdaへ渡して認証する
+async function handleVoiceTokenApi(request) {
+  const payload = await verifyIdTokenFromCookie(request);
+  if (!payload) {
+    return forbiddenResponse();
+  }
+  const requesterEmail = String(payload.email || "").toLowerCase();
+  if (!(await isAllowedEmail(requesterEmail))) {
+    return forbiddenResponse();
+  }
+  if (request.method !== "POST") {
+    return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  await ddb.send(
+    new PutItemCommand({
+      TableName: VOICE_TOKENS_TABLE,
+      Item: {
+        token: { S: token },
+        email: { S: requesterEmail },
+        expiresAt: { N: String(Math.floor(Date.now() / 1000) + VOICE_TOKEN_TTL_SECONDS) },
+      },
+    })
+  );
+  return jsonResponse(200, "OK", { token, expiresInSeconds: VOICE_TOKEN_TTL_SECONDS });
+}
+
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -328,6 +361,11 @@ exports.handler = async (event) => {
   // LINE bot連携用ワンタイムコード発行API
   if (request.uri === "/_link-line") {
     return handleLinkLineApi(request);
+  }
+
+  // 音声対話ページ用の短期トークン発行API
+  if (request.uri === "/_voice-token") {
+    return handleVoiceTokenApi(request);
   }
 
   // Cognito Hosted UIからのコールバック: 認可コードをトークンに交換してCookieへ保存する
