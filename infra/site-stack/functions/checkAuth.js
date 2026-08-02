@@ -14,6 +14,8 @@ const {
 const config = require("./configuration.json");
 
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
+const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
+const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
 // checkAuth.jsはLambda@Edgeとしてus-east-1にのみデプロイされ、テーブルも同じ
 // スタック（us-east-1）内に存在するためリージョンを固定する
 const ddb = new DynamoDBClient({ region: "us-east-1" });
@@ -273,6 +275,35 @@ async function handleAdminEmailsApi(request) {
   return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
 }
 
+// LINE botとの連携用ワンタイムコードを発行する（examination#49）。ログイン中のユーザーの
+// メールアドレスと紐付けて保存し、LINE bot側（lineWebhook.js）がクロススタックで検証する
+async function handleLinkLineApi(request) {
+  const payload = await verifyIdTokenFromCookie(request);
+  if (!payload) {
+    return forbiddenResponse();
+  }
+  const requesterEmail = String(payload.email || "").toLowerCase();
+  if (!(await isAllowedEmail(requesterEmail))) {
+    return forbiddenResponse();
+  }
+  if (request.method !== "POST") {
+    return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
+  }
+
+  const code = String(crypto.randomInt(100000, 1000000));
+  await ddb.send(
+    new PutItemCommand({
+      TableName: LINE_LINK_CODES_TABLE,
+      Item: {
+        code: { S: code },
+        email: { S: requesterEmail },
+        expiresAt: { N: String(Math.floor(Date.now() / 1000) + LINE_LINK_CODE_TTL_SECONDS) },
+      },
+    })
+  );
+  return jsonResponse(200, "OK", { code, expiresInSeconds: LINE_LINK_CODE_TTL_SECONDS });
+}
+
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -292,6 +323,11 @@ exports.handler = async (event) => {
   // 許可メールアドレスの管理API
   if (request.uri === "/_admin/emails") {
     return handleAdminEmailsApi(request);
+  }
+
+  // LINE bot連携用ワンタイムコード発行API
+  if (request.uri === "/_link-line") {
+    return handleLinkLineApi(request);
   }
 
   // Cognito Hosted UIからのコールバック: 認可コードをトークンに交換してCookieへ保存する

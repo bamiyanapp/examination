@@ -47,3 +47,4 @@ nav:
   - AI活用: ai/index.md
   - 設定:
       - 閲覧許可メールアドレス管理: settings/allowed-emails.md
+      - LINE連携: settings/line-link.md
