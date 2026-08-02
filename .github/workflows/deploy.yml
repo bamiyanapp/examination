@@ -145,10 +145,8 @@ jobs:
         env:
           LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          # LINE bot・音声対話機能（examination#62）の両方でこのGemini APIキーを使う
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # 音声対話機能（examination#62）用。未設定でも他のbot-stack機能の
-          # デプロイをブロックしないようgenerate-config.js側で任意項目にしている
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node scripts/generate-config.js
 
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
