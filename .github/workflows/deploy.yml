@@ -32,6 +32,7 @@ jobs:
             app/line-link/package-lock.json
             app/allowed-emails/package-lock.json
             app/voice-practice/package-lock.json
+            app/top/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -76,6 +77,17 @@ jobs:
           rm -rf ../../site/education/voice-practice
           mkdir -p ../../site/education/voice-practice
           cp -r dist/. ../../site/education/voice-practice/
+
+      # 新トップページ（examination#82）。段階移行のため、まずは/top/へプレビュー配置し、
+      # 既存のトップページ（/、knowledge/index.md）は変更せず並行して残す
+      - name: Build and embed the React app (新トップページ プレビュー)
+        working-directory: app/top
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../../site/top
+          mkdir -p ../../site/top
+          cp -r dist/. ../../site/top/
 
       # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
       # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする
