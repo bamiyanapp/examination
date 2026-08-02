@@ -8,12 +8,15 @@
 
 コンテンツはClaude Codeと自分が更新し、GitHub Pushで反映します。妻・子どもなど閲覧側はGitを意識せず、ブラウザからサイトを見るだけで最新の内容を確認できることを目指しています（サイトの公開先・認証は[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で別途整備予定）。
 
+音声対話・管理画面等のインタラクティブなページは、MkDocs静的サイトからReactアプリへ段階移行中です（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）。`app/`配下のReact（Vite）アプリとしてビルドし、`deploy.yml`でMkDocsが生成した同一URLパスへ成果物を上書き配置します。家族情報・旅行・車等の静的コンテンツページは当面`knowledge/`配下のMarkdownのままです。
+
 ## ディレクトリ構成
 
 ```
 .
 ├── mkdocs.yml
 ├── requirements.txt
+├── app/                                 # インタラクティブなページのReact（Vite）アプリ（Issue #78）
 ├── docs/
 │   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 └── knowledge/
@@ -32,6 +35,14 @@
 ```
 pip install -r requirements.txt
 mkdocs serve
+```
+
+## Reactアプリ（app/）のローカル確認
+
+```
+cd app
+npm install
+npm run dev
 ```
 
 ## 教育（小学校受験対策）の運用フロー

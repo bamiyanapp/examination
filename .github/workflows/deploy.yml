@@ -24,6 +24,12 @@ jobs:
           python-version: "3.14"
           cache: "pip"
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -35,6 +41,17 @@ jobs:
         run: |
           pip install -r requirements.txt
           mkdocs build --strict
+
+      # LINE連携ページ（examination#78、React段階移行の第1弾）。MkDocsが生成した
+      # 同名パスのページを、app/でビルドしたReactアプリの静的アセットで上書きする
+      - name: Build and embed the React app (LINE連携)
+        working-directory: app
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../site/settings/line-link
+          mkdir -p ../site/settings/line-link
+          cp -r dist/. ../site/settings/line-link/
 
       # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
       # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする

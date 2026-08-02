@@ -18,9 +18,10 @@ jobs:
   ci:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v1.15.1
     with:
-      # frontend/backendのアプリケーションコードを持たないコンテンツリポジトリのため、
-      # lint/test/buildは行わずcommitlint・standards-checkのみ実行する
-      packages: "[]"
+      # 音声対話・管理画面等のインタラクティブなページはapp/配下のReactアプリへ
+      # 段階移行中（examination#78）。それ以外は静的コンテンツ（Markdown）のみの
+      # ままのため、matrix構成でapp/のみlint/test/buildを実行する
+      packages: '[{"dir":"app","build":true}]'
       enable_standards_check: true
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
