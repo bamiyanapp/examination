@@ -37,7 +37,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 サイトの閲覧を許可するメールアドレスはDynamoDBテーブル`examination-allowed-emails`（パーティションキー: `email`）で管理する。GitHub Secrets/Variablesではなく、既に許可されたユーザー自身がサイト上から追加・削除できる。
 
-- 管理UI: サイト内の「設定 → 閲覧許可メールアドレス管理」ページ（`knowledge/settings/allowed-emails.md`）
+- 管理UI: サイト内の「設定 → 閲覧許可メールアドレス管理」ページ（Reactアプリ`app/allowed-emails/src/pages/AllowedEmails.jsx`。旧`knowledge/settings/allowed-emails.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）
 - API: `checkAuth.js`が`GET/POST /_admin/emails`として提供する（既に許可されているアカウントでログイン中のみ利用可能）
   - `GET`: 現在の許可メールアドレス一覧を返す
   - `POST {"action":"add","email":"..."}`: 追加する
