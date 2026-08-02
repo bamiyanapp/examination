@@ -20,8 +20,11 @@ jobs:
     with:
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のReactアプリへ
       # 段階移行中（examination#78）。それ以外は静的コンテンツ（Markdown）のみの
-      # ままのため、matrix構成でapp/のみlint/test/buildを実行する
-      packages: '[{"dir":"app","build":true}]'
+      # ままのため、matrix構成でapp/のみlint/test/buildを実行する。
+      # node_versionを明示しないとinputs.node_version（既定"20"）が使われるが、
+      # app/の依存（jsdom@30等）がNode.js 22以上を要求しており、Node.js 20では
+      # `webidl.util.markAsUncloneable is not a function`で失敗するため24を指定する
+      packages: '[{"dir":"app","build":true,"node_version":"24"}]'
       enable_standards_check: true
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
