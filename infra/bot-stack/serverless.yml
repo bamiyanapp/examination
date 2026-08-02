@@ -36,11 +36,19 @@ functions:
   lineWebhook:
     handler: functions/lineWebhook.handler
     memorySize: 256
-    timeout: 30
-    # LINE Messaging APIのWebhookを直接公開する。API Gatewayは導入せず、
-    # Function URLで十分（認証はLINEの署名検証(X-Line-Signature)で行う）
-    url:
-      cors: false
+    # HTTP APIのタイムアウトは30秒固定のため、Lambda側はそれより短くして
+    # ゲートウェイタイムアウト（クライアントには失敗と見えるがLambdaは処理継続する状態）を避ける
+    timeout: 25
+    # 当初はLambda Function URLで公開していたが、このAWSアカウントではFunction URLの
+    # 匿名アクセス(AuthType: NONE)がAWS側で403 Forbidden(AccessDeniedException)を返す
+    # 状態にあり、設定は正しいにもかかわらず解消しなかった（examination#52）。
+    # 同一アカウントでAPI Gateway経由の公開エンドポイントは正常動作する実績があるため、
+    # HTTP API（payload format 2.0。Function URLと同一のevent形式でハンドラー側の変更は不要）
+    # 経由に切り替える。認証は引き続きLINEの署名検証(X-Line-Signature)で行う
+    events:
+      - httpApi:
+          path: /webhook
+          method: POST
 
 resources:
   Resources:

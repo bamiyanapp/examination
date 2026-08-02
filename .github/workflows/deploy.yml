@@ -175,13 +175,15 @@ jobs:
             echo "Table already has $COUNT item(s), skipping seed"
           fi
 
+      # Lambda Function URLの匿名アクセスがこのAWSアカウントでは403 Forbiddenになる問題
+      # （examination#52）のため、実績のあるAPI Gateway（HTTP API）経由に切り替えた
       - name: Show LINE bot webhook URL
         run: |
-          WEBHOOK_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
-            --query "Stacks[0].Outputs[?OutputKey=='LineWebhookLambdaFunctionUrl'].OutputValue" --output text)
+          API_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" --output text)
           echo "### LINE bot Webhook URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "$WEBHOOK_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "（初回のみ、LINE Developers ConsoleのMessaging API設定でこのURLをWebhook URLとして登録してください）" >> "$GITHUB_STEP_SUMMARY"
+          echo "${API_URL}/webhook" >> "$GITHUB_STEP_SUMMARY"
+          echo "（URLが変わった場合のみ、LINE Developers ConsoleのMessaging API設定でこのURLをWebhook URLとして再登録してください）" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sync site to S3
         run: |
