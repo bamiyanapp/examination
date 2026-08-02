@@ -88,11 +88,17 @@ resources:
             Compress: true
             # 許可メールアドレスの登録・削除API（POST /_admin/emails）のために
             # POSTを許可する（CloudFrontはGET/HEAD以外を既定でキャッシュしないため
-            # キャッシュポリシーへの影響は無い）
+            # キャッシュポリシーへの影響は無い）。CloudFrontのAllowedMethodsは
+            # [HEAD,GET] / [HEAD,GET,OPTIONS] / [HEAD,DELETE,POST,GET,OPTIONS,PUT,PATCH]
+            # の3パターンしか許可しないため、POSTを含める場合は全7メソッドを指定する
             AllowedMethods:
               - GET
               - HEAD
+              - OPTIONS
+              - PUT
               - POST
+              - PATCH
+              - DELETE
           CustomErrorResponses:
             - ErrorCode: 403
               ResponseCode: 404
