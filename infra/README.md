@@ -74,7 +74,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 - 認証: `bot-stack`のAPI（`voiceChat.js`、`POST /voice-chat`）はブラウザから直接呼ばれるクロスオリジンのAPIで、`site-stack`のHttpOnly Cookie（`id_token`）はクロスオリジンでは自動送信されないため、専用の短期トークン方式を採る
   1. サイトの音声練習ページを開いた状態で「会話を始める」を押すと、同一オリジンの`site-stack`（`checkAuth.js`）の`POST /_voice-token` APIがログイン中のユーザーを確認した上で短期トークン（有効期限1時間）を発行し、`examination-voice-tokens`（パーティションキー: `token`、TTLで自動失効）へ保存する
   2. ブラウザのJSがそのトークンをBearerトークンとして`bot-stack`の`POST /voice-chat`へ送る。`voiceChat.js`がトークンを検証（クロススタック、有効期限確認）した上で、紐づくメールアドレスが`examination-allowed-emails`に存在するかを確認する
-  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）に応じたシステムプロンプトとともにOpenAI APIへ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
+  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
 - `bot-stack`のHTTP APIはCORSを有効化している（`provider.httpApi.cors: true`）。LINE Webhook（`/webhook`）はサーバー間通信のためCORSヘッダーの付与自体は影響しない
 
 ## 必要なGitHub Secrets / Variables
@@ -91,8 +91,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | `GOOGLE_OAUTH_CLIENT_SECRET` | 同クライアントシークレット |
 | `LINE_CHANNEL_SECRET` | LINE Developers ConsoleでMessaging APIチャネルを作成して取得するChannel Secret |
 | `LINE_CHANNEL_ACCESS_TOKEN` | 同チャネルのChannel Access Token（長期） |
-| `GEMINI_API_KEY` | Google AI StudioでLINE bot用に発行するGemini APIキー |
-| `OPENAI_API_KEY` | OpenAI Platformで音声対話機能用に発行するAPIキー（任意。未設定の場合は音声対話機能のみ動作せず、他のbot-stack機能のデプロイはブロックされない） |
+| `GEMINI_API_KEY` | Google AI Studioで発行するGemini APIキー（LINE bot・音声対話機能の両方で使用） |
 
 ### Variables（任意、既定値あり）
 

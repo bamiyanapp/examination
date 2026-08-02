@@ -7,7 +7,8 @@ const config = require("./configuration.json");
 
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
-const OPENAI_MODEL = "gpt-4o-mini";
+// lineWebhook.jsと同じGemini APIを使う（新規Secretを増やさないため）
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
 
@@ -53,16 +54,25 @@ function postJson(hostname, path, headers, bodyObj) {
   });
 }
 
-async function callOpenAI(messages) {
+// 内部で保持するmessages形式（role: system/user/assistant）をGeminiのcontents形式に
+// 変換して呼ぶ。systemロールはGeminiのsystemInstructionへ、assistantはmodelロールへ対応させる
+async function callGemini(messages) {
+  const systemMessage = messages.find((m) => m.role === "system");
+  const contents = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
   const response = await postJson(
-    "api.openai.com",
-    "/v1/chat/completions",
-    { Authorization: `Bearer ${config.openaiApiKey}` },
-    { model: OPENAI_MODEL, messages }
+    "generativelanguage.googleapis.com",
+    `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${config.geminiApiKey}`,
+    {},
+    {
+      systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined,
+      contents,
+    }
   );
-  const text = response.choices?.[0]?.message?.content;
+  const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {
-    throw new Error(`OpenAI response missing text: ${JSON.stringify(response)}`);
+    throw new Error(`Gemini response missing text: ${JSON.stringify(response)}`);
   }
   return text;
 }
@@ -135,9 +145,9 @@ exports.handler = async (event) => {
 
   let reply;
   try {
-    reply = await callOpenAI(messages);
+    reply = await callGemini(messages);
   } catch (error) {
-    console.error("OpenAI call failed", error.message);
+    console.error("Gemini call failed", error.message);
     return jsonResponse(502, { error: "AI応答の生成に失敗しました" });
   }
 

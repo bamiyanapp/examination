@@ -65,7 +65,7 @@ functions:
           method: POST
 
   # 音声対話機能（examination#62）。ブラウザ（PWA）のWeb Speech APIで文字起こしした
-  # テキストをOpenAI APIへ中継し、応答テキストを返す。音声処理自体はクライアント側で
+  # テキストをGemini APIへ中継し、応答テキストを返す。音声処理自体はクライアント側で
   # 完結させ、バックエンドは常にテキストのみを扱う
   voiceChat:
     handler: functions/voiceChat.handler
