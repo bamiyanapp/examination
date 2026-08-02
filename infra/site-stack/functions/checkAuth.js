@@ -3,8 +3,20 @@
 const https = require("https");
 const crypto = require("crypto");
 const { createRemoteJWKSet, jwtVerify } = require("jose");
+const {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+  DeleteItemCommand,
+  ScanCommand,
+} = require("@aws-sdk/client-dynamodb");
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
+
+const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
+// checkAuth.jsはLambda@Edgeとしてus-east-1にのみデプロイされ、テーブルも同じ
+// スタック（us-east-1）内に存在するためリージョンを固定する
+const ddb = new DynamoDBClient({ region: "us-east-1" });
 
 let jwks;
 function getJwks() {
@@ -80,16 +92,95 @@ function redirectResponse(location, setCookieValues) {
   };
 }
 
+function jsonResponse(statusCode, statusDescription, body) {
+  return {
+    status: String(statusCode),
+    statusDescription,
+    headers: {
+      "content-type": [{ key: "Content-Type", value: "application/json; charset=utf-8" }],
+    },
+    body: JSON.stringify(body),
+  };
+}
+
 function cookieString(name, value, maxAgeSeconds) {
   return `${name}=${value}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
 }
 
-function isAllowedEmail(email) {
-  return Boolean(email) && config.allowedEmails.includes(String(email).toLowerCase());
-}
-
 function forbiddenResponse() {
   return { status: "403", statusDescription: "Forbidden", body: "アクセスが許可されていません" };
+}
+
+// emailごとの許可判定を短時間キャッシュする。Lambda@Edgeの実行環境はエッジロケーション
+// ごとに独立したコンテナのため、/_admin/emailsでの追加・削除はこのTTL(60秒)を上限に
+// 各エッジへ順次反映される（即時グローバル反映はしない設計）
+const ALLOW_CACHE_TTL_MS = 60_000;
+const allowCache = new Map();
+
+function invalidateAllowCache(email) {
+  allowCache.delete(String(email).toLowerCase());
+}
+
+async function isAllowedEmail(email) {
+  if (!email) return false;
+  const key = String(email).toLowerCase();
+  const cached = allowCache.get(key);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.allowed;
+  }
+  let allowed = false;
+  try {
+    const result = await ddb.send(
+      new GetItemCommand({
+        TableName: ALLOWED_EMAILS_TABLE,
+        Key: { email: { S: key } },
+      })
+    );
+    allowed = Boolean(result.Item);
+  } catch (error) {
+    console.error("DynamoDB GetItem failed", error.message);
+    allowed = false;
+  }
+  allowCache.set(key, { allowed, expiresAt: now + ALLOW_CACHE_TTL_MS });
+  return allowed;
+}
+
+async function listAllowedEmails() {
+  const result = await ddb.send(new ScanCommand({ TableName: ALLOWED_EMAILS_TABLE }));
+  return (result.Items || [])
+    .map((item) => ({
+      email: item.email && item.email.S,
+      addedBy: (item.addedBy && item.addedBy.S) || "",
+      addedAt: (item.addedAt && item.addedAt.S) || "",
+    }))
+    .sort((a, b) => a.email.localeCompare(b.email));
+}
+
+async function addAllowedEmail(email, addedBy) {
+  const key = String(email).toLowerCase();
+  await ddb.send(
+    new PutItemCommand({
+      TableName: ALLOWED_EMAILS_TABLE,
+      Item: {
+        email: { S: key },
+        addedBy: { S: String(addedBy || "") },
+        addedAt: { S: new Date().toISOString() },
+      },
+    })
+  );
+  invalidateAllowCache(key);
+}
+
+async function removeAllowedEmail(email) {
+  const key = String(email).toLowerCase();
+  await ddb.send(
+    new DeleteItemCommand({
+      TableName: ALLOWED_EMAILS_TABLE,
+      Key: { email: { S: key } },
+    })
+  );
+  invalidateAllowCache(key);
 }
 
 // CloudFrontのオリジンはS3のREST API経由（Origin Access Control）であり、S3静的
@@ -107,6 +198,81 @@ function normalizeUri(uri) {
   return uri;
 }
 
+function parseJsonBody(request) {
+  if (!request.body || !request.body.data) return null;
+  const raw =
+    request.body.encoding === "base64" ? Buffer.from(request.body.data, "base64").toString("utf-8") : request.body.data;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function verifyIdTokenFromCookie(request) {
+  const cookies = parseCookies(request.headers);
+  if (!cookies.id_token) return null;
+  try {
+    const { payload } = await jwtVerify(cookies.id_token, getJwks(), {
+      issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
+      audience: config.clientId,
+    });
+    return payload;
+  } catch (error) {
+    console.warn("id_token verification failed", error.message);
+    return null;
+  }
+}
+
+// 許可メールアドレスの一覧・追加・削除API。既に許可されているユーザーのみ利用できる
+async function handleAdminEmailsApi(request) {
+  const payload = await verifyIdTokenFromCookie(request);
+  if (!payload) {
+    return forbiddenResponse();
+  }
+  const requesterEmail = String(payload.email || "").toLowerCase();
+  if (!(await isAllowedEmail(requesterEmail))) {
+    return forbiddenResponse();
+  }
+
+  if (request.method === "GET") {
+    return jsonResponse(200, "OK", { emails: await listAllowedEmails() });
+  }
+
+  if (request.method === "POST") {
+    const body = parseJsonBody(request);
+    const targetEmail = body && typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const action = body && body.action;
+
+    if (!targetEmail || !EMAIL_PATTERN.test(targetEmail)) {
+      return jsonResponse(400, "Bad Request", { error: "メールアドレスが不正です" });
+    }
+
+    if (action === "add") {
+      await addAllowedEmail(targetEmail, requesterEmail);
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails() });
+    }
+
+    if (action === "remove") {
+      if (targetEmail === requesterEmail) {
+        return jsonResponse(400, "Bad Request", { error: "自分自身は削除できません" });
+      }
+      const current = await listAllowedEmails();
+      if (current.length <= 1) {
+        return jsonResponse(400, "Bad Request", { error: "最後の1件は削除できません" });
+      }
+      await removeAllowedEmail(targetEmail);
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails() });
+    }
+
+    return jsonResponse(400, "Bad Request", { error: "actionはaddまたはremoveを指定してください" });
+  }
+
+  return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
+}
+
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -121,6 +287,11 @@ exports.handler = async (event) => {
         logout_uri: `https://${domainName}/`,
       }).toString();
     return redirectResponse(logoutUrl, [cookieString("id_token", "", 0), cookieString("refresh_token", "", 0)]);
+  }
+
+  // 許可メールアドレスの管理API
+  if (request.uri === "/_admin/emails") {
+    return handleAdminEmailsApi(request);
   }
 
   // Cognito Hosted UIからのコールバック: 認可コードをトークンに交換してCookieへ保存する
@@ -178,7 +349,7 @@ exports.handler = async (event) => {
       console.error("id_token verification failed at callback", error.message);
       return forbiddenResponse();
     }
-    if (!isAllowedEmail(payload.email)) {
+    if (!(await isAllowedEmail(payload.email))) {
       console.warn("email not allowed", payload.email);
       return forbiddenResponse();
     }
@@ -193,24 +364,16 @@ exports.handler = async (event) => {
 
   // 通常のリクエスト: id_tokenの署名・有効期限・audience/issuerを検証し、
   // emailクレームがallowlistに含まれるかも確認する
-  const cookies = parseCookies(request.headers);
-  if (cookies.id_token) {
-    try {
-      const { payload } = await jwtVerify(cookies.id_token, getJwks(), {
-        issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
-        audience: config.clientId,
-      });
-      // allowlist外の場合はログイン画面へリダイレクトしない（Googleで
-      // 再ログインしても同じemailが返り無限ループになるため）
-      if (isAllowedEmail(payload.email)) {
-        request.uri = normalizeUri(request.uri);
-        return request;
-      }
-      console.warn("email not allowed on cached token", payload.email);
-      return forbiddenResponse();
-    } catch (error) {
-      console.warn("id_token verification failed", error.message);
+  const payload = await verifyIdTokenFromCookie(request);
+  if (payload) {
+    // allowlist外の場合はログイン画面へリダイレクトしない（Googleで
+    // 再ログインしても同じemailが返り無限ループになるため）
+    if (await isAllowedEmail(payload.email)) {
+      request.uri = normalizeUri(request.uri);
+      return request;
     }
+    console.warn("email not allowed on cached token", payload.email);
+    return forbiddenResponse();
   }
 
   // 未認証: 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ

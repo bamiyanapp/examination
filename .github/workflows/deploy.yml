@@ -80,7 +80,6 @@ jobs:
           COGNITO_CLIENT_ID: ${{ steps.auth-outputs.outputs.client_id }}
           COGNITO_CLIENT_SECRET: ${{ steps.auth-outputs.outputs.client_secret }}
           COGNITO_DOMAIN: ${{ steps.auth-outputs.outputs.cognito_domain }}
-          ALLOWED_EMAILS: ${{ vars.ALLOWED_EMAILS }}
         run: node scripts/generate-config.js
 
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
@@ -93,6 +92,23 @@ jobs:
             --param="bucketName=${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}"
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 許可メールアドレス一覧テーブルへの初期値投入。テーブルが空の場合のみ実行するため、
+      # 既存ユーザーが/_admin/emailsで削除した後の再デプロイで復活することはない
+      # （全件削除された場合のみ、次回デプロイで初期値に戻る＝締め出し防止の保険）
+      - name: Seed initial allowed emails (only if table is empty)
+        run: |
+          COUNT=$(aws dynamodb scan --region us-east-1 --table-name examination-allowed-emails \
+            --select COUNT --query "Count" --output text)
+          if [ "$COUNT" = "0" ]; then
+            echo "Seeding initial allowed emails"
+            for EMAIL in "ttmyo135246@gmail.com" "ekusoy128@gmail.com" "s.ekusoy@gmail.com"; do
+              aws dynamodb put-item --region us-east-1 --table-name examination-allowed-emails \
+                --item "{\"email\": {\"S\": \"$EMAIL\"}, \"addedBy\": {\"S\": \"seed\"}, \"addedAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+            done
+          else
+            echo "Table already has $COUNT item(s), skipping seed"
+          fi
 
       - name: Get real CloudFront domain
         id: real-domain

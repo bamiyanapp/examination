@@ -45,3 +45,5 @@ nav:
   - 住まい: home/index.md
   - 車: cars/index.md
   - AI活用: ai/index.md
+  - 設定:
+      - 閲覧許可メールアドレス管理: settings/allowed-emails.md

@@ -11,6 +11,16 @@ provider:
   region: us-east-1
   stage: prod
   runtime: nodejs20.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+          Resource: !GetAtt AllowedEmailsTable.Arn
 
 functions:
   checkAuth:
@@ -20,9 +30,26 @@ functions:
     lambdaAtEdge:
       distribution: "SiteDistribution"
       eventType: "viewer-request"
+      # 許可メールアドレスの登録・削除API（POST /_admin/emails）でJSONボディを
+      # 読み取るために必要（既定はfalseでボディが渡されない）
+      includeBody: true
 
 resources:
   Resources:
+    # サイトの閲覧を許可するメールアドレス一覧。checkAuth.jsが参照し、既に許可された
+    # ユーザーが/_admin/emailsで登録・削除できる（初期値はdeploy.ymlのシード処理で投入）
+    AllowedEmailsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-allowed-emails
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
     SiteBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -59,6 +86,13 @@ resources:
             # Managed-CachingOptimized（AWSマネージドポリシー、全アカウント共通の固定ID）
             CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
             Compress: true
+            # 許可メールアドレスの登録・削除API（POST /_admin/emails）のために
+            # POSTを許可する（CloudFrontはGET/HEAD以外を既定でキャッシュしないため
+            # キャッシュポリシーへの影響は無い）
+            AllowedMethods:
+              - GET
+              - HEAD
+              - POST
           CustomErrorResponses:
             - ErrorCode: 403
               ResponseCode: 404
