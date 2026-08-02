@@ -1,9 +1,9 @@
 // 新トップページ（examination#82）。画面遷移の再設計として、MkDocs Materialの
 // サイドバーナビゲーションに代わる、カテゴリ別のリンク一覧をReactで提供する。
 // 段階移行中のため、既存ページ（React化済み・MkDocs双方）へのリンクをそのまま束ねる形とし、
-// 各ページ自体の実装（React/Markdown）には手を入れない。検証のためまずは/top/へ並行配置し、
-// 旧トップページ（/、knowledge/index.md）は残したまま、不要と判断できたページから順次
-// 整理していく
+// 各ページ自体の実装（React/Markdown）には手を入れない。/top/でのプレビュー確認の結果、
+// サイトの正式なトップページ（/）として採用した。保育園・旅行・住まい・車・AI活用の各章は
+// 不要と判断され、knowledge/配下のページごと削除した
 const SECTIONS = [
   {
     title: "教育",
@@ -17,11 +17,6 @@ const SECTIONS = [
     ],
   },
   { title: "家族", links: [{ label: "プロフィール", href: "/family/profile/" }] },
-  { title: "保育園", links: [{ label: "保育園", href: "/childcare/" }] },
-  { title: "旅行", links: [{ label: "旅行", href: "/travel/" }] },
-  { title: "住まい", links: [{ label: "住まい", href: "/home/" }] },
-  { title: "車", links: [{ label: "車", href: "/cars/" }] },
-  { title: "AI活用", links: [{ label: "AI活用", href: "/ai/" }] },
   {
     title: "設定",
     links: [

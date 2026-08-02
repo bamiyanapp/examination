@@ -78,16 +78,17 @@ jobs:
           mkdir -p ../../site/education/voice-practice
           cp -r dist/. ../../site/education/voice-practice/
 
-      # 新トップページ（examination#82）。段階移行のため、まずは/top/へプレビュー配置し、
-      # 既存のトップページ（/、knowledge/index.md）は変更せず並行して残す
-      - name: Build and embed the React app (新トップページ プレビュー)
+      # トップページ（examination#82）。/top/でのプレビュー確認を経て、MkDocsが生成した
+      # サイトルート（/、knowledge/index.md）を正式に上書きする。site/配下の他のファイルは
+      # そのまま残すため、他ページのようなrm -rfは行わずcp -rのみで上書きする。
+      # 旧プレビューパス（/top/）はローカルsite/に生成されなくなるため、後段の
+      # 「aws s3 sync --delete」でS3からも自動的に削除される
+      - name: Build and embed the React app (トップページ)
         working-directory: app/top
         run: |
           npm ci
           npm run build
-          rm -rf ../../site/top
-          mkdir -p ../../site/top
-          cp -r dist/. ../../site/top/
+          cp -r dist/. ../../site/
 
       # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
       # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする
