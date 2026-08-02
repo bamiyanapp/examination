@@ -202,25 +202,22 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # 想定問答テーブルへの初期値投入。既存Markdown（interview-yosuke/tomoyo/ritsu.md）を
-      # 一度だけ取り込む。テーブルが空の場合のみ実行するため、botで登録・削除した後の
-      # 再デプロイで復活することはない（allowed-emailsの初期シードと同じ考え方）
-      - name: Seed initial interview questions (only if table is empty)
+      # 想定問答テーブルへMarkdown（interview-yosuke/tomoyo/ritsu.md）の内容を同期する。
+      # examination#77でDynamoDBを唯一の正本とする方針に変更したが、familySlug・category・
+      # questionから決定的なquestionIdを生成する（scripts/seed-interview-questions.js）ため
+      # 毎回実行しても同じ行を上書きするだけで重複は増えない。botの登録モード（saveQuestion、
+      # 時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しないため安全に共存できる。
+      # 旧シードスクリプト（決定的ID導入以前）が投入した行はremoveLegacySeedRows()が
+      # 初回実行時に自動的に削除する（createdBy="seed"かつ旧ID形式の行のみが対象で、
+      # 登録モードで追加された行は誤って削除しない）
+      - name: Sync interview questions from Markdown
         working-directory: infra/bot-stack
         env:
           # bot-stackはus-east-1に統一済み（examination#63）。他のAWS CLI呼び出しは
           # auth-stack（ap-northeast-1）向けのグローバル設定を引き継ぐため、
           # このステップのみ明示的に上書きする
           AWS_REGION: us-east-1
-        run: |
-          COUNT=$(aws dynamodb scan --region us-east-1 --table-name examination-interview-questions \
-            --select COUNT --query "Count" --output text)
-          if [ "$COUNT" = "0" ]; then
-            echo "Seeding initial interview questions"
-            node scripts/seed-interview-questions.js
-          else
-            echo "Table already has $COUNT item(s), skipping seed"
-          fi
+        run: node scripts/seed-interview-questions.js
 
       # Lambda Function URLの匿名アクセスがこのAWSアカウントでは403 Forbiddenになる問題
       # （examination#52）のため、実績のあるAPI Gateway（HTTP API）経由に切り替えた
