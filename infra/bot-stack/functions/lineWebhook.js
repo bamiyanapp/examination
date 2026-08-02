@@ -1,16 +1,22 @@
 "use strict";
 
 const crypto = require("crypto");
-const https = require("https");
 const {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
   DeleteItemCommand,
-  QueryCommand,
 } = require("@aws-sdk/client-dynamodb");
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
+// 面接練習の会話ロジックはvoiceChat.js（音声対話）と共通化している（examination#76）
+const {
+  postJson,
+  DEFAULT_SITUATION,
+  sanitizeFreeText,
+  buildSystemPrompt,
+  callGemini,
+} = require("./geminiConversation");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
 const BOT_SESSIONS_TABLE = "examination-bot-sessions";
@@ -18,9 +24,6 @@ const LINE_LINKS_TABLE = "examination-line-links";
 // 複数家族対応(examination#44)が実装されるまでは固定値として扱う
 const FAMILY_SLUG = "chofu-suzuki";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
-// gemini-2.0-flashはGoogle側で廃止(404 NOT_FOUND)されたため後継モデルに変更した
-// （examination#74）
-const GEMINI_MODEL = "gemini-2.5-flash";
 
 // site-stackが所有するテーブル名（examination#49、クロススタックアクセス）。
 // bot-stackはus-east-1に統一済み（examination#63）のため、site-stackのテーブルも
@@ -38,41 +41,6 @@ function verifySignature(rawBody, signatureHeader) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-function postJson(hostname, path, headers, bodyObj) {
-  const body = JSON.stringify(bodyObj);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        path,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-          ...headers,
-        },
-      },
-      (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(data ? JSON.parse(data) : {});
-            } catch (error) {
-              reject(new Error(`invalid JSON response: ${data}`));
-            }
-          } else {
-            reject(new Error(`request to ${hostname}${path} returned ${res.statusCode}: ${data}`));
-          }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.end(body);
-  });
-}
-
 function replyMessage(replyToken, text) {
   return postJson(
     "api.line.me",
@@ -82,20 +50,6 @@ function replyMessage(replyToken, text) {
   );
 }
 
-async function callGemini(prompt) {
-  const response = await postJson(
-    "generativelanguage.googleapis.com",
-    `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${config.geminiApiKey}`,
-    {},
-    { contents: [{ parts: [{ text: prompt }] }] }
-  );
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error(`Gemini response missing text: ${JSON.stringify(response)}`);
-  }
-  return text;
-}
-
 async function getSession(lineUserId) {
   const result = await ddb.send(
     new GetItemCommand({ TableName: BOT_SESSIONS_TABLE, Key: { lineUserId: { S: lineUserId } } })
@@ -103,10 +57,9 @@ async function getSession(lineUserId) {
   if (!result.Item) return { mode: "idle" };
   return {
     mode: result.Item.mode?.S || "idle",
-    currentQuestionId: result.Item.currentQuestionId?.S,
-    currentQuestion: result.Item.currentQuestion?.S,
-    currentAnswer: result.Item.currentAnswer?.S,
     draftQuestion: result.Item.draftQuestion?.S ? JSON.parse(result.Item.draftQuestion.S) : undefined,
+    // 面接練習の会話状態（role/situation/schoolCharacteristics/history、examination#76）
+    practiceState: result.Item.practiceState?.S ? JSON.parse(result.Item.practiceState.S) : undefined,
   };
 }
 
@@ -116,10 +69,8 @@ async function saveSession(lineUserId, session) {
     mode: { S: session.mode },
     expiresAt: { N: String(Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS) },
   };
-  if (session.currentQuestionId) item.currentQuestionId = { S: session.currentQuestionId };
-  if (session.currentQuestion) item.currentQuestion = { S: session.currentQuestion };
-  if (session.currentAnswer) item.currentAnswer = { S: session.currentAnswer };
   if (session.draftQuestion) item.draftQuestion = { S: JSON.stringify(session.draftQuestion) };
+  if (session.practiceState) item.practiceState = { S: JSON.stringify(session.practiceState) };
   await ddb.send(new PutItemCommand({ TableName: BOT_SESSIONS_TABLE, Item: item }));
 }
 
@@ -170,22 +121,6 @@ async function isEmailAllowed(email) {
   return Boolean(result.Item);
 }
 
-async function listQuestions() {
-  const result = await ddb.send(
-    new QueryCommand({
-      TableName: INTERVIEW_QUESTIONS_TABLE,
-      KeyConditionExpression: "familySlug = :slug",
-      ExpressionAttributeValues: { ":slug": { S: FAMILY_SLUG } },
-    })
-  );
-  return (result.Items || []).map((item) => ({
-    questionId: item.questionId.S,
-    category: item.category.S,
-    question: item.question.S,
-    answer: item.answer.S,
-  }));
-}
-
 async function saveQuestion({ category, question, answer, createdBy }) {
   const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   await ddb.send(
@@ -213,16 +148,20 @@ function isNo(text) {
   return /^(いいえ|no|NO|キャンセル|やめる)$/i.test(text.trim());
 }
 
-// ロール選択の返答テキスト -> DynamoDB上のcategory値（examination#60）
-const ROLE_CATEGORIES = {
-  本人: "本人面接",
-  父: "父の保護者面接",
-  父親: "父の保護者面接",
-  お父さん: "父の保護者面接",
-  母: "母の保護者面接",
-  母親: "母の保護者面接",
-  お母さん: "母の保護者面接",
+// ロール選択の返答テキスト -> geminiConversation.ROLE_DESCRIPTIONSのキー（examination#60、#76）
+const ROLE_ALIASES = {
+  本人: "本人",
+  父: "父",
+  父親: "父",
+  お父さん: "父",
+  母: "母",
+  母親: "母",
+  お母さん: "母",
 };
+
+// 面接練習を終了する合図（examination#76: マルチターン会話方式のため、以前のような
+// 1往復で自動終了する設計ではなく、明示的な終了コマンドが必要になった）
+const PRACTICE_EXIT_PATTERN = /^(終了|やめる|やめます|おわり|終わり)$/;
 
 async function handlePracticeAskRole(lineUserId) {
   await saveSession(lineUserId, { mode: "practice_select_role" });
@@ -230,42 +169,69 @@ async function handlePracticeAskRole(lineUserId) {
 }
 
 async function handlePracticeRoleSelected(lineUserId, text) {
-  const category = ROLE_CATEGORIES[text.trim()];
-  if (!category) {
+  const role = ROLE_ALIASES[text.trim()];
+  if (!role) {
     return "「本人」「父」「母」のいずれかを送ってください。";
   }
-  return handlePracticeStart(lineUserId, category);
+  await saveSession(lineUserId, { mode: "practice_select_situation", practiceState: { role } });
+  return (
+    "シチュエーションを教えてください（例: 小学校受験の面接、就職の面接、大学入試の面接）。" +
+    `特に指定がなければ「${DEFAULT_SITUATION}」と送ってください。`
+  );
 }
 
-async function handlePracticeStart(lineUserId, category) {
-  const questions = (await listQuestions()).filter((q) => q.category === category);
-  if (questions.length === 0) {
-    return `「${category}」の想定問答がまだ登録されていません。「質問を登録」と送って追加してください。`;
+async function handlePracticeSituationEntered(lineUserId, session, text) {
+  const situation = sanitizeFreeText(text, DEFAULT_SITUATION);
+  await saveSession(lineUserId, {
+    mode: "practice_select_characteristics",
+    practiceState: { ...session.practiceState, situation },
+  });
+  return "志望先の特色があれば教えてください（無ければ「なし」と送ってください）。";
+}
+
+async function handlePracticeCharacteristicsEntered(lineUserId, session, text) {
+  const schoolCharacteristics = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
+  const practiceState = { ...session.practiceState, schoolCharacteristics };
+  let reply;
+  try {
+    reply = await callGemini([{ role: "system", content: buildSystemPrompt(practiceState) }]);
+  } catch (error) {
+    console.error("Gemini call failed (practice start)", error.message);
+    await clearSession(lineUserId);
+    return "面接練習の開始に失敗しました。もう一度「面接練習」と送ってやり直してください。";
   }
-  const picked = questions[Math.floor(Math.random() * questions.length)];
   await saveSession(lineUserId, {
     mode: "practice",
-    currentQuestionId: picked.questionId,
-    currentQuestion: picked.question,
-    currentAnswer: picked.answer,
+    practiceState: { ...practiceState, history: [{ role: "assistant", content: reply }] },
   });
-  return `【${picked.category}】\n${picked.question}\n\n回答してみてください。`;
+  return `${reply}\n\n（練習を終えるには「終了」と送ってください）`;
 }
 
-async function handlePracticeAnswer(lineUserId, session, userAnswer) {
-  const prompt =
-    "あなたは小学校受験の面接官です。以下の想定問答と子どもの回答を読み、" +
-    "良い点と改善点を親しみやすい口調で日本語で簡潔にフィードバックしてください。\n\n" +
-    `質問: ${session.currentQuestion}\n模範解答例: ${session.currentAnswer}\n実際の回答: ${userAnswer}`;
-  let feedback;
-  try {
-    feedback = await callGemini(prompt);
-  } catch (error) {
-    console.error("Gemini call failed (practice)", error.message);
-    feedback = "フィードバックの生成に失敗しました。もう一度「面接練習」と送ってやり直してください。";
+async function handlePracticeTurn(lineUserId, session, text) {
+  if (PRACTICE_EXIT_PATTERN.test(text.trim())) {
+    await clearSession(lineUserId);
+    return "面接練習を終了しました。お疲れさまでした。";
   }
-  await clearSession(lineUserId);
-  return `${feedback}\n\n続けるには「面接練習」と送ってください。`;
+  const practiceState = session.practiceState;
+  const messages = [
+    { role: "system", content: buildSystemPrompt(practiceState) },
+    ...practiceState.history,
+    { role: "user", content: text },
+  ];
+  let reply;
+  try {
+    reply = await callGemini(messages);
+  } catch (error) {
+    console.error("Gemini call failed (practice turn)", error.message);
+    return "フィードバックの生成に失敗しました。もう一度お試しください。";
+  }
+  const updatedHistory = [
+    ...practiceState.history,
+    { role: "user", content: text },
+    { role: "assistant", content: reply },
+  ];
+  await saveSession(lineUserId, { mode: "practice", practiceState: { ...practiceState, history: updatedHistory } });
+  return reply;
 }
 
 async function handleRegisterStart(lineUserId) {
@@ -281,7 +247,7 @@ async function handleRegisterExtract(lineUserId, freeText, createdBy) {
     `文章: ${freeText}`;
   let draft;
   try {
-    const raw = await callGemini(prompt);
+    const raw = await callGemini([{ role: "user", content: prompt }]);
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     draft = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
     if (!draft.category || !draft.question || !draft.answer) {
@@ -354,8 +320,14 @@ async function handleTextMessage(lineUserId, text) {
   if (session.mode === "practice_select_role") {
     return handlePracticeRoleSelected(lineUserId, text);
   }
+  if (session.mode === "practice_select_situation") {
+    return handlePracticeSituationEntered(lineUserId, session, text);
+  }
+  if (session.mode === "practice_select_characteristics") {
+    return handlePracticeCharacteristicsEntered(lineUserId, session, text);
+  }
   if (session.mode === "practice") {
-    return handlePracticeAnswer(lineUserId, session, text);
+    return handlePracticeTurn(lineUserId, session, text);
   }
   if (session.mode === "register") {
     return handleRegisterExtract(lineUserId, text, lineUserId);

@@ -1,99 +1,12 @@
 "use strict";
 
-const https = require("https");
 const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
-// deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
-const config = require("./configuration.json");
+const { ROLE_DESCRIPTIONS, DEFAULT_SITUATION, sanitizeFreeText, buildSystemPrompt, callGemini } = require("./geminiConversation");
 
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
-// lineWebhook.jsと同じGemini APIを使う（新規Secretを増やさないため）。
-// gemini-2.0-flashはGoogle側で廃止(404 NOT_FOUND)されたため後継モデルに変更した
-// （examination#74）
-const GEMINI_MODEL = "gemini-2.5-flash";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
-
-// ロール選択の表示テキスト -> システムプロンプトに埋め込む説明（examination#62）
-const ROLE_DESCRIPTIONS = {
-  本人: "受験する本人の子ども",
-  父: "父親（保護者面接）",
-  母: "母親（保護者面接）",
-};
-
-// シチュエーション・志望先特色を自由入力できるようにし、小学校受験専用から
-// 汎用的な受験・面接練習アプリへ拡張する（examination#76）
-const DEFAULT_SITUATION = "小学校受験の面接";
-const MAX_FREE_TEXT_LENGTH = 200;
-
-function sanitizeFreeText(value, fallback) {
-  if (typeof value !== "string") return fallback;
-  const trimmed = value.trim().slice(0, MAX_FREE_TEXT_LENGTH);
-  return trimmed || fallback;
-}
-
-function postJson(hostname, path, headers, bodyObj) {
-  const body = JSON.stringify(bodyObj);
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        path,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-          ...headers,
-        },
-      },
-      (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch (error) {
-              reject(new Error(`invalid JSON response: ${data}`));
-            }
-          } else {
-            reject(new Error(`request to ${hostname}${path} returned ${res.statusCode}: ${data}`));
-          }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.end(body);
-  });
-}
-
-// 内部で保持するmessages形式（role: system/user/assistant）をGeminiのcontents形式に
-// 変換して呼ぶ。systemロールはGeminiのsystemInstructionへ、assistantはmodelロールへ対応させる
-async function callGemini(messages) {
-  const systemMessage = messages.find((m) => m.role === "system");
-  const contents = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-  // Gemini APIはsystemInstructionのみでcontentsが空だと400を返すため、会話開始時
-  // （履歴が無い最初のターン）は開始を促すユーザーターンを補う
-  if (contents.length === 0) {
-    contents.push({ role: "user", parts: [{ text: "面接を始めてください。最初の質問をお願いします。" }] });
-  }
-  const response = await postJson(
-    "generativelanguage.googleapis.com",
-    `/v1beta/models/${GEMINI_MODEL}:generateContent?key=${config.geminiApiKey}`,
-    {},
-    {
-      systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined,
-      contents,
-    }
-  );
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error(`Gemini response missing text: ${JSON.stringify(response)}`);
-  }
-  return text;
-}
 
 // サイト（checkAuth.js）が/_voice-tokenで発行した短期トークンを検証する（examination#62）。
 // LINE連携のワンタイムコードと違い、会話中に何度も呼ばれるため消費（削除）はしない
@@ -108,23 +21,6 @@ async function verifyVoiceToken(token) {
 async function isEmailAllowed(email) {
   const result = await ddb.send(new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } }));
   return Boolean(result.Item);
-}
-
-function buildSystemPrompt({ role, situation, schoolCharacteristics }) {
-  const roleDescription = ROLE_DESCRIPTIONS[role];
-  const characteristicsText = schoolCharacteristics
-    ? `志望先の特色は次の通りです。${schoolCharacteristics}。これを踏まえた質問も交えてください。`
-    : "";
-  return (
-    `あなたは${situation}の面接官です。相手は` +
-    roleDescription +
-    "です。" +
-    characteristicsText +
-    "一度に1つだけ質問してください。相手の回答には親しみやすい口調で一言フィードバックしてから、" +
-    "自然に次の質問へ進めてください。質問は面接でよく聞かれる内容（志望動機、家庭の様子、" +
-    "本人の性格や好きなこと等）から選んでください。応答は音声で読み上げられるため、簡潔な日本語の" +
-    "文章のみで答え、記号や箇条書きは使わないでください。"
-  );
 }
 
 function jsonResponse(statusCode, body) {
