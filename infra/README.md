@@ -53,7 +53,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 - 会話フロー: 「面接練習」で「本人」「父」「母」のいずれの練習か・シチュエーション（例: 小学校受験の面接、就職の面接）・志望先の特色（任意）を順に確認した上で、Gemini APIとのマルチターン会話（質問→回答→フィードバックと次の質問、を繰り返す）を開始する「練習モード」。「終了」と送ると練習を終了する。会話ロジックは音声対話（`voiceChat.js`）と共通化しており（`geminiConversation.js`、[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）、AIがその場で質問を生成するため、練習の出題内容自体は`examination-interview-questions`のデータに依存しない。もう1つは「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
 - データ: `examination-interview-questions`（登録モードで蓄積する想定問答本体。練習モードの出題には現在使用していない）・`examination-bot-sessions`（会話状態。練習モード中は選択したロール・シチュエーション・志望先特色・会話履歴を`practiceState`属性にJSON文字列として保持し、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）
-- **想定問答データはDynamoDB（`examination-interview-questions`）を唯一の正本とする**（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）。`knowledge/education/interview-*.md`は今後の追記・編集は行わず、`deploy.yml`の「Sync interview questions from Markdown」ステップ（`scripts/seed-interview-questions.js`）が毎回のデプロイでMarkdownの内容をDynamoDBへ同期する。`familySlug`・`category`・`question`から決定的な`questionId`（SHA-256ハッシュ）を生成しているため、同じ行を何度でも安全に上書きでき、LINE botの登録モード（`saveQuestion`、時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しない。各行の属性: `category`・`question`・`answer`（回答の要点）・`example`（盛り込む具体例、無い場合は空文字）・`impression`（面接官への印象、無い場合は空文字）・`modelAnswer`（AIによる模範解答。現時点では空文字のプレースホルダーで、生成ロジックは未実装）
+- **想定問答データはDynamoDB（`examination-interview-questions`）を唯一の正本とする**（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）。`knowledge/education/interview-*.md`は今後の追記・編集は行わず、`deploy.yml`の「Sync interview questions from Markdown」ステップ（`scripts/seed-interview-questions.js`）が毎回のデプロイでMarkdownの内容をDynamoDBへ同期する。`familySlug`・`category`・`question`から決定的な`questionId`（SHA-256ハッシュ）を生成しているため、同じ行を何度でも安全に上書きでき、LINE botの登録モード（`saveQuestion`、時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しない。各行の属性: `category`・`targetPerson`（対象者: 本人/父/母。閲覧画面のフィルタリング用、下記参照）・`question`・`answer`（回答の要点）・`example`（盛り込む具体例、無い場合は空文字）・`impression`（面接官への印象、無い場合は空文字）・`modelAnswer`（AIによる模範解答。現時点では空文字のプレースホルダーで、生成ロジックは未実装）。想定問答の閲覧画面（React、1画面統合）は下記「想定問答の閲覧」を参照
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
 - 初回デプロイ後、Job Summaryに表示されるWebhook URL（`<HTTP APIのURL>/webhook`）を、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（URLが変わった場合のみ再登録が必要）
 
@@ -76,6 +76,14 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
   2. ブラウザのJSがそのトークンをBearerトークンとして`bot-stack`の`POST /voice-chat`へ送る。`voiceChat.js`がトークンを検証（クロススタック、有効期限確認）した上で、紐づくメールアドレスが`examination-allowed-emails`に存在するかを確認する
   3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）・シチュエーション・志望先の特色（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)、自由入力。小学校受験に限らない汎用的な面接練習に対応する）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
 - `bot-stack`のHTTP APIはCORSを有効化している（`provider.httpApi.cors: true`）。LINE Webhook（`/webhook`）はサーバー間通信のためCORSヘッダーの付与自体は影響しない
+
+## 想定問答の閲覧（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）
+
+サイトのページ（Reactアプリ`app/interview-questions/src/pages/InterviewQuestions.jsx`）から、想定問答（本人/父/母の全件）を1画面で閲覧できる。旧: `knowledge/education/interview-yosuke.md`（父）・`interview-tomoyo.md`（母）・`interview-ritsu.md`（本人）の3ページに分かれていたMkDocs表示をやめ、対象者ごとにページを分割せず1画面へ統合した。
+
+- データ: `examination-interview-questions`を唯一の正本とし、各行に`targetPerson`（本人/父/母）属性を持つ。既存の`category`属性（面接種別、例:「父の保護者面接」）とは別の項目で、フィルタリング・表示専用。Markdown由来の131件は`scripts/seed-interview-questions.js`が`category`から`targetPerson`を導出してバックフィルし、LINE bot登録モード（`saveQuestion`）で新規追加される行も同様に導出して保存する
+- API: `bot-stack`の`GET /interview-questions`（`functions/interviewQuestions.js`）が familySlug配下の全件を返す。認証は音声対話と同じ短期トークン方式（`apiAuth.js`に共通化。トークン名は`/_voice-token`のままだが、音声対話専用ではなく「ログイン済み・許可済みユーザーであることの証明」として複数のAPIで共用する）
+- 画面: 対象者（すべて/本人/父/母）でのフィルタボタンを持つが、ページ自体は1つのみ（本人/父/母でURL・ファイルを分割しない）
 
 ## 必要なGitHub Secrets / Variables
 

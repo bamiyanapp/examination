@@ -29,7 +29,8 @@ jobs:
         [{"dir":"app/line-link","build":true,"node_version":"24"},
         {"dir":"app/allowed-emails","build":true,"node_version":"24"},
         {"dir":"app/voice-practice","build":true,"node_version":"24"},
-        {"dir":"app/top","build":true,"node_version":"24"}]
+        {"dir":"app/top","build":true,"node_version":"24"},
+        {"dir":"app/interview-questions","build":true,"node_version":"24"}]
       enable_standards_check: true
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}

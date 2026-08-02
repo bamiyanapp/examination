@@ -1,27 +1,7 @@
 "use strict";
 
-const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const { ROLE_DESCRIPTIONS, DEFAULT_SITUATION, sanitizeFreeText, buildSystemPrompt, callGemini } = require("./geminiConversation");
-
-const VOICE_TOKENS_TABLE = "examination-voice-tokens";
-const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
-
-const ddb = new DynamoDBClient({ region: "us-east-1" });
-
-// サイト（checkAuth.js）が/_voice-tokenで発行した短期トークンを検証する（examination#62）。
-// LINE連携のワンタイムコードと違い、会話中に何度も呼ばれるため消費（削除）はしない
-async function verifyVoiceToken(token) {
-  const result = await ddb.send(new GetItemCommand({ TableName: VOICE_TOKENS_TABLE, Key: { token: { S: token } } }));
-  if (!result.Item) return null;
-  const expiresAt = Number(result.Item.expiresAt?.N || 0);
-  if (expiresAt < Math.floor(Date.now() / 1000)) return null;
-  return result.Item.email.S;
-}
-
-async function isEmailAllowed(email) {
-  const result = await ddb.send(new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } }));
-  return Boolean(result.Item);
-}
+const { verifyBearerEmail } = require("./apiAuth");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -33,13 +13,8 @@ exports.handler = async (event) => {
     return jsonResponse(405, { error: "method not allowed" });
   }
 
-  const authHeader = event.headers?.authorization || event.headers?.Authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
-  if (!token) {
-    return jsonResponse(403, { error: "認証トークンがありません" });
-  }
-  const email = await verifyVoiceToken(token);
-  if (!email || !(await isEmailAllowed(email))) {
+  const email = await verifyBearerEmail(event);
+  if (!email) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
 

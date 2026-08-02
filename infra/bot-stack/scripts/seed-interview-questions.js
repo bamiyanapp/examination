@@ -7,9 +7,9 @@ const crypto = require("crypto");
 const KNOWLEDGE_DIR = path.join(__dirname, "..", "..", "..", "knowledge", "education");
 
 const SOURCES = [
-  { file: "interview-yosuke.md", category: "父の保護者面接" },
-  { file: "interview-tomoyo.md", category: "母の保護者面接" },
-  { file: "interview-ritsu.md", category: "本人面接" },
+  { file: "interview-yosuke.md", category: "父の保護者面接", targetPerson: "父" },
+  { file: "interview-tomoyo.md", category: "母の保護者面接", targetPerson: "母" },
+  { file: "interview-ritsu.md", category: "本人面接", targetPerson: "本人" },
 ];
 
 function splitRow(line) {
@@ -79,12 +79,12 @@ function parseDetailedQaTable(markdown) {
 
 function collectQuestions() {
   const questions = [];
-  for (const { file, category } of SOURCES) {
+  for (const { file, category, targetPerson } of SOURCES) {
     const filePath = path.join(KNOWLEDGE_DIR, file);
     const markdown = fs.readFileSync(filePath, "utf-8");
     const rows = [...parseDetailedQaTable(markdown), ...parseSimpleQaTables(markdown)];
     for (const row of rows) {
-      questions.push({ category, ...row });
+      questions.push({ category, targetPerson, ...row });
     }
   }
   return questions;
@@ -149,6 +149,9 @@ async function seed() {
           familySlug: { S: familySlug },
           questionId: { S: questionId },
           category: { S: q.category },
+          // 対象者（本人/父/母）。examination#77: 想定問答閲覧画面を1画面に統合するにあたり、
+          // フィルタリング・表示用にcategoryとは別の明示的な項目として追加した
+          targetPerson: { S: q.targetPerson || "" },
           question: { S: q.question },
           answer: { S: q.answer },
           example: { S: q.example || "" },

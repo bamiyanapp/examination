@@ -20,7 +20,8 @@
 │   ├── top/                             # トップページ（/）
 │   ├── line-link/                       # LINE連携（/settings/line-link/）
 │   ├── allowed-emails/                  # 閲覧許可メールアドレス管理（/settings/allowed-emails/）
-│   └── voice-practice/                  # 音声で面接練習（/education/voice-practice/）
+│   ├── voice-practice/                  # 音声で面接練習（/education/voice-practice/）
+│   └── interview-questions/             # 想定問答（/education/interview-questions/、Issue #77）
 ├── docs/
 │   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 └── knowledge/
@@ -46,7 +47,7 @@ npm run dev
 
 ## 教育（小学校受験対策）の運用フロー
 
-1. `knowledge/education/`に想定問題と回答案を用意する
+1. `knowledge/education/interview-*.md`に想定問題と回答案を用意し、デプロイ時に`scripts/seed-interview-questions.js`がDynamoDB（`examination-interview-questions`）へ同期する（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)、唯一の正本）。閲覧は`/education/interview-questions/`（React、本人/父/母を1画面に統合）で行う
 2. 想定問題をもとに模擬面接を実施する
 3. 実施結果を`knowledge/education/mock-interviews.md`に記録する（気づき・改善点）
 4. 記録をもとに想定問答の回答案を更新する

@@ -9,9 +9,7 @@ const SECTIONS = [
     title: "教育",
     links: [
       { label: "概要", href: "/education/" },
-      { label: "想定問答（保護者面接: よーすけ）", href: "/education/interview-yosuke/" },
-      { label: "想定問答（保護者面接: ともよ）", href: "/education/interview-tomoyo/" },
-      { label: "想定問答（本人面接: りつ）", href: "/education/interview-ritsu/" },
+      { label: "想定問答", href: "/education/interview-questions/" },
       { label: "模擬面接記録", href: "/education/mock-interviews/" },
       { label: "音声で面接練習", href: "/education/voice-practice/" },
     ],
