@@ -1,0 +1,38 @@
+name: Debug bot-stack Lambda logs
+
+# LINE bot（infra/bot-stack）のトラブルシュートで、Lambdaが実際に呼ばれているか・
+# 呼ばれた場合に何が起きているかをスマートフォンから確認するための診断用ワークフロー
+# （examination#52）。手動実行のみで、通常のデプロイフローには影響しない
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "取得するログの範囲（例: 15m, 1h）"
+        required: false
+        default: "15m"
+
+jobs:
+  show-logs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Show recent lineWebhook Lambda logs
+        run: |
+          SINCE="${{ github.event.inputs.since }}"
+          echo "### examination-bot-prod-lineWebhook 直近ログ（過去${SINCE}）"
+          echo "### examination-bot-prod-lineWebhook 直近ログ（過去${SINCE}）" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          aws logs tail /aws/lambda/examination-bot-prod-lineWebhook --since "$SINCE" --format short \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+            echo "(ログの取得に失敗しました。ロググループが存在しないか、権限不足の可能性があります)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
