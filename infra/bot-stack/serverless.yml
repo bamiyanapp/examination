@@ -76,6 +76,17 @@ functions:
           path: /voice-chat
           method: POST
 
+  # 想定問答の一覧取得API（examination#77）。app/interview-questions/がブラウザから
+  # 直接呼ぶ読み取り専用API。voiceChatと同じ短期トークン（/_voice-token）で認証する
+  interviewQuestions:
+    handler: functions/interviewQuestions.handler
+    memorySize: 256
+    timeout: 10
+    events:
+      - httpApi:
+          path: /interview-questions
+          method: GET
+
 resources:
   Resources:
     # 面接想定問答（ユーザー登録データ）。familySlugは複数家族対応(examination#44)を

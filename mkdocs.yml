@@ -31,13 +31,21 @@ plugins:
   - search:
       lang: ja
 
+# 想定問答の元データ（examination#77でDynamoDBへ完全移行済み）。閲覧画面は
+# app/interview-questions/（1画面）へ統合したため、この3ファイルは
+# scripts/seed-interview-questions.jsが読み込む内部データソースとしてのみ残し、
+# サイトのページとしては公開しない（navからも除外するとmkdocs strictモードが
+# 「navに含まれないドキュメントがある」エラーを出すため、exclude_docsで明示的に除外する）
+exclude_docs: |
+  education/interview-yosuke.md
+  education/interview-tomoyo.md
+  education/interview-ritsu.md
+
 nav:
   - ホーム: index.md
   - 教育:
       - 概要: education/index.md
-      - "想定問答（保護者面接: よーすけ）": education/interview-yosuke.md
-      - "想定問答（保護者面接: ともよ）": education/interview-tomoyo.md
-      - "想定問答（本人面接: りつ）": education/interview-ritsu.md
+      - 想定問答: education/interview-questions.md
       - 模擬面接記録: education/mock-interviews.md
       - 音声で面接練習: education/voice-practice.md
   - 家族:

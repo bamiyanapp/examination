@@ -8,9 +8,7 @@ describe("TopPage", () => {
 
     const expectedHrefs = [
       "/education/",
-      "/education/interview-yosuke/",
-      "/education/interview-tomoyo/",
-      "/education/interview-ritsu/",
+      "/education/interview-questions/",
       "/education/mock-interviews/",
       "/education/voice-practice/",
       "/family/profile/",
@@ -27,6 +25,13 @@ describe("TopPage", () => {
   it("does not link to the removed sections (保育園・旅行・住まい・車・AI活用)", () => {
     render(<TopPage />);
     for (const href of ["/childcare/", "/travel/", "/home/", "/cars/", "/ai/"]) {
+      expect(document.querySelector(`a[href="${href}"]`)).toBeNull();
+    }
+  });
+
+  it("does not link to the old per-person interview pages (examination#77で1画面へ統合)", () => {
+    render(<TopPage />);
+    for (const href of ["/education/interview-yosuke/", "/education/interview-tomoyo/", "/education/interview-ritsu/"]) {
       expect(document.querySelector(`a[href="${href}"]`)).toBeNull();
     }
   });

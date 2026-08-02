@@ -13,9 +13,7 @@
 
 ## ページ一覧
 
-- [想定問答（保護者面接: よーすけ）](interview-yosuke.md)
-- [想定問答（保護者面接: ともよ）](interview-tomoyo.md)
-- [想定問答（本人面接: りつ）](interview-ritsu.md)
+- [想定問答](interview-questions.md)（本人・父・母の全ての想定問答を1画面で表示。データはDynamoDBが正本）
 - [模擬面接記録](mock-interviews.md)
 
 ## 運用フロー

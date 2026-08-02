@@ -33,6 +33,7 @@ jobs:
             app/allowed-emails/package-lock.json
             app/voice-practice/package-lock.json
             app/top/package-lock.json
+            app/interview-questions/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -77,6 +78,17 @@ jobs:
           rm -rf ../../site/education/voice-practice
           mkdir -p ../../site/education/voice-practice
           cp -r dist/. ../../site/education/voice-practice/
+
+      # 想定問答ページ（examination#77）。本人/父/母で分かれていた3ページを1画面に統合し、
+      # DynamoDB（examination-interview-questions）の内容をbot-stackのAPI経由で表示する
+      - name: Build and embed the React app (想定問答)
+        working-directory: app/interview-questions
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../../site/education/interview-questions
+          mkdir -p ../../site/education/interview-questions
+          cp -r dist/. ../../site/education/interview-questions/
 
       # トップページ（examination#82）。/top/でのプレビュー確認を経て、MkDocsが生成した
       # サイトルート（/、knowledge/index.md）を正式に上書きする。site/配下の他のファイルは

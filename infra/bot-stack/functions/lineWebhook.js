@@ -18,11 +18,11 @@ const {
   callGemini,
 } = require("./geminiConversation");
 
+const { FAMILY_SLUG } = require("./familyConfig");
+
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
 const BOT_SESSIONS_TABLE = "examination-bot-sessions";
 const LINE_LINKS_TABLE = "examination-line-links";
-// 複数家族対応(examination#44)が実装されるまでは固定値として扱う
-const FAMILY_SLUG = "chofu-suzuki";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 
 // site-stackが所有するテーブル名（examination#49、クロススタックアクセス）。
@@ -121,6 +121,19 @@ async function isEmailAllowed(email) {
   return Boolean(result.Item);
 }
 
+// categoryは「本人面接」「父の保護者面接」「母の保護者面接」のいずれかとして
+// Geminiに抽出させている（handleRegisterExtract参照）。対象者（examination#77）は
+// このcategoryから機械的に導出し、AIに別途出力させて食い違うリスクを避ける
+const CATEGORY_TARGET_PERSON = {
+  本人面接: "本人",
+  父の保護者面接: "父",
+  母の保護者面接: "母",
+};
+
+function deriveTargetPerson(category) {
+  return CATEGORY_TARGET_PERSON[category] || "";
+}
+
 async function saveQuestion({ category, question, answer, createdBy }) {
   const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   await ddb.send(
@@ -130,6 +143,7 @@ async function saveQuestion({ category, question, answer, createdBy }) {
         familySlug: { S: FAMILY_SLUG },
         questionId: { S: questionId },
         category: { S: category },
+        targetPerson: { S: deriveTargetPerson(category) },
         question: { S: question },
         answer: { S: answer },
         createdBy: { S: createdBy },

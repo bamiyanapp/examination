@@ -1,0 +1,113 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import InterviewQuestions from "./InterviewQuestions.jsx";
+
+const SAMPLE_QUESTIONS = [
+  {
+    questionId: "q1",
+    category: "父の保護者面接",
+    targetPerson: "父",
+    question: "志望理由を教えてください。",
+    answer: "教育方針への共感です。",
+    example: "学校見学での体験。",
+    impression: "説得力がある。",
+    modelAnswer: "",
+  },
+  {
+    questionId: "q2",
+    category: "母の保護者面接",
+    targetPerson: "母",
+    question: "お子さんの長所は何ですか。",
+    answer: "好奇心が旺盛なところです。",
+    example: "",
+    impression: "",
+    modelAnswer: "",
+  },
+  {
+    questionId: "q3",
+    category: "本人面接",
+    targetPerson: "本人",
+    question: "好きな遊びは何ですか。",
+    answer: "公園でおにごっこをすることです。",
+    example: "",
+    impression: "",
+    modelAnswer: "",
+  },
+];
+
+beforeEach(() => {
+  global.fetch = vi.fn();
+});
+
+function mockTokenAndQuestions(questions) {
+  global.fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ questions }) });
+}
+
+describe("InterviewQuestions", () => {
+  it("issues a token and fetches all questions on mount", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+
+    render(<InterviewQuestions />);
+
+    await waitFor(() => {
+      expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+    });
+    expect(screen.getByText("お子さんの長所は何ですか。")).toBeInTheDocument();
+    expect(screen.getByText("好きな遊びは何ですか。")).toBeInTheDocument();
+    expect(screen.getByText("3件")).toBeInTheDocument();
+
+    expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
+    const secondCall = global.fetch.mock.calls[1];
+    expect(secondCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions");
+    expect(secondCall[1].headers.Authorization).toBe("Bearer voice-token");
+  });
+
+  it("filters questions by target person without splitting into separate pages", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getByRole("button", { name: "父" }));
+
+    expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+    expect(screen.queryByText("お子さんの長所は何ですか。")).not.toBeInTheDocument();
+    expect(screen.queryByText("好きな遊びは何ですか。")).not.toBeInTheDocument();
+    expect(screen.getByText("1件")).toBeInTheDocument();
+  });
+
+  it("shows all questions again when switching the filter back to すべて", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getByRole("button", { name: "母" }));
+    expect(screen.getByText("1件")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "すべて" }));
+    expect(screen.getByText("3件")).toBeInTheDocument();
+  });
+
+  it("shows an error message when token issuance fails", async () => {
+    global.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
+
+    render(<InterviewQuestions />);
+
+    await waitFor(() => {
+      expect(screen.getByText("アクセスが許可されていません")).toBeInTheDocument();
+    });
+  });
+
+  it("shows an error message when fetching questions fails", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
+
+    render(<InterviewQuestions />);
+
+    await waitFor(() => {
+      expect(screen.getByText("サーバーエラー")).toBeInTheDocument();
+    });
+  });
+});
