@@ -6,6 +6,11 @@
       "matchPackageNames": ["serverless"],
       "allowedVersions": "<4.0.0",
       "description": "Serverless Framework v4はServerless Dashboardへのログインが必須になりOSS運用方針（infra/README.md参照）と相容れないため、v3系までに制限する"
+    },
+    {
+      "matchPackageNames": ["jose"],
+      "allowedVersions": "<6.0.0",
+      "description": "jose v6はESM専用パッケージ（package.jsonがtype: module、exportsにrequire条件が無い）となり、infra/site-stack/functions/checkAuth.jsのrequire(\"jose\")がLambda@Edge(nodejs20.x)でERR_REQUIRE_ESMとなり本番503を引き起こしたため（Issue #33）、CommonJS requireが可能なv5系までに制限する"
     }
   ]
 }
