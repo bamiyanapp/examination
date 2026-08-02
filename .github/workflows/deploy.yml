@@ -31,6 +31,7 @@ jobs:
           cache-dependency-path: |
             app/line-link/package-lock.json
             app/allowed-emails/package-lock.json
+            app/voice-practice/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -64,6 +65,17 @@ jobs:
           rm -rf ../../site/settings/allowed-emails
           mkdir -p ../../site/settings/allowed-emails
           cp -r dist/. ../../site/settings/allowed-emails/
+
+      # 音声で面接練習ページ（examination#78、React段階移行 Phase 3。examination#76の
+      # 汎用化・チャット風UI化を反映）
+      - name: Build and embed the React app (音声で面接練習)
+        working-directory: app/voice-practice
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../../site/education/voice-practice
+          mkdir -p ../../site/education/voice-practice
+          cp -r dist/. ../../site/education/voice-practice/
 
       # CloudFrontドメインは作成後不変。初回ブートストラップ以外は既存スタックの出力から
       # そのまま取得できる。初回はまだ存在しないためプレースホルダーにフォールバックする

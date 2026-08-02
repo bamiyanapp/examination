@@ -68,13 +68,13 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 
 ## 音声で面接練習（[Issue #62](https://github.com/bamiyanapp/examination/issues/62)）
 
-サイトのページ（`knowledge/education/voice-practice.md`）から、ブラウザ標準の音声認識（Web Speech API）・音声合成（SpeechSynthesis API）を使って声で面接練習ができる。LINE botの練習モードとは別の、ブラウザだけで完結する会話形式の機能。
+サイトのページ（Reactアプリ`app/voice-practice/src/pages/VoicePractice.jsx`。旧`knowledge/education/voice-practice.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）から、ブラウザ標準の音声認識（Web Speech API）・音声合成（SpeechSynthesis API）を使って声で面接練習ができる。LINE botの練習モードとは別の、ブラウザだけで完結する会話形式の機能。チャット風UIでユーザー自身の発言（音声認識結果）とAI応答の両方を表示する。
 
 - リアルタイム音声ストリーミング（OpenAI Realtime API等）は採用しない。AI利用料が数倍になる、WebRTC等の実装・運用が複雑になる、Lambdaベースの現在構成との親和性が低い、家族利用規模では費用対効果が低いため。バックエンドとの通信は常にテキストとし、音声処理はブラウザ側（クライアント）に寄せる設計とした
 - 認証: `bot-stack`のAPI（`voiceChat.js`、`POST /voice-chat`）はブラウザから直接呼ばれるクロスオリジンのAPIで、`site-stack`のHttpOnly Cookie（`id_token`）はクロスオリジンでは自動送信されないため、専用の短期トークン方式を採る
   1. サイトの音声練習ページを開いた状態で「会話を始める」を押すと、同一オリジンの`site-stack`（`checkAuth.js`）の`POST /_voice-token` APIがログイン中のユーザーを確認した上で短期トークン（有効期限1時間）を発行し、`examination-voice-tokens`（パーティションキー: `token`、TTLで自動失効）へ保存する
   2. ブラウザのJSがそのトークンをBearerトークンとして`bot-stack`の`POST /voice-chat`へ送る。`voiceChat.js`がトークンを検証（クロススタック、有効期限確認）した上で、紐づくメールアドレスが`examination-allowed-emails`に存在するかを確認する
-  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
+  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）・シチュエーション・志望先の特色（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)、自由入力。小学校受験に限らない汎用的な面接練習に対応する）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
 - `bot-stack`のHTTP APIはCORSを有効化している（`provider.httpApi.cors: true`）。LINE Webhook（`/webhook`）はサーバー間通信のためCORSヘッダーの付与自体は影響しない
 
 ## 必要なGitHub Secrets / Variables
