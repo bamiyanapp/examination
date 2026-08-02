@@ -36,3 +36,43 @@ jobs:
             echo "(ログの取得に失敗しました。ロググループが存在しないか、権限不足の可能性があります)" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # ログに一切Invocationが無い場合、403はLambdaに到達する前（Function URL/AWS側）で
+      # 発生している可能性がある。GitHub Actionsランナー（インターネットに直接アクセス可能）
+      # から直接叩き、AWS側の生のレスポンスを確認する（examination#52）
+      - name: Check Function URL config and direct connectivity
+        run: |
+          {
+            echo "### Function URL設定"
+            echo '```json'
+            aws lambda get-function-url-config --region ap-northeast-1 \
+              --function-name examination-bot-prod-lineWebhook 2>&1
+            echo '```'
+
+            echo "### リソースベースポリシー（get-policy）"
+            echo '```json'
+            aws lambda get-policy --region ap-northeast-1 \
+              --function-name examination-bot-prod-lineWebhook 2>&1
+            echo '```'
+
+            echo "### 関数の状態（State/LastUpdateStatus）"
+            echo '```json'
+            aws lambda get-function-configuration --region ap-northeast-1 \
+              --function-name examination-bot-prod-lineWebhook \
+              --query "{State:State,LastUpdateStatus:LastUpdateStatus,LastModified:LastModified}" 2>&1
+            echo '```'
+
+            WEBHOOK_URL=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-bot-prod \
+              --query "Stacks[0].Outputs[?OutputKey=='LineWebhookLambdaFunctionUrl'].OutputValue" --output text)
+            echo "### Function URLへの直接リクエスト結果"
+            echo "対象URL: $WEBHOOK_URL"
+            echo '```'
+            curl -s -D - -o /tmp/curl-body.txt -w "\nHTTP_STATUS:%{http_code}\n" \
+              -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -H "x-line-signature: dummy-signature-for-diagnostic" \
+              -d '{"events":[]}'
+            echo "--- body ---"
+            cat /tmp/curl-body.txt
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
