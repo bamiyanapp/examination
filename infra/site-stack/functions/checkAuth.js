@@ -92,6 +92,21 @@ function forbiddenResponse() {
   return { status: "403", statusDescription: "Forbidden", body: "アクセスが許可されていません" };
 }
 
+// CloudFrontのオリジンはS3のREST API経由（Origin Access Control）であり、S3静的
+// ウェブサイトホスティングのようなディレクトリリクエストへの自動index.html解決は
+// 行われない。DefaultRootObjectはディストリビューションのルート(/)にのみ適用され
+// サブパスには効かないため、MkDocsのディレクトリ形式URL（use_directory_urls既定）を
+// ここで正規化する
+function normalizeUri(uri) {
+  if (uri.endsWith("/")) {
+    return `${uri}index.html`;
+  }
+  if (!uri.includes(".")) {
+    return `${uri}/index.html`;
+  }
+  return uri;
+}
+
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -188,6 +203,7 @@ exports.handler = async (event) => {
       // allowlist外の場合はログイン画面へリダイレクトしない（Googleで
       // 再ログインしても同じemailが返り無限ループになるため）
       if (isAllowedEmail(payload.email)) {
+        request.uri = normalizeUri(request.uri);
         return request;
       }
       console.warn("email not allowed on cached token", payload.email);
