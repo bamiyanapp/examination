@@ -1,0 +1,64 @@
+:root {
+  --text: #24292f;
+  --bg: #fff;
+  --card-bg: #f6f8fa;
+  --border: #d0d7de;
+  font: 16px/1.6 system-ui, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #c9d1d9;
+    --bg: #0d1117;
+    --card-bg: #161b22;
+    --border: #30363d;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+a {
+  color: inherit;
+}
+
+.section {
+  margin-top: 24px;
+}
+
+.section h2 {
+  font-size: 1.1em;
+  margin-bottom: 8px;
+}
+
+.section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section li a {
+  display: block;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  text-decoration: none;
+}
+
+.section li a:hover {
+  border-color: #2563eb;
+}

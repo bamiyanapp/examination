@@ -1,5 +1,7 @@
 # examination 家族ナレッジベース
 
+新しいトップページを[プレビュー公開中](/top/)です（[Issue #82](https://github.com/bamiyanapp/examination/issues/82)）。動作確認後、こちらのページに代わります。
+
 このサイトは、Gitを正本（Single Source of Truth）とした家族向けナレッジサイトです。
 
 Claude Codeが`knowledge/`配下のMarkdownを更新し、GitHub Actions経由でサイトへ反映します。閲覧する側はGitを意識せず、ブラウザからこのサイトを見るだけで最新の内容を確認できます。
