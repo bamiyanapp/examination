@@ -89,3 +89,21 @@ jobs:
             aws organizations describe-organization 2>&1
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Organizations未所属と判明したため（examination#52）、アカウント固有の制限か
+      # どうかをLambdaアカウント設定とCloudTrailの実際の拒否イベントから確認する
+      - name: Check Lambda account settings and CloudTrail denial reason
+        run: |
+          {
+            echo "### Lambdaアカウント設定"
+            echo '```json'
+            aws lambda get-account-settings --region ap-northeast-1 2>&1
+            echo '```'
+
+            echo "### CloudTrailのInvokeFunctionUrl拒否イベント（直近）"
+            echo '```json'
+            aws cloudtrail lookup-events --region ap-northeast-1 \
+              --lookup-attributes AttributeKey=EventName,AttributeValue=InvokeFunctionUrl \
+              --max-results 5 2>&1
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
