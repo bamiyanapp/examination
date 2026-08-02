@@ -68,8 +68,9 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 
 ## 音声で面接練習（[Issue #62](https://github.com/bamiyanapp/examination/issues/62)）
 
-サイトのページ（Reactアプリ`app/voice-practice/src/pages/VoicePractice.jsx`。旧`knowledge/education/voice-practice.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）から、ブラウザ標準の音声認識（Web Speech API）・音声合成（SpeechSynthesis API）を使って声で面接練習ができる。LINE botの練習モードとは別の、ブラウザだけで完結する会話形式の機能。チャット風UIでユーザー自身の発言（音声認識結果）とAI応答の両方を表示する。
+サイトのページ（Reactアプリ`app/voice-practice/src/pages/VoicePractice.jsx`。旧`knowledge/education/voice-practice.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）から、声で面接練習ができる。LINE botの練習モードとは別の、ブラウザだけで完結する会話形式の機能。チャット風UIでユーザー自身の発言（音声認識結果）とAI応答の両方を表示する。
 
+- 音声認識（STT）・音声合成（TTS）: 当初はブラウザ標準API（`SpeechRecognition`/`SpeechSynthesis`）を使っていたが、ブラウザ実装への依存・認識精度のばらつきを解消するため、ブラウザ内で動作するAIモデルへ置き換えた（[Issue #73](https://github.com/bamiyanapp/examination/issues/73)）。STTは`@huggingface/transformers`（transformers.js）+ `onnx-community/kotoba-whisper-v2.2-ONNX`をWeb Worker内で実行し、TTSは`piper-plus` + `ayousanz/piper-plus-css10-ja-6lang`（CSS10由来、パブリックドメインライセンス）を使う。いずれもブラウザ内（クライアント）で完結し、バックエンドとのやり取りは引き続きテキストのみ
 - リアルタイム音声ストリーミング（OpenAI Realtime API等）は採用しない。AI利用料が数倍になる、WebRTC等の実装・運用が複雑になる、Lambdaベースの現在構成との親和性が低い、家族利用規模では費用対効果が低いため。バックエンドとの通信は常にテキストとし、音声処理はブラウザ側（クライアント）に寄せる設計とした
 - 認証: `bot-stack`のAPI（`voiceChat.js`、`POST /voice-chat`）はブラウザから直接呼ばれるクロスオリジンのAPIで、`site-stack`のHttpOnly Cookie（`id_token`）はクロスオリジンでは自動送信されないため、専用の短期トークン方式を採る
   1. サイトの音声練習ページを開いた状態で「会話を始める」を押すと、同一オリジンの`site-stack`（`checkAuth.js`）の`POST /_voice-token` APIがログイン中のユーザーを確認した上で短期トークン（有効期限1時間）を発行し、`examination-voice-tokens`（パーティションキー: `token`、TTLで自動失効）へ保存する
