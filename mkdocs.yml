@@ -1,4 +1,4 @@
-site_name: examination 家族ナレッジベース
+site_name: 小学校受験対策
 site_description: 家族向けナレッジサイト（Issue #4）
 docs_dir: knowledge
 repo_url: https://github.com/bamiyanapp/examination
@@ -7,6 +7,7 @@ repo_name: bamiyanapp/examination
 theme:
   name: material
   language: ja
+  favicon: assets/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
