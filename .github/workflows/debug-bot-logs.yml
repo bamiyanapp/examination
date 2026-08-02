@@ -76,3 +76,16 @@ jobs:
             cat /tmp/curl-body.txt
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # 直接curlでAWSの生の403（AccessDeniedException）を確認した場合の追加切り分け。
+      # AWS Organizationsのリソースコントロールポリシー(RCP)が原因かどうかを判定する
+      # （examination#52）。IAMユーザーにorganizations:*権限が無ければAccessDeniedが
+      # 返るだけで、その場合はこのIAMユーザーからは判定不可であることが分かる
+      - name: Check AWS Organizations membership (RCP candidate)
+        run: |
+          {
+            echo "### AWS Organizations所属確認"
+            echo '```json'
+            aws organizations describe-organization 2>&1
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
