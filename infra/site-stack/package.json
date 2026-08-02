@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "@aws-sdk/client-dynamodb": "^3.700.0"
   },
   "devDependencies": {
     "serverless": "^3.38.0",
