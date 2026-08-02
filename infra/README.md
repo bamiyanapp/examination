@@ -47,13 +47,15 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 ## LINE bot（`bot-stack/`）
 
-面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックで、リージョン制約（Lambda@Edgeのus-east-1縛り）が無いため`ap-northeast-1`にデプロイする。API Gatewayは使わず、Lambda Function URLでWebhookを直接公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
+面接練習・想定問答の登録をLINEから行える。`site-stack`とは独立したスタックで、リージョン制約（Lambda@Edgeのus-east-1縛り）が無いため`ap-northeast-1`にデプロイする。Webhookは**API Gateway（HTTP API）**経由で公開する（認証はLINEの署名検証`X-Line-Signature`で行う）。
+
+> 当初はLambda Function URL（`AuthType: NONE`）で直接公開していたが、このAWSアカウントではFunction URLの匿名アクセスがAWS側で`403 Forbidden`（`AccessDeniedException`）を返す状態にあり、`AuthType`・リソースベースポリシー・関数の状態はすべて正しいにもかかわらず解消しなかった（[Issue #52](https://github.com/bamiyanapp/examination/issues/52)）。同一アカウントでAPI Gateway経由の公開エンドポイントは実績があるため、HTTP APIへ切り替えた。HTTP APIのペイロード形式（payload format 2.0）はFunction URLと同一のため、`functions/lineWebhook.js`のハンドラー側の変更は不要だった。
 
 - 会話フロー: 「面接練習」でランダムな想定問答を出題し回答へGemini APIでフィードバックする「練習モード」、「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」の2つ（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
 - データ: `examination-interview-questions`（想定問答本体）・`examination-bot-sessions`（会話状態、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）
 - 初期値: `deploy.yml`の「Seed initial interview questions」ステップが、テーブルが空の場合のみ既存の`knowledge/education/interview-*.md`から一度だけ投入する（`scripts/seed-interview-questions.js`）
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
-- 初回デプロイ後、Job Summaryに表示されるLambda Function URLを、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（人手による一度きりの作業）
+- 初回デプロイ後、Job Summaryに表示されるWebhook URL（`<HTTP APIのURL>/webhook`）を、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（URLが変わった場合のみ再登録が必要）
 
 ## LINEアカウントとGoogleアカウントの紐付け（[Issue #49](https://github.com/bamiyanapp/examination/issues/49)）
 
