@@ -82,13 +82,16 @@ jobs:
           COGNITO_DOMAIN: ${{ steps.auth-outputs.outputs.cognito_domain }}
         run: node scripts/generate-config.js
 
+      # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
+      # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
+      # OAuthシークレットのローテーション等がLambda@Edgeへ反映されないことがある（examination#51）
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
         uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
         with:
           working-directory: infra/site-stack
           node-version: "24"
           deploy-command: >-
-            npx serverless deploy
+            npx serverless deploy --force
             --param="bucketName=${{ vars.SITE_BUCKET_NAME || 'bamiyanapp-examination-knowledge' }}"
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -145,12 +148,15 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node scripts/generate-config.js
 
+      # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
+      # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
+      # LINE_CHANNEL_SECRET等の更新がLambdaへ反映されないことがある（examination#51で実際に発生）
       - name: Deploy bot-stack (LINE bot)
         uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v1.15.1
         with:
           working-directory: infra/bot-stack
           node-version: "24"
-          deploy-command: npx serverless deploy
+          deploy-command: npx serverless deploy --force
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
