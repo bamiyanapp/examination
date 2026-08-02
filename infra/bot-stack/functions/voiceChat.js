@@ -21,6 +21,17 @@ const ROLE_DESCRIPTIONS = {
   母: "母親（保護者面接）",
 };
 
+// シチュエーション・志望先特色を自由入力できるようにし、小学校受験専用から
+// 汎用的な受験・面接練習アプリへ拡張する（examination#76）
+const DEFAULT_SITUATION = "小学校受験の面接";
+const MAX_FREE_TEXT_LENGTH = 200;
+
+function sanitizeFreeText(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim().slice(0, MAX_FREE_TEXT_LENGTH);
+  return trimmed || fallback;
+}
+
 function postJson(hostname, path, headers, bodyObj) {
   const body = JSON.stringify(bodyObj);
   return new Promise((resolve, reject) => {
@@ -99,13 +110,18 @@ async function isEmailAllowed(email) {
   return Boolean(result.Item);
 }
 
-function buildSystemPrompt(role) {
+function buildSystemPrompt({ role, situation, schoolCharacteristics }) {
   const roleDescription = ROLE_DESCRIPTIONS[role];
+  const characteristicsText = schoolCharacteristics
+    ? `志望先の特色は次の通りです。${schoolCharacteristics}。これを踏まえた質問も交えてください。`
+    : "";
   return (
-    "あなたは小学校受験の面接官です。相手は" +
+    `あなたは${situation}の面接官です。相手は` +
     roleDescription +
-    "です。一度に1つだけ質問してください。相手の回答には親しみやすい口調で一言フィードバックしてから、" +
-    "自然に次の質問へ進めてください。質問は小学校受験の面接でよく聞かれる内容（志望動機、家庭の様子、" +
+    "です。" +
+    characteristicsText +
+    "一度に1つだけ質問してください。相手の回答には親しみやすい口調で一言フィードバックしてから、" +
+    "自然に次の質問へ進めてください。質問は面接でよく聞かれる内容（志望動機、家庭の様子、" +
     "本人の性格や好きなこと等）から選んでください。応答は音声で読み上げられるため、簡潔な日本語の" +
     "文章のみで答え、記号や箇条書きは使わないでください。"
   );
@@ -142,10 +158,15 @@ exports.handler = async (event) => {
   if (!ROLE_DESCRIPTIONS[role]) {
     return jsonResponse(400, { error: "roleは本人・父・母のいずれかを指定してください" });
   }
+  const situation = sanitizeFreeText(payload.situation, DEFAULT_SITUATION);
+  const schoolCharacteristics = sanitizeFreeText(payload.schoolCharacteristics, "");
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
 
-  const messages = [{ role: "system", content: buildSystemPrompt(role) }, ...history];
+  const messages = [
+    { role: "system", content: buildSystemPrompt({ role, situation, schoolCharacteristics }) },
+    ...history,
+  ];
   if (userMessage) {
     messages.push({ role: "user", content: userMessage });
   }

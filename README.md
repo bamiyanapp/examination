@@ -18,7 +18,8 @@
 ├── requirements.txt
 ├── app/                                 # インタラクティブなページごとのReact（Vite）アプリ（Issue #78）
 │   ├── line-link/                       # LINE連携（/settings/line-link/）
-│   └── allowed-emails/                  # 閲覧許可メールアドレス管理（/settings/allowed-emails/）
+│   ├── allowed-emails/                  # 閲覧許可メールアドレス管理（/settings/allowed-emails/）
+│   └── voice-practice/                  # 音声で面接練習（/education/voice-practice/）
 ├── docs/
 │   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 └── knowledge/
@@ -42,7 +43,7 @@ mkdocs serve
 ## Reactアプリ（app/配下）のローカル確認
 
 ```
-cd app/line-link       # または app/allowed-emails
+cd app/line-link       # または app/allowed-emails、app/voice-practice
 npm install
 npm run dev
 ```

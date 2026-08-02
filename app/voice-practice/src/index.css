@@ -1,0 +1,91 @@
+:root {
+  --text: #24292f;
+  --bg: #fff;
+  font: 16px/1.6 system-ui, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #c9d1d9;
+    --bg: #0d1117;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+button {
+  font: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+.bubble .speaker {
+  display: block;
+  font-size: 0.75em;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: #eef0f2;
+  color: #24292f;
+  border-bottom-left-radius: 2px;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: #2563eb;
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bubble.assistant {
+    background: #21262d;
+    color: #c9d1d9;
+  }
+  .bubble.user {
+    background: #1d4ed8;
+    color: #fff;
+  }
+}
