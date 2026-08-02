@@ -38,6 +38,20 @@ jobs:
           fi
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
+      # 音声対話機能（examination#62）のトラブルシュート用
+      - name: Show recent voiceChat Lambda logs
+        run: |
+          SINCE="${{ github.event.inputs.since }}"
+          echo "### examination-bot-prod-voiceChat 直近ログ（過去${SINCE}）"
+          echo "### examination-bot-prod-voiceChat 直近ログ（過去${SINCE}）" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          aws logs tail /aws/lambda/examination-bot-prod-voiceChat --since "$SINCE" --format short \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+            echo "(ログの取得に失敗しました。ロググループが存在しないか、権限不足の可能性があります)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
       # Lambda Function URLの匿名アクセスがAWS側で403 Forbiddenになる問題（examination#52）
       # を受けて、実績のあるAPI Gateway（HTTP API）経由に切り替えた。GitHub Actionsランナー
       # （インターネットに直接アクセス可能）から直接叩き、疎通を確認する
