@@ -210,10 +210,34 @@ function isNo(text) {
   return /^(いいえ|no|NO|キャンセル|やめる)$/i.test(text.trim());
 }
 
-async function handlePracticeStart(lineUserId) {
-  const questions = await listQuestions();
+// ロール選択の返答テキスト -> DynamoDB上のcategory値（examination#60）
+const ROLE_CATEGORIES = {
+  本人: "本人面接",
+  父: "父の保護者面接",
+  父親: "父の保護者面接",
+  お父さん: "父の保護者面接",
+  母: "母の保護者面接",
+  母親: "母の保護者面接",
+  お母さん: "母の保護者面接",
+};
+
+async function handlePracticeAskRole(lineUserId) {
+  await saveSession(lineUserId, { mode: "practice_select_role" });
+  return "誰の面接練習をしますか？「本人」「父」「母」のいずれかを送ってください。";
+}
+
+async function handlePracticeRoleSelected(lineUserId, text) {
+  const category = ROLE_CATEGORIES[text.trim()];
+  if (!category) {
+    return "「本人」「父」「母」のいずれかを送ってください。";
+  }
+  return handlePracticeStart(lineUserId, category);
+}
+
+async function handlePracticeStart(lineUserId, category) {
+  const questions = (await listQuestions()).filter((q) => q.category === category);
   if (questions.length === 0) {
-    return "まだ想定問答が登録されていません。「質問を登録」と送って追加してください。";
+    return `「${category}」の想定問答がまだ登録されていません。「質問を登録」と送って追加してください。`;
   }
   const picked = questions[Math.floor(Math.random() * questions.length)];
   await saveSession(lineUserId, {
@@ -319,10 +343,13 @@ async function handleTextMessage(lineUserId, text) {
   const session = await getSession(lineUserId);
 
   if (text.includes("面接練習")) {
-    return handlePracticeStart(lineUserId);
+    return handlePracticeAskRole(lineUserId);
   }
   if (text.includes("質問を登録") || text.includes("質問登録")) {
     return handleRegisterStart(lineUserId);
+  }
+  if (session.mode === "practice_select_role") {
+    return handlePracticeRoleSelected(lineUserId, text);
   }
   if (session.mode === "practice") {
     return handlePracticeAnswer(lineUserId, session, text);
