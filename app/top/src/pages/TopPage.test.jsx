@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import TopPage from "./TopPage.jsx";
 
 describe("TopPage", () => {
-  it("renders links to all existing pages, React-migrated and MkDocs alike", () => {
+  it("renders links to all existing pages", () => {
     render(<TopPage />);
 
     const expectedHrefs = [
@@ -14,11 +14,6 @@ describe("TopPage", () => {
       "/education/mock-interviews/",
       "/education/voice-practice/",
       "/family/profile/",
-      "/childcare/",
-      "/travel/",
-      "/home/",
-      "/cars/",
-      "/ai/",
       "/settings/allowed-emails/",
       "/settings/line-link/",
     ];
@@ -29,11 +24,21 @@ describe("TopPage", () => {
     }
   });
 
+  it("does not link to the removed sections (保育園・旅行・住まい・車・AI活用)", () => {
+    render(<TopPage />);
+    for (const href of ["/childcare/", "/travel/", "/home/", "/cars/", "/ai/"]) {
+      expect(document.querySelector(`a[href="${href}"]`)).toBeNull();
+    }
+  });
+
   it("shows section headings", () => {
     render(<TopPage />);
     const headingTexts = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    for (const title of ["教育", "家族", "保育園", "旅行", "住まい", "車", "AI活用", "設定"]) {
+    for (const title of ["教育", "家族", "設定"]) {
       expect(headingTexts).toContain(title);
+    }
+    for (const removedTitle of ["保育園", "旅行", "住まい", "車", "AI活用"]) {
+      expect(headingTexts).not.toContain(removedTitle);
     }
   });
 });
