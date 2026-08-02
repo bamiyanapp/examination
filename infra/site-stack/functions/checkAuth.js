@@ -84,6 +84,14 @@ function cookieString(name, value, maxAgeSeconds) {
   return `${name}=${value}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
 }
 
+function isAllowedEmail(email) {
+  return Boolean(email) && config.allowedEmails.includes(String(email).toLowerCase());
+}
+
+function forbiddenResponse() {
+  return { status: "403", statusDescription: "Forbidden", body: "アクセスが許可されていません" };
+}
+
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -145,6 +153,21 @@ exports.handler = async (event) => {
       return { status: "502", statusDescription: "Bad Gateway", body: "authentication failed" };
     }
 
+    let payload;
+    try {
+      ({ payload } = await jwtVerify(tokens.id_token, getJwks(), {
+        issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
+        audience: config.clientId,
+      }));
+    } catch (error) {
+      console.error("id_token verification failed at callback", error.message);
+      return forbiddenResponse();
+    }
+    if (!isAllowedEmail(payload.email)) {
+      console.warn("email not allowed", payload.email);
+      return forbiddenResponse();
+    }
+
     return redirectResponse(`https://${domainName}${originalUri}`, [
       cookieString("id_token", tokens.id_token, tokens.expires_in),
       cookieString("refresh_token", tokens.refresh_token, 60 * 60 * 24 * 30),
@@ -153,15 +176,22 @@ exports.handler = async (event) => {
     ]);
   }
 
-  // 通常のリクエスト: id_tokenの署名・有効期限・audience/issuerを検証する
+  // 通常のリクエスト: id_tokenの署名・有効期限・audience/issuerを検証し、
+  // emailクレームがallowlistに含まれるかも確認する
   const cookies = parseCookies(request.headers);
   if (cookies.id_token) {
     try {
-      await jwtVerify(cookies.id_token, getJwks(), {
+      const { payload } = await jwtVerify(cookies.id_token, getJwks(), {
         issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
         audience: config.clientId,
       });
-      return request;
+      // allowlist外の場合はログイン画面へリダイレクトしない（Googleで
+      // 再ログインしても同じemailが返り無限ループになるため）
+      if (isAllowedEmail(payload.email)) {
+        return request;
+      }
+      console.warn("email not allowed on cached token", payload.email);
+      return forbiddenResponse();
     } catch (error) {
       console.warn("id_token verification failed", error.message);
     }

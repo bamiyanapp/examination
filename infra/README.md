@@ -45,6 +45,12 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 | `GOOGLE_OAUTH_CLIENT_ID` | Google Cloud ConsoleでCognito連携用に作成したOAuthクライアントID |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | 同クライアントシークレット |
 
+### Variables（必須）
+
+| 名前 | 用途 |
+| --- | --- |
+| `ALLOWED_EMAILS` | サイトの閲覧を許可するGoogleアカウントのメールアドレス（カンマ区切り）。`checkAuth.js`がid_tokenの`email`クレームと照合し、含まれないアカウントは403で拒否する |
+
 ### Variables（任意、既定値あり）
 
 | 名前 | 既定値 | 用途 |

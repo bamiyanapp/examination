@@ -80,6 +80,7 @@ jobs:
           COGNITO_CLIENT_ID: ${{ steps.auth-outputs.outputs.client_id }}
           COGNITO_CLIENT_SECRET: ${{ steps.auth-outputs.outputs.client_secret }}
           COGNITO_DOMAIN: ${{ steps.auth-outputs.outputs.cognito_domain }}
+          ALLOWED_EMAILS: ${{ vars.ALLOWED_EMAILS }}
         run: node scripts/generate-config.js
 
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
