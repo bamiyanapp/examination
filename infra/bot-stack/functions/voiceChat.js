@@ -7,8 +7,10 @@ const {
   buildSystemPrompt,
   callGemini,
   parseDualReply,
+  summarizeMockInterview,
 } = require("./geminiConversation");
 const { verifyBearerEmail } = require("./apiAuth");
+const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -40,6 +42,24 @@ exports.handler = async (event) => {
   const schoolCharacteristics = sanitizeFreeText(payload.schoolCharacteristics, "");
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
+
+  // 音声対話ページには（LINEの「終了」コマンドに相当する）練習を終える明示的な
+  // 操作が無かったため、専用のaction値を新設した（examination#93）。会話履歴を
+  // 振り返って模擬面接記録のサマリーを生成・保存する。失敗しても練習の終了自体は
+  // ブロックしない
+  if (payload.action === "end") {
+    if (!hasMeaningfulContent(history)) {
+      return jsonResponse(200, { saved: false });
+    }
+    try {
+      const summary = await summarizeMockInterview({ role, situation, schoolCharacteristics, history });
+      await saveMockInterviewSummary({ role, situation, schoolCharacteristics, channel: "voice", summary, createdBy: email });
+      return jsonResponse(200, { saved: true });
+    } catch (error) {
+      console.error("Mock interview summary failed", error.message);
+      return jsonResponse(200, { saved: false });
+    }
+  }
 
   const messages = [
     { role: "system", content: buildSystemPrompt({ role, situation, schoolCharacteristics }) },

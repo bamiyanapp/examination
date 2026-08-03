@@ -28,6 +28,7 @@ provider:
             - !GetAtt InterviewQuestionsTable.Arn
             - !GetAtt BotSessionsTable.Arn
             - !GetAtt LineLinksTable.Arn
+            - !GetAtt MockInterviewsTable.Arn
         # site-stackが所有するテーブルへのクロススタックアクセス（examination#49）。
         # 別Serverless serviceのため、CloudFormationのFn::ImportValueではなくARNを直接組み立てる。
         # us-east-1に統一済みのため、Resourceのリージョン部分はAWS::Regionでよい
@@ -136,4 +137,23 @@ resources:
         KeySchema:
           - AttributeName: lineUserId
             KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    # 模擬面接記録（examination#93）。練習セッション終了時にAIが会話を振り返って
+    # 生成するサマリーを保存する。familySlugは他テーブルと同じキー設計（複数家族対応
+    # examination#44を見据える）
+    MockInterviewsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-mock-interviews
+        AttributeDefinitions:
+          - AttributeName: familySlug
+            AttributeType: S
+          - AttributeName: sessionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: familySlug
+            KeyType: HASH
+          - AttributeName: sessionId
+            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST

@@ -162,6 +162,27 @@ export default function VoicePractice() {
     }
   }
 
+  async function handleEnd() {
+    setIsBusy(true);
+    try {
+      const res = await fetch(VOICE_CHAT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${voiceTokenRef.current}` },
+        body: JSON.stringify({ role, situation, schoolCharacteristics, history: historyRef.current, action: "end" }),
+      });
+      const data = await res.json();
+      setIsError(false);
+      setStatus(data.saved ? "練習を終了し、今回の振り返りを記録しました。お疲れさまでした。" : "練習を終了しました。お疲れさまでした。");
+    } catch (error) {
+      console.error("Failed to save mock interview summary", error);
+      setIsError(false);
+      setStatus("練習を終了しました。お疲れさまでした。");
+    } finally {
+      setStarted(false);
+      setIsBusy(false);
+    }
+  }
+
   const modelLoadingText =
     sttStatus === "loading"
       ? `音声認識モデルを読み込み中...（${sttProgress}%）`
@@ -235,6 +256,9 @@ export default function VoicePractice() {
               話し終わった
             </button>
           )}
+          <button type="button" onClick={handleEnd} disabled={isRecording || isBusy}>
+            練習を終える
+          </button>
         </div>
       )}
 
