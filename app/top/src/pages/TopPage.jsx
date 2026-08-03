@@ -3,7 +3,9 @@
 // 段階移行中のため、既存ページ（React化済み・MkDocs双方）へのリンクをそのまま束ねる形とし、
 // 各ページ自体の実装（React/Markdown）には手を入れない。/top/でのプレビュー確認の結果、
 // サイトの正式なトップページ（/）として採用した。保育園・旅行・住まい・車・AI活用の各章は
-// 不要と判断され、knowledge/配下のページごと削除した
+// 不要と判断され、knowledge/配下のページごと削除した。家族プロフィールページ（唯一の
+// 「家族」カテゴリ配下ページだった）もexamination#102で不要と判断され削除したため、
+// カテゴリ自体を廃止した
 const SECTIONS = [
   {
     title: "教育",
@@ -14,7 +16,6 @@ const SECTIONS = [
       { label: "音声で面接練習", href: "/education/voice-practice/" },
     ],
   },
-  { title: "家族", links: [{ label: "プロフィール", href: "/family/profile/" }] },
   {
     title: "設定",
     links: [

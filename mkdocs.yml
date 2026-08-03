@@ -48,8 +48,6 @@ nav:
       - 想定問答: education/interview-questions.md
       - 模擬面接記録: education/mock-interviews.md
       - 音声で面接練習: education/voice-practice.md
-  - 家族:
-      - プロフィール: family/profile.md
   - 設定:
       - 閲覧許可メールアドレス管理: settings/allowed-emails.md
       - LINE連携: settings/line-link.md
