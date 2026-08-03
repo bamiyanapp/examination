@@ -23,6 +23,7 @@ export default function VoicePractice() {
   const [role, setRole] = useState("本人");
   const [situation, setSituation] = useState(DEFAULT_SITUATION);
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
+  const [otherContext, setOtherContext] = useState("");
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("");
@@ -57,6 +58,7 @@ export default function VoicePractice() {
         role,
         situation,
         schoolCharacteristics,
+        otherContext,
         history: historyRef.current,
         message: message || undefined,
       }),
@@ -227,6 +229,15 @@ export default function VoicePractice() {
               value={schoolCharacteristics}
               onChange={(event) => setSchoolCharacteristics(event.target.value)}
               placeholder="例: 自由な校風で、生徒の主体性を重視する"
+              rows={3}
+            />
+          </label>
+          <label>
+            その他前提情報（任意）:
+            <textarea
+              value={otherContext}
+              onChange={(event) => setOtherContext(event.target.value)}
+              placeholder="例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"
               rows={3}
             />
           </label>

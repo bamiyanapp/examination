@@ -93,6 +93,20 @@ describe("VoicePractice", () => {
     expect(sentBody.schoolCharacteristics).toBe("チームワークを重視する社風");
   });
 
+  it("sends the other context field when starting (examination#76)", async () => {
+    mockTokenAndOpening("自己PRをお願いします。");
+
+    render(<VoicePractice />);
+    fireEvent.change(screen.getByPlaceholderText(/志望先の特色欄では書ききれない/), {
+      target: { value: "妹がいる4人家族" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
+
+    await waitFor(() => screen.getByText("自己PRをお願いします。"));
+    const sentBody = JSON.parse(global.fetch.mock.calls[1][1].body);
+    expect(sentBody.otherContext).toBe("妹がいる4人家族");
+  });
+
   it("records, transcribes with Whisper, and shows the user's speech and the AI reply as separate bubbles", async () => {
     mockTokenAndOpening("好きな遊びは何ですか？");
     mockTranscribe.mockResolvedValue("公園でおにごっこをします");

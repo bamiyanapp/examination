@@ -40,6 +40,8 @@ exports.handler = async (event) => {
   }
   const situation = sanitizeFreeText(payload.situation, DEFAULT_SITUATION);
   const schoolCharacteristics = sanitizeFreeText(payload.schoolCharacteristics, "");
+  // 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
+  const otherContext = sanitizeFreeText(payload.otherContext, "");
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
 
@@ -62,7 +64,7 @@ exports.handler = async (event) => {
   }
 
   const messages = [
-    { role: "system", content: buildSystemPrompt({ role, situation, schoolCharacteristics }) },
+    { role: "system", content: buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext }) },
     ...history,
   ];
   if (userMessage) {
