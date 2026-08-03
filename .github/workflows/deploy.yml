@@ -34,6 +34,7 @@ jobs:
             app/voice-practice/package-lock.json
             app/top/package-lock.json
             app/interview-questions/package-lock.json
+            app/education-overview/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -89,6 +90,18 @@ jobs:
           rm -rf ../../site/education/interview-questions
           mkdir -p ../../site/education/interview-questions
           cp -r dist/. ../../site/education/interview-questions/
+
+      # 教育セクションの概要ページ（examination#92）。鈴木家固有の情報（家族名入りの
+      # チェックリスト等）を排除し、汎用的な方法論のみを残した。site/education/配下には
+      # mkdocsが生成したmock-interviews/等の他ページや、既にビルド済みのinterview-questions/・
+      # voice-practice/が既に存在するため、他ページのようなrm -rfは行わずcp -rのみで
+      # index.htmlとアセットを上書きする
+      - name: Build and embed the React app (教育: 受験の面接対策)
+        working-directory: app/education-overview
+        run: |
+          npm ci
+          npm run build
+          cp -r dist/. ../../site/education/
 
       # トップページ（examination#82）。/top/でのプレビュー確認を経て、MkDocsが生成した
       # サイトルート（/、knowledge/index.md）を正式に上書きする。site/配下の他のファイルは
