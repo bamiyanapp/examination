@@ -22,6 +22,15 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 2回目以降の通常デプロイでは、手順1で既に正しいドメインが取れているため、手順5は実行されない（何も変更が無いため`serverless deploy`は差分なしで即座に完了する）。
 
+## サイトのキャッシュ戦略（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）
+
+`.github/workflows/deploy.yml`の「Sync site to S3」ステップは、`aws s3 sync`を2回に分けて実行し、ファイル種別ごとに異なる`Cache-Control`ヘッダーを明示的に付与する（静的サイト配信の標準的な戦略）。
+
+- `*assets/*`配下（各Reactアプリ・MkDocs Materialテーマのハッシュ付きJS/CSS。ただし`favicon`は除く）: `public, max-age=31536000, immutable`。内容が変わればファイル名（コンテンツハッシュ）自体が変わるため、長期不変キャッシュにしてよい
+- それ以外（`index.html`・`search/search_index.json`・`favicon.svg`等）: `no-cache`。内容が変わってもファイル名が変わらないため、CloudFront・ブラウザともに使用前に必ずオリジンへ再検証（条件付きGET）させる
+
+**このヘッダーを明示的に指定していなかったこと自体が、PWAとして開いた際にサイト更新が反映されない不具合の根本原因だった**（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）。S3はデフォルトで`Cache-Control`を付与せず、CloudFrontの`DefaultCacheBehavior`（`Managed-CachingOptimized`）はオリジンがヘッダーを返さない場合`DefaultTTL`（1日）でエッジキャッシュする。デプロイ時の`aws cloudfront create-invalidation --paths "/*"`はCloudFrontのエッジキャッシュのみを無効化し、ユーザーのブラウザ本体のキャッシュ（ホーム画面に追加した状態では通常のリロード操作が効きにくい）までは無効化しない。この問題はService Worker等を新設せず、キャッシュヘッダーの是正のみで解消する方針とした。
+
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
 CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め全リクエストで実行される）で動作する。
