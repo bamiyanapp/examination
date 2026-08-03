@@ -11,7 +11,6 @@ const PREFETCH_URLS = [
   "/education/",
   "/education/interview-questions/",
   "/education/mock-interviews/",
-  "/family/profile/",
   "/settings/allowed-emails/",
   "/settings/line-link/",
 ];

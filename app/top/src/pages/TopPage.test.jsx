@@ -11,7 +11,6 @@ describe("TopPage", () => {
       "/education/interview-questions/",
       "/education/mock-interviews/",
       "/education/voice-practice/",
-      "/family/profile/",
       "/settings/allowed-emails/",
       "/settings/line-link/",
     ];
@@ -39,11 +38,16 @@ describe("TopPage", () => {
   it("shows section headings", () => {
     render(<TopPage />);
     const headingTexts = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    for (const title of ["教育", "家族", "設定"]) {
+    for (const title of ["教育", "設定"]) {
       expect(headingTexts).toContain(title);
     }
-    for (const removedTitle of ["保育園", "旅行", "住まい", "車", "AI活用"]) {
+    for (const removedTitle of ["保育園", "旅行", "住まい", "車", "AI活用", "家族"]) {
       expect(headingTexts).not.toContain(removedTitle);
     }
+  });
+
+  it("does not link to the removed family profile page (examination#102)", () => {
+    render(<TopPage />);
+    expect(document.querySelector('a[href="/family/profile/"]')).toBeNull();
   });
 });

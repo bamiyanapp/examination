@@ -28,8 +28,7 @@
 │   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 └── knowledge/
     ├── index.md          # サイトのホーム（app/top/のビルド成果物で上書きされる）
-    ├── education/         # 小学校受験対策（想定問答・模擬面接記録）
-    └── family/             # 家族プロフィール
+    └── education/         # 小学校受験対策（想定問答・模擬面接記録）
 ```
 
 ## サイトのローカル確認
@@ -54,7 +53,3 @@ npm run dev
 3. 練習セッションを終えると、AIが会話を振り返ったサマリー（よかった点・改善が必要な点・次回までのアクション）を自動生成しDynamoDB（`examination-mock-interviews`）へ記録する（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）。閲覧は`/education/mock-interviews/`（React）で行う（[Issue #103](https://github.com/bamiyanapp/examination/issues/103)）
 4. 記録をもとに想定問答の回答案を更新する
 5. 2〜4を本番まで繰り返す
-
-## 家族構成
-
-家族構成は[knowledge/family/profile.md](knowledge/family/profile.md)を参照してください。
