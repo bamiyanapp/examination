@@ -10,6 +10,7 @@ MkDocs静的サイトの`/education/voice-practice/`パスへビルド成果物�
   - STT: `@huggingface/transformers`（transformers.js）+ `onnx-community/kotoba-whisper-v2.2-ONNX`。Web Worker（`src/stt/whisperWorker.js`）内で推論し、メインスレッドをブロックしない
   - TTS: `piper-plus` + `ayousanz/piper-plus-css10-ja-6lang`（CSS10由来、パブリックドメインライセンス）
   - 初回利用時にモデルのダウンロードが発生する（ブラウザにキャッシュされ、以降は再ダウンロード不要）。録音の開始・終了は手動操作（ボタン押下）で行う
+- 「練習を終える」ボタンを押すと、会話履歴をAIが振り返り「よかった点」「改善が必要な点」「次回までのアクション」形式のサマリーを生成してDynamoDB（`examination-mock-interviews`）へ保存する（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）。何も答えないまま終了した場合は保存しない
 
 ## ローカル確認
 

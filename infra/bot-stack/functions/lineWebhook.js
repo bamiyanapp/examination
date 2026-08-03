@@ -17,7 +17,9 @@ const {
   buildSystemPrompt,
   callGemini,
   parseDualReply,
+  summarizeMockInterview,
 } = require("./geminiConversation");
+const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
 
 const { FAMILY_SLUG } = require("./familyConfig");
 
@@ -227,8 +229,20 @@ async function handlePracticeCharacteristicsEntered(lineUserId, session, text) {
 
 async function handlePracticeTurn(lineUserId, session, text) {
   if (PRACTICE_EXIT_PATTERN.test(text.trim())) {
+    const practiceState = session.practiceState;
     await clearSession(lineUserId);
-    return "面接練習を終了しました。お疲れさまでした。";
+    if (!hasMeaningfulContent(practiceState.history)) {
+      return "面接練習を終了しました。お疲れさまでした。";
+    }
+    // 会話の振り返り（examination#93）。失敗しても練習の終了自体はブロックしない
+    try {
+      const summary = await summarizeMockInterview(practiceState);
+      await saveMockInterviewSummary({ ...practiceState, channel: "line", summary, createdBy: lineUserId });
+      return "面接練習を終了しました。今回の振り返りを記録しました。お疲れさまでした。";
+    } catch (error) {
+      console.error("Mock interview summary failed", error.message);
+      return "面接練習を終了しました。振り返りの記録には失敗しましたが、お疲れさまでした。";
+    }
   }
   const practiceState = session.practiceState;
   const messages = [

@@ -244,6 +244,17 @@ jobs:
           AWS_REGION: us-east-1
         run: node scripts/seed-interview-questions.js
 
+      # knowledge/education/mock-interviews.mdの既存記録をDynamoDBへ一度きり移行する
+      # （examination#93）。familySlug・createdAt・roleから決定的なsessionIdを生成する
+      # ため、毎回実行しても同じ行を上書きするだけで重複は増えない。今後の新規記録は
+      # 練習セッション終了時にlineWebhook.js/voiceChat.jsが直接DynamoDBへ保存するため、
+      # このMarkdownファイル自体は今後更新しない
+      - name: Sync mock interview records from Markdown (one-time migration)
+        working-directory: infra/bot-stack
+        env:
+          AWS_REGION: us-east-1
+        run: node scripts/seed-mock-interviews.js
+
       # Lambda Function URLの匿名アクセスがこのAWSアカウントでは403 Forbiddenになる問題
       # （examination#52）のため、実績のあるAPI Gateway（HTTP API）経由に切り替えた
       - name: Show LINE bot webhook URL

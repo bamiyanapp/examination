@@ -170,6 +170,31 @@ async function callGemini(messages) {
   return text;
 }
 
+// 練習セッション終了時、会話履歴を振り返って模擬面接記録のサマリーを生成する
+// （examination#93）。既存の記録フォーマット（knowledge/education/mock-interviews.md）
+// を踏襲し「よかった点」「改善が必要な点」「次回までのアクション」の3項目でまとめる。
+// このサマリーは音声で読み上げず記録として保存するだけのため、buildSystemPrompt/
+// parseDualReplyのような二形式JSON出力は不要（読みやすさのため箇条書きも許容する）
+function buildSummaryPrompt({ role, situation, schoolCharacteristics, history }) {
+  const roleDescription = ROLE_DESCRIPTIONS[role] || role;
+  const transcript = (history || [])
+    .map((message) => `${message.role === "user" ? "回答者" : "面接官"}: ${message.content}`)
+    .join("\n");
+  const characteristicsText = schoolCharacteristics ? `志望先の特色: ${schoolCharacteristics}。` : "";
+  return (
+    `以下は${situation}の練習会話です。相手は${roleDescription}です。${characteristicsText}` +
+    "この会話を振り返り、模擬面接の記録として「よかった点」「改善が必要な点」「次回までのアクション」の" +
+    "3項目で日本語のサマリーを作成してください。各項目は「・」で始まる箇条書きで、実際の発言内容に" +
+    "具体的に触れながらまとめてください。出力はこの3項目のみとし、前置き・後書きは不要です。\n\n" +
+    `会話内容:\n${transcript}`
+  );
+}
+
+async function summarizeMockInterview({ role, situation, schoolCharacteristics, history }) {
+  const prompt = buildSummaryPrompt({ role, situation, schoolCharacteristics, history });
+  return callGemini([{ role: "user", content: prompt }]);
+}
+
 module.exports = {
   postJson,
   ROLE_DESCRIPTIONS,
@@ -178,4 +203,5 @@ module.exports = {
   buildSystemPrompt,
   callGemini,
   parseDualReply,
+  summarizeMockInterview,
 };
