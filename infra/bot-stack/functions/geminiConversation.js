@@ -64,16 +64,19 @@ function postJson(hostname, path, headers, bodyObj) {
   });
 }
 
-function buildSystemPrompt({ role, situation, schoolCharacteristics }) {
+function buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext }) {
   const roleDescription = ROLE_DESCRIPTIONS[role];
   const characteristicsText = schoolCharacteristics
     ? `志望先の特色は次の通りです。${schoolCharacteristics}。これを踏まえた質問も交えてください。`
     : "";
+  // 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
+  const otherContextText = otherContext ? `その他、踏まえるべき前提情報は次の通りです。${otherContext}。` : "";
   return (
     `あなたは${situation}の面接官です。相手は` +
     roleDescription +
     "です。" +
     characteristicsText +
+    otherContextText +
     "一度に1つだけ質問してください。相手の回答に対しては、良かった点や、より良い模範解答・" +
     "具体的な改善ポイントを示すフィードバックをしてから、自然に次の質問へ進めてください。" +
     "質問は面接でよく聞かれる内容（志望動機、家庭の様子、本人の性格や好きなこと等）から" +

@@ -208,7 +208,17 @@ async function handlePracticeSituationEntered(lineUserId, session, text) {
 
 async function handlePracticeCharacteristicsEntered(lineUserId, session, text) {
   const schoolCharacteristics = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
-  const practiceState = { ...session.practiceState, schoolCharacteristics };
+  await saveSession(lineUserId, {
+    mode: "practice_select_other_context",
+    practiceState: { ...session.practiceState, schoolCharacteristics },
+  });
+  return "その他、AIに伝えておきたい前提情報があれば教えてください（無ければ「なし」と送ってください）。";
+}
+
+// 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
+async function handlePracticeOtherContextEntered(lineUserId, session, text) {
+  const otherContext = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
+  const practiceState = { ...session.practiceState, otherContext };
   let rawReply;
   try {
     rawReply = await callGemini([{ role: "system", content: buildSystemPrompt(practiceState) }]);
@@ -358,6 +368,9 @@ async function handleTextMessage(lineUserId, text) {
   }
   if (session.mode === "practice_select_characteristics") {
     return handlePracticeCharacteristicsEntered(lineUserId, session, text);
+  }
+  if (session.mode === "practice_select_other_context") {
+    return handlePracticeOtherContextEntered(lineUserId, session, text);
   }
   if (session.mode === "practice") {
     return handlePracticeTurn(lineUserId, session, text);
