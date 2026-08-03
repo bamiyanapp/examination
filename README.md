@@ -21,7 +21,8 @@
 │   ├── line-link/                       # LINE連携（/settings/line-link/）
 │   ├── allowed-emails/                  # 閲覧許可メールアドレス管理（/settings/allowed-emails/）
 │   ├── voice-practice/                  # 音声で面接練習（/education/voice-practice/）
-│   └── interview-questions/             # 想定問答（/education/interview-questions/、Issue #77）
+│   ├── interview-questions/             # 想定問答（/education/interview-questions/、Issue #77）
+│   └── education-overview/              # 教育セクションの概要（/education/、Issue #92）
 ├── docs/
 │   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 └── knowledge/
