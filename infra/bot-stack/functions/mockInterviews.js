@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
-const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, PutItemCommand, QueryCommand } = require("@aws-sdk/client-dynamodb");
 const { FAMILY_SLUG } = require("./familyConfig");
 
 const MOCK_INTERVIEWS_TABLE = "examination-mock-interviews";
@@ -36,4 +36,30 @@ async function saveMockInterviewSummary({ role, situation, schoolCharacteristics
   return sessionId;
 }
 
-module.exports = { hasMeaningfulContent, saveMockInterviewSummary };
+function toSummary(item) {
+  return {
+    sessionId: item.sessionId?.S || "",
+    role: item.role?.S || "",
+    situation: item.situation?.S || "",
+    schoolCharacteristics: item.schoolCharacteristics?.S || "",
+    channel: item.channel?.S || "",
+    summary: item.summary?.S || "",
+    createdAt: item.createdAt?.S || "",
+  };
+}
+
+// 模擬面接記録の一覧取得（examination#103）。app/mock-interviews/がブラウザから
+// 直接呼ぶ読み取り専用API。新しい記録ほど先に表示したいので降順で返す
+async function listMockInterviewSummaries() {
+  const result = await ddb.send(
+    new QueryCommand({
+      TableName: MOCK_INTERVIEWS_TABLE,
+      KeyConditionExpression: "familySlug = :slug",
+      ExpressionAttributeValues: { ":slug": { S: FAMILY_SLUG } },
+      ScanIndexForward: false,
+    })
+  );
+  return (result.Items || []).map(toSummary);
+}
+
+module.exports = { hasMeaningfulContent, saveMockInterviewSummary, listMockInterviewSummaries };
