@@ -88,6 +88,17 @@ functions:
           path: /interview-questions
           method: GET
 
+  # 模擬面接記録の一覧取得API（examination#103）。app/mock-interviews/がブラウザから
+  # 直接呼ぶ読み取り専用API。interviewQuestionsと同じ短期トークンで認証する
+  mockInterviewsApi:
+    handler: functions/mockInterviewsApi.handler
+    memorySize: 256
+    timeout: 10
+    events:
+      - httpApi:
+          path: /mock-interviews
+          method: GET
+
 resources:
   Resources:
     # 面接想定問答（ユーザー登録データ）。familySlugは複数家族対応(examination#44)を
