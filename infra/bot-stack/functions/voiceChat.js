@@ -1,6 +1,13 @@
 "use strict";
 
-const { ROLE_DESCRIPTIONS, DEFAULT_SITUATION, sanitizeFreeText, buildSystemPrompt, callGemini } = require("./geminiConversation");
+const {
+  ROLE_DESCRIPTIONS,
+  DEFAULT_SITUATION,
+  sanitizeFreeText,
+  buildSystemPrompt,
+  callGemini,
+  parseDualReply,
+} = require("./geminiConversation");
 const { verifyBearerEmail } = require("./apiAuth");
 
 function jsonResponse(statusCode, body) {
@@ -42,17 +49,21 @@ exports.handler = async (event) => {
     messages.push({ role: "user", content: userMessage });
   }
 
-  let reply;
+  let rawReply;
   try {
-    reply = await callGemini(messages);
+    rawReply = await callGemini(messages);
   } catch (error) {
     console.error("Gemini call failed", error.message);
     return jsonResponse(502, { error: "AI応答の生成に失敗しました" });
   }
+  // 音声で読み上げる内容（voice）とチャット画面に表示する内容（text）を分けて
+  // 生成させる（examination#89）。読み上げ・表示にはvoiceを使い、次ターンの
+  // Geminiへの入力コンテキストにはより詳しいtextを記録する
+  const { voice, text: textReply } = parseDualReply(rawReply);
 
   const updatedHistory = userMessage
-    ? [...history, { role: "user", content: userMessage }, { role: "assistant", content: reply }]
-    : [...history, { role: "assistant", content: reply }];
+    ? [...history, { role: "user", content: userMessage }, { role: "assistant", content: textReply }]
+    : [...history, { role: "assistant", content: textReply }];
 
-  return jsonResponse(200, { reply, history: updatedHistory });
+  return jsonResponse(200, { reply: voice, history: updatedHistory });
 };
