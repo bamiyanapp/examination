@@ -16,6 +16,7 @@ const {
   sanitizeFreeText,
   buildSystemPrompt,
   callGemini,
+  parseDualReply,
 } = require("./geminiConversation");
 
 const { FAMILY_SLUG } = require("./familyConfig");
@@ -206,14 +207,17 @@ async function handlePracticeSituationEntered(lineUserId, session, text) {
 async function handlePracticeCharacteristicsEntered(lineUserId, session, text) {
   const schoolCharacteristics = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
   const practiceState = { ...session.practiceState, schoolCharacteristics };
-  let reply;
+  let rawReply;
   try {
-    reply = await callGemini([{ role: "system", content: buildSystemPrompt(practiceState) }]);
+    rawReply = await callGemini([{ role: "system", content: buildSystemPrompt(practiceState) }]);
   } catch (error) {
     console.error("Gemini call failed (practice start)", error.message);
     await clearSession(lineUserId);
     return "面接練習の開始に失敗しました。もう一度「面接練習」と送ってやり直してください。";
   }
+  // LINEはテキスト表示のみのため、模範解答・改善ポイントを含む詳しいtext版を使う
+  // （examination#89。音声対話ページはvoice版を使う、voiceChat.js参照）
+  const { text: reply } = parseDualReply(rawReply);
   await saveSession(lineUserId, {
     mode: "practice",
     practiceState: { ...practiceState, history: [{ role: "assistant", content: reply }] },
@@ -232,13 +236,14 @@ async function handlePracticeTurn(lineUserId, session, text) {
     ...practiceState.history,
     { role: "user", content: text },
   ];
-  let reply;
+  let rawReply;
   try {
-    reply = await callGemini(messages);
+    rawReply = await callGemini(messages);
   } catch (error) {
     console.error("Gemini call failed (practice turn)", error.message);
     return "フィードバックの生成に失敗しました。もう一度お試しください。";
   }
+  const { text: reply } = parseDualReply(rawReply);
   const updatedHistory = [
     ...practiceState.history,
     { role: "user", content: text },

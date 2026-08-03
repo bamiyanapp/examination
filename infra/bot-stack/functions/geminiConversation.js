@@ -74,11 +74,71 @@ function buildSystemPrompt({ role, situation, schoolCharacteristics }) {
     roleDescription +
     "です。" +
     characteristicsText +
-    "一度に1つだけ質問してください。相手の回答には親しみやすい口調で一言フィードバックしてから、" +
-    "自然に次の質問へ進めてください。質問は面接でよく聞かれる内容（志望動機、家庭の様子、" +
-    "本人の性格や好きなこと等）から選んでください。簡潔な日本語の文章のみで答え、記号や" +
-    "箇条書きは使わないでください。"
+    "一度に1つだけ質問してください。相手の回答に対しては、良かった点や、より良い模範解答・" +
+    "具体的な改善ポイントを示すフィードバックをしてから、自然に次の質問へ進めてください。" +
+    "質問は面接でよく聞かれる内容（志望動機、家庭の様子、本人の性格や好きなこと等）から" +
+    "選んでください。まだ相手の回答が無い最初のターンでは、フィードバックは不要です。\n\n" +
+    "出力は必ず次のJSON形式のみとし、他の文章を含めないでください。\n" +
+    '{"voice": "音声で読み上げる自然な話し言葉。記号や箇条書きは使わず簡潔に。", ' +
+    '"text": "チャットで読む用の詳しい内容。模範解答や改善ポイントを具体的に含めてよい。"}\n\n' +
+    "voice・textのどちらも、（該当する場合の）フィードバックと次の質問の両方を含めてください。"
   );
+}
+
+// フィードバック＋次の質問という複数文を1つのJSON文字列値に収めると、Geminiが
+// 段落区切りとして「\n」ではなく生の改行文字をそのまま出力することがあり、
+// 通常のJSON.parseでは失敗する。文字列リテラル内にいる間だけ改行等の制御文字を
+// エスケープしてから渡すことで、この頻発するケースを救う
+function escapeControlCharsInJsonStrings(raw) {
+  let result = "";
+  let inString = false;
+  let escapedNext = false;
+  for (const ch of raw) {
+    if (!inString) {
+      if (ch === '"') inString = true;
+      result += ch;
+      continue;
+    }
+    if (escapedNext) {
+      result += ch;
+      escapedNext = false;
+    } else if (ch === "\\") {
+      result += ch;
+      escapedNext = true;
+    } else if (ch === '"') {
+      result += ch;
+      inString = false;
+    } else if (ch === "\n") {
+      result += "\\n";
+    } else if (ch === "\r") {
+      result += "\\r";
+    } else if (ch === "\t") {
+      result += "\\t";
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+// buildSystemPromptの指示に従いGeminiが返す二形式（voice: 音声用の簡潔な話し言葉、
+// text: チャット表示用の詳しい内容）のJSONをパースする（examination#89）。
+// 音声で読み上げる内容とLINE/チャットで表示する内容は最適な情報量が異なるため、
+// 1回のGemini呼び出しで両方を生成させ、呼び出し側（voiceChat.js/lineWebhook.js）が
+// チャネルに応じて使い分ける。Geminiが厳密なJSON以外を返した場合は、生テキストを
+// 両方にフォールバックさせ、致命的なエラーにしない
+function parseDualReply(rawText) {
+  try {
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const jsonText = escapeControlCharsInJsonStrings(jsonMatch ? jsonMatch[0] : rawText);
+    const parsed = JSON.parse(jsonText);
+    if (typeof parsed.voice === "string" && typeof parsed.text === "string") {
+      return { voice: parsed.voice, text: parsed.text };
+    }
+  } catch {
+    // フォールバックへ
+  }
+  return { voice: rawText, text: rawText };
 }
 
 // messages形式（role: system/user/assistant）をGeminiのcontents形式に変換して呼ぶ。
@@ -117,4 +177,5 @@ module.exports = {
   sanitizeFreeText,
   buildSystemPrompt,
   callGemini,
+  parseDualReply,
 };
