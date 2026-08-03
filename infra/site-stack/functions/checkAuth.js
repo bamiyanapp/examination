@@ -9,6 +9,7 @@ const {
   PutItemCommand,
   DeleteItemCommand,
   ScanCommand,
+  UpdateItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
@@ -18,6 +19,11 @@ const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
 const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const VOICE_TOKEN_TTL_SECONDS = 60 * 60;
+const VOICE_TOKEN_ISSUANCE_TABLE = "examination-voice-token-issuance";
+// 誤操作・アカウント乗っ取り等でGemini API呼び出しが想定外に増えるリスクを抑える
+// ための1日あたりの発行上限（examination#69）。運用しながら調整できるよう定数として
+// 分離する
+const VOICE_TOKEN_DAILY_LIMIT = 20;
 // checkAuth.jsはLambda@Edgeとしてus-east-1にのみデプロイされ、テーブルも同じ
 // スタック（us-east-1）内に存在するためリージョンを固定する
 const ddb = new DynamoDBClient({ region: "us-east-1" });
@@ -306,6 +312,42 @@ async function handleLinkLineApi(request) {
   return jsonResponse(200, "OK", { code, expiresInSeconds: LINE_LINK_CODE_TTL_SECONDS });
 }
 
+function todayDateKey() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+}
+
+// メールアドレス×当日日付の発行回数をアトミックにインクリメントし、上限を超えていないか
+// 確認する（examination#69）。DynamoDBのUpdateItem（ADD + ConditionExpression）は
+// 単一リクエストで読み取り・条件判定・更新を行うため、同時に複数のトークン発行リクエストが
+// 来ても二重カウントや上限のすり抜けが起きない
+async function incrementAndCheckVoiceTokenIssuance(email) {
+  const key = `${email}#${todayDateKey()}`;
+  // 日付境界をまたいだ集計漏れを避けるため、TTLは1日分に余裕(1時間)を持たせる
+  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60 * 25;
+  try {
+    await ddb.send(
+      new UpdateItemCommand({
+        TableName: VOICE_TOKEN_ISSUANCE_TABLE,
+        Key: { emailDate: { S: key } },
+        UpdateExpression: "ADD #count :one SET expiresAt = :expiresAt",
+        ConditionExpression: "attribute_not_exists(#count) OR #count < :limit",
+        ExpressionAttributeNames: { "#count": "count" },
+        ExpressionAttributeValues: {
+          ":one": { N: "1" },
+          ":limit": { N: String(VOICE_TOKEN_DAILY_LIMIT) },
+          ":expiresAt": { N: String(expiresAt) },
+        },
+      })
+    );
+    return true;
+  } catch (error) {
+    if (error.name === "ConditionalCheckFailedException") {
+      return false;
+    }
+    throw error;
+  }
+}
+
 // 音声対話ページ（クロスオリジンのbot-stack API）用の短期トークンを発行する
 // （examination#62）。HttpOnlyのid_tokenクッキーはクロスオリジンでは送られないため、
 // 同一オリジンのこのAPIでログイン中のユーザーを確認した上でBearerトークンを発行し、
@@ -321,6 +363,14 @@ async function handleVoiceTokenApi(request) {
   }
   if (request.method !== "POST") {
     return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
+  }
+
+  // 1日あたりの発行上限チェック（examination#69）。誤操作やアカウント乗っ取り等で
+  // Gemini API呼び出しが想定外に増えるリスクを抑える
+  if (!(await incrementAndCheckVoiceTokenIssuance(requesterEmail))) {
+    return jsonResponse(429, "Too Many Requests", {
+      error: `本日の発行上限（${VOICE_TOKEN_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`,
+    });
   }
 
   const token = crypto.randomBytes(32).toString("hex");

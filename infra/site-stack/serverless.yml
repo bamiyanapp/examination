@@ -24,6 +24,11 @@ provider:
             - !GetAtt AllowedEmailsTable.Arn
             - !GetAtt LineLinkCodesTable.Arn
             - !GetAtt VoiceTokensTable.Arn
+        - Effect: Allow
+          Action:
+            - dynamodb:UpdateItem
+          Resource:
+            - !GetAtt VoiceTokenIssuanceTable.Arn
 
 functions:
   checkAuth:
@@ -82,6 +87,24 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: token
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+
+    # /_voice-tokenの1日あたりの発行回数カウンタ（examination#69）。パーティションキーは
+    # "email#YYYY-MM-DD"の複合文字列とし、UpdateItem(ADD + ConditionExpression)で
+    # アトミックにインクリメント・上限判定する。TTLで日付が変わった古いカウンタを自動失効させる
+    VoiceTokenIssuanceTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-voice-token-issuance
+        AttributeDefinitions:
+          - AttributeName: emailDate
+            AttributeType: S
+        KeySchema:
+          - AttributeName: emailDate
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:
