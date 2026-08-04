@@ -4,6 +4,8 @@
 
 MkDocs静的サイトの`/education/interview-questions/`パスへビルド成果物を上書き配置する。実装本体は`src/pages/InterviewQuestions.jsx`。
 
+見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
+
 - 旧: 本人/父/母で分かれていた`knowledge/education/interview-yosuke.md`・`interview-tomoyo.md`・`interview-ritsu.md`の3ページをMkDocsで個別表示していたのをやめ、1画面に統合した
 - データはDynamoDB（`examination-interview-questions`、bot-stackの`GET /interview-questions` API）が唯一の正本。対象者（本人/父/母）で絞り込み表示できる
 

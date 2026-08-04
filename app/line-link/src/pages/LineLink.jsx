@@ -28,22 +28,34 @@ export default function LineLink() {
   }
 
   return (
-    <main>
-      <h1>LINE連携</h1>
-      <p>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-bold">LINE連携</h1>
+      <p className="mt-2 text-base-content/70">
         LINE
         botで面接練習・想定問答の登録を行うには、あなたのGoogleアカウントとLINEアカウントを連携する必要があります。
       </p>
-      <ol>
-        <li>下のボタンでワンタイムコードを発行する</li>
-        <li>発行されたコード（6桁の数字）を、LINE公式アカウントへそのままメッセージとして送信する</li>
-        <li>連携完了のメッセージが届けば準備完了です</li>
-      </ol>
-      <p>コードの有効期限は10分です。期限が切れた場合は、もう一度ボタンを押して発行し直してください。</p>
-      <button type="button" onClick={issueCode} disabled={isIssuing}>
-        コードを発行
-      </button>
-      <p style={{ color: isError ? "crimson" : undefined }}>{status}</p>
+      <div className="card card-border mt-6 bg-base-100">
+        <div className="card-body">
+          <ol className="flex list-inside list-decimal flex-col gap-1">
+            <li>下のボタンでワンタイムコードを発行する</li>
+            <li>発行されたコード（6桁の数字）を、LINE公式アカウントへそのままメッセージとして送信する</li>
+            <li>連携完了のメッセージが届けば準備完了です</li>
+          </ol>
+          <p className="text-sm text-base-content/70">
+            コードの有効期限は10分です。期限が切れた場合は、もう一度ボタンを押して発行し直してください。
+          </p>
+          <div className="card-actions">
+            <button type="button" onClick={issueCode} disabled={isIssuing} className="btn btn-primary">
+              コードを発行
+            </button>
+          </div>
+          {status && (
+            <div role="alert" className={`alert ${isError ? "alert-error" : "alert-info"}`}>
+              <span>{status}</span>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

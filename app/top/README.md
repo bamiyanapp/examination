@@ -4,6 +4,8 @@
 
 `/top/`でのプレビュー確認を経て、正式なトップページとして採用した。既存の各ページ（React化済み・MkDocs双方）へのリンク一覧を提供する。
 
+見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
+
 ## ローカル確認
 
 ```

@@ -27,21 +27,33 @@ const SECTIONS = [
 
 export default function TopPage() {
   return (
-    <main>
-      <h1>小学校受験対策</h1>
-      <p>家族向けナレッジベースです。カテゴリからページを選んでください。</p>
-      {SECTIONS.map((section) => (
-        <div className="section" key={section.title}>
-          <h2>{section.title}</h2>
-          <ul>
-            {section.links.map((link) => (
-              <li key={link.href}>
-                <a href={link.href}>{link.label}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold">小学校受験対策</h1>
+        <p className="mt-2 text-base-content/70">家族向けナレッジベースです。カテゴリからページを選んでください。</p>
+      </div>
+      <div className="flex flex-col gap-8">
+        {SECTIONS.map((section) => (
+          <section key={section.title}>
+            <h2 className="mb-3 text-lg font-semibold">{section.title}</h2>
+            <ul className="flex flex-col gap-2">
+              {section.links.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    className="card card-border bg-base-100 transition-colors hover:border-primary"
+                  >
+                    <div className="card-body flex-row items-center justify-between px-4 py-3">
+                      <span>{link.label}</span>
+                      <span className="text-base-content/40">→</span>
+                    </div>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }

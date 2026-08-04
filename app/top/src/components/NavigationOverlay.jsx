@@ -19,8 +19,12 @@ export default function NavigationOverlay() {
   }, []);
 
   return (
-    <div id="nav-overlay" className="nav-overlay" aria-hidden="true">
-      <div className="nav-overlay-spinner" />
+    <div
+      id="nav-overlay"
+      className="nav-overlay hidden fixed inset-0 z-50 items-center justify-center bg-base-100/80"
+      aria-hidden="true"
+    >
+      <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   );
 }

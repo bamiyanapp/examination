@@ -4,6 +4,8 @@
 
 MkDocs静的サイトの`/settings/allowed-emails/`パスへビルド成果物を上書き配置する。実装本体は`src/pages/AllowedEmails.jsx`。
 
+見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
+
 ## ローカル確認
 
 ```
