@@ -174,81 +174,96 @@ export default function VoicePractice() {
   }
 
   return (
-    <main>
-      <h1>音声で面接練習</h1>
-      <p>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-bold">音声で面接練習</h1>
+      <p className="mt-2 text-base-content/70">
         ブラウザの音声認識・音声合成機能を使って、声に出しながら面接練習ができます。マイクとスピーカーが使えるスマートフォン・PCのブラウザで利用してください。
       </p>
-      <ul>
+      <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
         <li>音声認識・音声合成はブラウザ標準機能を使うため追加費用はかかりません</li>
         <li>対応ブラウザ: Google Chrome、Microsoft Edge等（Safari・Firefoxは音声認識に対応していない場合があります）</li>
         <li>LINE botの面接練習とは別の、ブラウザだけで完結する会話形式の練習です</li>
       </ul>
 
       {!started ? (
-        <div>
-          <label>
-            ロール:
-            <select value={role} onChange={(event) => setRole(event.target.value)}>
-              <option value="本人">本人</option>
-              <option value="父">父</option>
-              <option value="母">母</option>
-            </select>
-          </label>
-          <label>
-            シチュエーション:
-            <input
-              type="text"
-              value={situation}
-              onChange={(event) => setSituation(event.target.value)}
-              placeholder="例: 小学校受験の面接、就職の面接、大学入試の面接"
-            />
-          </label>
-          <label>
-            志望先の特色（任意）:
-            <textarea
-              value={schoolCharacteristics}
-              onChange={(event) => setSchoolCharacteristics(event.target.value)}
-              placeholder="例: 自由な校風で、生徒の主体性を重視する"
-              rows={3}
-            />
-          </label>
-          <label>
-            その他前提情報（任意）:
-            <textarea
-              value={otherContext}
-              onChange={(event) => setOtherContext(event.target.value)}
-              placeholder="例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"
-              rows={3}
-            />
-          </label>
-          <button type="button" onClick={handleStart} disabled={isBusy}>
-            会話を始める
-          </button>
+        <div className="card card-border mt-6 bg-base-100">
+          <div className="card-body gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">ロール:</span>
+              <select value={role} onChange={(event) => setRole(event.target.value)} className="select">
+                <option value="本人">本人</option>
+                <option value="父">父</option>
+                <option value="母">母</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">シチュエーション:</span>
+              <input
+                type="text"
+                value={situation}
+                onChange={(event) => setSituation(event.target.value)}
+                placeholder="例: 小学校受験の面接、就職の面接、大学入試の面接"
+                className="input w-full"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">志望先の特色（任意）:</span>
+              <textarea
+                value={schoolCharacteristics}
+                onChange={(event) => setSchoolCharacteristics(event.target.value)}
+                placeholder="例: 自由な校風で、生徒の主体性を重視する"
+                rows={3}
+                className="textarea w-full"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">その他前提情報（任意）:</span>
+              <textarea
+                value={otherContext}
+                onChange={(event) => setOtherContext(event.target.value)}
+                placeholder="例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"
+                rows={3}
+                className="textarea w-full"
+              />
+            </label>
+            <div className="card-actions">
+              <button type="button" onClick={handleStart} disabled={isBusy} className="btn btn-primary">
+                会話を始める
+              </button>
+            </div>
+          </div>
         </div>
       ) : (
-        <div>
-          <div className="chat">
+        <div className="mt-6">
+          <div className="flex flex-col gap-2">
             {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`bubble ${message.speaker === "あなた" ? "user" : "assistant"}`}
-              >
-                <span className="speaker">{message.speaker}</span>
-                <p>{message.text}</p>
+              <div key={index} className={`chat ${message.speaker === "あなた" ? "chat-end" : "chat-start"}`}>
+                <div className="chat-header text-xs text-base-content/60">{message.speaker}</div>
+                <div className="chat-bubble">{message.text}</div>
               </div>
             ))}
           </div>
-          <button type="button" onClick={handleSpeak} disabled={!SpeechRecognitionCtor || isListening || isBusy}>
-            話す
-          </button>
-          <button type="button" onClick={handleEnd} disabled={isListening || isBusy}>
-            練習を終える
-          </button>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={handleSpeak}
+              disabled={!SpeechRecognitionCtor || isListening || isBusy}
+              className="btn btn-primary"
+            >
+              話す
+            </button>
+            <button type="button" onClick={handleEnd} disabled={isListening || isBusy} className="btn btn-outline">
+              練習を終える
+            </button>
+          </div>
         </div>
       )}
 
-      <p style={{ color: isError ? "crimson" : undefined }}>{status}</p>
+      {status && (
+        <div role="alert" className={`alert mt-4 ${isError ? "alert-error" : "alert-info"}`}>
+          <span>{status}</span>
+        </div>
+      )}
     </main>
   );
 }

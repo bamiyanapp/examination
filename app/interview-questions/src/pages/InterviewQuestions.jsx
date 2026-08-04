@@ -63,57 +63,69 @@ export default function InterviewQuestions() {
   const visibleQuestions = filter === "すべて" ? questions : questions.filter((q) => q.targetPerson === filter);
 
   return (
-    <main>
-      <h1>想定問答</h1>
-      <p>本人・父・母の想定問答をまとめて掲載しています。対象者で絞り込むこともできます。</p>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-bold">想定問答</h1>
+      <p className="mt-2 text-base-content/70">本人・父・母の想定問答をまとめて掲載しています。対象者で絞り込むこともできます。</p>
 
-      {status === "loading" && <p>読み込み中...</p>}
-      {status === "error" && <p style={{ color: "crimson" }}>{errorMessage}</p>}
+      {status === "loading" && (
+        <div className="mt-6 flex items-center gap-2 text-base-content/70">
+          <span className="loading loading-spinner loading-sm" />
+          読み込み中...
+        </div>
+      )}
+      {status === "error" && (
+        <div role="alert" className="alert alert-error mt-6">
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {status === "loaded" && (
         <>
-          <div className="filters" role="group" aria-label="対象者で絞り込む">
+          <div className="join mt-6 flex-wrap" role="group" aria-label="対象者で絞り込む">
             {["すべて", ...TARGET_PERSONS].map((person) => (
               <button
                 key={person}
                 type="button"
                 aria-pressed={filter === person}
                 onClick={() => setFilter(person)}
+                className={`btn join-item ${filter === person ? "btn-primary" : "btn-outline"}`}
               >
                 {person}
               </button>
             ))}
           </div>
 
-          <p>{visibleQuestions.length}件</p>
+          <p className="mt-4 text-sm text-base-content/70">{visibleQuestions.length}件</p>
 
-          <div className="question-list">
+          <div className="mt-2 flex flex-col gap-4">
             {visibleQuestions.map((q) => (
-              <article className="question-card" key={q.questionId}>
-                <span className="target-person">{q.targetPerson || "対象者未設定"}</span>
-                <h2>{q.question}</h2>
-                <dl>
-                  <dt>回答の要点</dt>
-                  <dd>{q.answer}</dd>
-                  {q.example && (
-                    <>
-                      <dt>盛り込む具体例</dt>
-                      <dd>{q.example}</dd>
-                    </>
-                  )}
-                  {q.impression && (
-                    <>
-                      <dt>面接官への印象</dt>
-                      <dd>{q.impression}</dd>
-                    </>
-                  )}
-                  {q.modelAnswer && (
-                    <>
-                      <dt>模範解答</dt>
-                      <dd>{q.modelAnswer}</dd>
-                    </>
-                  )}
-                </dl>
+              <article className="card card-border bg-base-100" key={q.questionId}>
+                <div className="card-body">
+                  <span className="badge badge-neutral self-start">{q.targetPerson || "対象者未設定"}</span>
+                  <h2 className="card-title text-base">{q.question}</h2>
+                  <dl className="flex flex-col gap-1">
+                    <dt className="text-xs font-semibold text-base-content/60">回答の要点</dt>
+                    <dd>{q.answer}</dd>
+                    {q.example && (
+                      <>
+                        <dt className="mt-2 text-xs font-semibold text-base-content/60">盛り込む具体例</dt>
+                        <dd>{q.example}</dd>
+                      </>
+                    )}
+                    {q.impression && (
+                      <>
+                        <dt className="mt-2 text-xs font-semibold text-base-content/60">面接官への印象</dt>
+                        <dd>{q.impression}</dd>
+                      </>
+                    )}
+                    {q.modelAnswer && (
+                      <>
+                        <dt className="mt-2 text-xs font-semibold text-base-content/60">模範解答</dt>
+                        <dd>{q.modelAnswer}</dd>
+                      </>
+                    )}
+                  </dl>
+                </div>
               </article>
             ))}
           </div>

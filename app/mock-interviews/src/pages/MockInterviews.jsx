@@ -64,32 +64,45 @@ export default function MockInterviews() {
   }, []);
 
   return (
-    <main>
-      <h1>模擬面接記録</h1>
-      <p>面接練習セッションを終えるたびに、AIが振り返りをサマリーして記録します。</p>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-bold">模擬面接記録</h1>
+      <p className="mt-2 text-base-content/70">面接練習セッションを終えるたびに、AIが振り返りをサマリーして記録します。</p>
 
-      {status === "loading" && <p>読み込み中...</p>}
-      {status === "error" && <p style={{ color: "crimson" }}>{errorMessage}</p>}
+      {status === "loading" && (
+        <div className="mt-6 flex items-center gap-2 text-base-content/70">
+          <span className="loading loading-spinner loading-sm" />
+          読み込み中...
+        </div>
+      )}
+      {status === "error" && (
+        <div role="alert" className="alert alert-error mt-6">
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
-      {status === "loaded" && summaries.length === 0 && <p>まだ記録がありません。面接練習を行うと、ここに記録が追加されます。</p>}
+      {status === "loaded" && summaries.length === 0 && (
+        <p className="mt-6 text-base-content/70">まだ記録がありません。面接練習を行うと、ここに記録が追加されます。</p>
+      )}
 
       {status === "loaded" && summaries.length > 0 && (
-        <div className="question-list">
+        <div className="mt-6 flex flex-col gap-4">
           {summaries.map((s) => (
-            <article className="question-card" key={s.sessionId}>
-              <span className="target-person">{s.role}</span>
-              <h2>{s.situation}</h2>
-              <dl>
-                {s.schoolCharacteristics && (
-                  <>
-                    <dt>志望先の特色</dt>
-                    <dd>{s.schoolCharacteristics}</dd>
-                  </>
-                )}
-                <dt>記録日時</dt>
-                <dd>{formatCreatedAt(s.createdAt)}</dd>
-              </dl>
-              <p className="summary-text">{s.summary}</p>
+            <article className="card card-border bg-base-100" key={s.sessionId}>
+              <div className="card-body">
+                <span className="badge badge-neutral self-start">{s.role}</span>
+                <h2 className="card-title text-base">{s.situation}</h2>
+                <dl className="flex flex-col gap-1">
+                  {s.schoolCharacteristics && (
+                    <>
+                      <dt className="text-xs font-semibold text-base-content/60">志望先の特色</dt>
+                      <dd>{s.schoolCharacteristics}</dd>
+                    </>
+                  )}
+                  <dt className="mt-2 text-xs font-semibold text-base-content/60">記録日時</dt>
+                  <dd>{formatCreatedAt(s.createdAt)}</dd>
+                </dl>
+                <p className="mt-2 whitespace-pre-wrap">{s.summary}</p>
+              </div>
             </article>
           ))}
         </div>

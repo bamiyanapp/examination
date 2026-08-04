@@ -4,6 +4,8 @@
 
 MkDocs静的サイトの`/education/voice-practice/`パスへビルド成果物を上書き配置する。実装本体は`src/pages/VoicePractice.jsx`。
 
+見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。チャットUIはdaisyUIの`chat`コンポーネントを使用する。
+
 - チャット風UIでユーザー自身の発言（音声認識結果）とAI応答の両方を表示する
 - シチュエーション・志望先の特色・その他前提情報（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）を自由入力でき、小学校受験に限らない汎用的な面接練習に対応する
 - 音声認識（STT）・音声合成（TTS）はブラウザ標準API（`SpeechRecognition`/`SpeechSynthesis`）を使う。一時期ブラウザ内AIモデル（ONNX Runtime Web + Piper、[Issue #73](https://github.com/bamiyanapp/examination/issues/73)）へ置き換えたが、実機での動作未検証のまま公開してしまい実際には動作せず、読み込みも重くなっていたため[Issue #112](https://github.com/bamiyanapp/examination/issues/112)でブラウザ標準APIへ戻した。対応ブラウザはGoogle Chrome・Microsoft Edge等（Safari・Firefoxは音声認識に対応していない場合がある）

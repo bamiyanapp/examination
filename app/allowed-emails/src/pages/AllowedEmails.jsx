@@ -60,36 +60,45 @@ export default function AllowedEmails() {
   }
 
   return (
-    <main>
-      <h1>閲覧許可メールアドレスの管理</h1>
-      <p>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <h1 className="text-2xl font-bold">閲覧許可メールアドレスの管理</h1>
+      <p className="mt-2 text-base-content/70">
         このサイトを閲覧できるGoogleアカウントのメールアドレスを一覧・追加・削除できます。ログイン中のアカウントがこの一覧に含まれている場合のみ操作できます（含まれていない場合はこのページ自体が表示できません）。
       </p>
-      <ul>
+      <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
         <li>自分自身のメールアドレスは削除できません（誤って全員が閲覧できなくなることを防ぐため）</li>
         <li>一覧に残り1件しかない場合、それは削除できません</li>
         <li>追加・削除は最大60秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
       </ul>
-      <p style={{ color: isError ? "crimson" : undefined }}>{status}</p>
-      <ul>
+      {status && (
+        <div role="alert" className={`alert mt-4 ${isError ? "alert-error" : "alert-info"}`}>
+          <span>{status}</span>
+        </div>
+      )}
+      <ul className="list mt-4 rounded-box bg-base-100 shadow-sm">
         {emails.map((item) => (
-          <li key={item.email}>
-            {item.email}（追加者: {item.addedBy || "-"}）{" "}
-            <button type="button" onClick={() => mutate("remove", item.email)}>
+          <li key={item.email} className="list-row items-center">
+            <div className="flex-1">
+              {item.email}（追加者: {item.addedBy || "-"}）
+            </div>
+            <button type="button" onClick={() => mutate("remove", item.email)} className="btn btn-sm btn-outline btn-error">
               削除
             </button>
           </li>
         ))}
       </ul>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="join mt-6 w-full">
         <input
           type="email"
           placeholder="追加するメールアドレス"
           required
           value={newEmail}
           onChange={(event) => setNewEmail(event.target.value)}
+          className="input join-item flex-1"
         />
-        <button type="submit">追加</button>
+        <button type="submit" className="btn btn-primary join-item">
+          追加
+        </button>
       </form>
     </main>
   );
