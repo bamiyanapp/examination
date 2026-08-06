@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+/* examination#100: JSがclickイベントでvisibleクラスを付け外しするため、
+   Tailwindのユーティリティだけでは表現できない状態遷移をここで担う */
+.nav-overlay.visible {
+  display: flex;
+}

@@ -20,6 +20,7 @@ const PRECACHE_URLS = [
   "/education/mock-interviews/",
   "/settings/allowed-emails/",
   "/settings/line-link/",
+  "/settings/profile-edit/",
 ];
 
 // バックエンドAPI（bot-stackのHTTP API）のホスト名。デプロイでURLが変わった場合は

@@ -73,9 +73,9 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 > 当初はLambda Function URL（`AuthType: NONE`）で直接公開していたが、このAWSアカウントではFunction URLの匿名アクセスがAWS側で`403 Forbidden`（`AccessDeniedException`）を返す状態にあり、`AuthType`・リソースベースポリシー・関数の状態はすべて正しいにもかかわらず解消しなかった（[Issue #52](https://github.com/bamiyanapp/examination/issues/52)）。同一アカウントでAPI Gateway経由の公開エンドポイントは実績があるため、HTTP APIへ切り替えた。HTTP APIのペイロード形式（payload format 2.0）はFunction URLと同一のため、`functions/lineWebhook.js`のハンドラー側の変更は不要だった。
 
-- 会話フロー: 「面接練習」で「本人」「父」「母」のいずれの練習か・シチュエーション（例: 小学校受験の面接、就職の面接）・志望先の特色（任意）・**その他前提情報（任意、志望先の特色欄では拾いきれない家族情報等の自由記述、examination#76）**を順に確認した上で、Gemini APIとのマルチターン会話（質問→回答→フィードバックと次の質問、を繰り返す）を開始する「練習モード」。「終了」と送ると練習を終了する。会話ロジックは音声対話（`voiceChat.js`）と共通化しており（`geminiConversation.js`、[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）、AIがその場で質問を生成するため、練習の出題内容自体は`examination-interview-questions`のデータに依存しない。もう1つは「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
+- 会話フロー: 「面接練習」で「本人」「父」「母」のいずれの練習か・シチュエーション（例: 小学校受験の面接、就職の面接）を確認した上で、保存済みのプロフィール（志望先の特色・その他前提情報、[Issue #125](https://github.com/bamiyanapp/examination/issues/125)。下記「プロフィール編集」参照）を参照してGemini APIとのマルチターン会話（質問→回答→フィードバックと次の質問、を繰り返す）を開始する「練習モード」。以前はシチュエーションに続けて志望先の特色・その他前提情報もLINE上で毎回自由入力させていたが、練習の度に入力し直すものではないため、プロフィール編集画面での編集に一本化しシチュエーション入力の直後に練習を開始するようにした。「終了」と送ると練習を終了する。会話ロジックは音声対話（`voiceChat.js`）と共通化しており（`geminiConversation.js`、[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）、AIがその場で質問を生成するため、練習の出題内容自体は`examination-interview-questions`のデータに依存しない。もう1つは「質問を登録」で自由文からGemini APIが想定問答を抽出し確認の上DynamoDBへ保存する「登録モード」（いずれもLINEアカウントの連携が完了している場合のみ利用可能。下記参照）
 - フィードバックの内容: 回答に対するフィードバックは、模範解答・改善ポイントを含む内容にしている（[Issue #89](https://github.com/bamiyanapp/examination/issues/89)）。音声（読み上げ・チャット表示）とLINE（テキスト表示）で最適な情報量が異なるため、`geminiConversation.js`の`buildSystemPrompt`が1回のGemini呼び出しで「voice」（読み上げ用の簡潔な話し言葉）・「text」（模範解答・改善ポイントを含む詳しい内容）の2種類をJSON形式で生成させ、`parseDualReply`でパースする。音声対話ページは`voice`を表示・読み上げの両方に使い、LINEは`text`をそのまま返信に使う。次ターンのGeminiへの入力コンテキスト（会話履歴）にはどちらのチャネルも`text`を記録する。Geminiが厳密なJSON以外を返した場合は生テキストを両方にフォールバックさせる
-- データ: `examination-interview-questions`（登録モードで蓄積する想定問答本体。練習モードの出題には現在使用していない）・`examination-bot-sessions`（会話状態。練習モード中は選択したロール・シチュエーション・志望先特色・会話履歴を`practiceState`属性にJSON文字列として保持し、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）・`examination-mock-interviews`（模擬面接記録、下記参照）
+- データ: `examination-interview-questions`（登録モードで蓄積する想定問答本体。練習モードの出題には現在使用していない）・`examination-bot-sessions`（会話状態。練習モード中は選択したロール・シチュエーション・保存済みプロフィールから読み込んだ志望先特色・会話履歴を`practiceState`属性にJSON文字列として保持し、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）・`examination-mock-interviews`（模擬面接記録、下記参照）・`examination-family-profile`（プロフィール、下記「プロフィール編集」参照）
 - **模擬面接記録の自動サマリー化**（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）: 練習モード終了時（LINEの「終了」コマンド／音声対話ページの「練習を終える」ボタン）、それまでの会話履歴をGeminiが振り返り「よかった点」「改善が必要な点」「次回までのアクション」の3項目でサマリーを生成し、`examination-mock-interviews`（`familySlug`・`sessionId`をキーとする新規テーブル）へ保存する（`geminiConversation.js`の`summarizeMockInterview`、`mockInterviews.js`の`saveMockInterviewSummary`）。ユーザーの発言が1件も無い（誤操作等の）セッションは記録の対象外とする（`hasMeaningfulContent`）。旧`knowledge/education/mock-interviews.md`の既存記録2件は`scripts/seed-mock-interviews.js`で一度きり同じテーブルへ移行し、以降このMarkdownファイルは更新しない（記録の閲覧画面は下記「模擬面接記録の閲覧」を参照）
 - **想定問答データはDynamoDB（`examination-interview-questions`）を唯一の正本とする**（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）。`knowledge/education/interview-*.md`は今後の追記・編集は行わず、`deploy.yml`の「Sync interview questions from Markdown」ステップ（`scripts/seed-interview-questions.js`）が毎回のデプロイでMarkdownの内容をDynamoDBへ同期する。`familySlug`・`category`・`question`から決定的な`questionId`（SHA-256ハッシュ）を生成しているため、同じ行を何度でも安全に上書きでき、LINE botの登録モード（`saveQuestion`、時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しない。各行の属性: `category`・`targetPerson`（対象者: 本人/父/母。閲覧画面のフィルタリング用、下記参照）・`question`・`answer`（回答の要点）・`example`（盛り込む具体例、無い場合は空文字）・`impression`（面接官への印象、無い場合は空文字）・`modelAnswer`（AIによる模範解答。現時点では空文字のプレースホルダーで、生成ロジックは未実装）。想定問答の閲覧画面（React、1画面統合）は下記「想定問答の閲覧」を参照
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
@@ -99,7 +99,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 - 認証: `bot-stack`のAPI（`voiceChat.js`、`POST /voice-chat`）はブラウザから直接呼ばれるクロスオリジンのAPIで、`site-stack`のHttpOnly Cookie（`id_token`）はクロスオリジンでは自動送信されないため、専用の短期トークン方式を採る
   1. サイトの音声練習ページを開いた状態で「会話を始める」を押すと、同一オリジンの`site-stack`（`checkAuth.js`）の`POST /_voice-token` APIがログイン中のユーザーを確認した上で短期トークン（有効期限1時間）を発行し、`examination-voice-tokens`（パーティションキー: `token`、TTLで自動失効）へ保存する
   2. ブラウザのJSがそのトークンをBearerトークンとして`bot-stack`の`POST /voice-chat`へ送る。`voiceChat.js`がトークンを検証（クロススタック、有効期限確認）した上で、紐づくメールアドレスが`examination-allowed-emails`に存在するかを確認する
-  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）・シチュエーション・志望先の特色（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)、自由入力。小学校受験に限らない汎用的な面接練習に対応する）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
+  3. 認証済みのリクエストのみ、選択されたロール（本人/父/母）・シチュエーション（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)、自由入力。小学校受験に限らない汎用的な面接練習に対応する）・保存済みプロフィール（志望先の特色・その他前提情報、[Issue #125](https://github.com/bamiyanapp/examination/issues/125)。`voiceChat.js`がサーバー側で`examination-family-profile`から直接解決し、クライアントからの送信値は使わない）に応じたシステムプロンプトとともにGemini API（LINE botと同じ`GEMINI_API_KEY`を使い回す。新規Secretは不要）へ会話履歴を送り、応答テキストを返す。会話履歴はサーバー側では保持せず、ブラウザ側のJSが保持して毎回送り直す（ステートレス設計）
 - `bot-stack`のHTTP APIはCORSを有効化している（`provider.httpApi.cors: true`）。LINE Webhook（`/webhook`）はサーバー間通信のためCORSヘッダーの付与自体は影響しない
 - **`/_voice-token`の1日あたりの発行上限**（[Issue #69](https://github.com/bamiyanapp/examination/issues/69)）: 誤操作・アカウント乗っ取り等でGemini API呼び出しが想定外に増えるリスクを抑えるため、メールアドレスごとに1日あたり20回（`checkAuth.js`の`VOICE_TOKEN_DAILY_LIMIT`定数、運用しながら調整可能）まで発行を許可する。`examination-voice-token-issuance`（パーティションキー: `emailDate`＝`email#YYYY-MM-DD`の複合文字列、TTLで自動失効）へ`UpdateItem`（`ADD` + `ConditionExpression`）でアトミックにインクリメント・上限判定し、上限超過時は429を返す
 
@@ -117,6 +117,17 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 
 - API: `bot-stack`の`GET /mock-interviews`（`functions/mockInterviewsApi.js`、`mockInterviews.js`の`listMockInterviewSummaries`）が familySlug配下の全件を`ScanIndexForward: false`で新しい順に返す。認証は想定問答の閲覧画面と同じ短期トークン方式（`/_voice-token`）
 - 画面: 役割・状況（シチュエーション）・志望先の特色・記録日時・サマリー本文をカード形式で表示する。記録が0件の場合は空状態メッセージを表示する
+
+## プロフィール編集（[Issue #125](https://github.com/bamiyanapp/examination/issues/125)）
+
+サイトのページ（Reactアプリ`app/profile-edit/src/pages/ProfileEdit.jsx`）から、面接練習（音声対話ページ・LINE bot）で使う「志望先の特色」「その他前提情報」を編集・保存できる。以前は音声対話ページの練習開始フォーム・LINEの練習開始フローの両方で毎回自由入力させていたが、練習の度に入力し直すものではないため、この専用画面へ編集機能を一本化した。
+
+- データ: `examination-family-profile`（familySlugをパーティションキーとし、家族単位で1件のみ保持する）を唯一の正本とする。属性は`schoolCharacteristics`・`otherContext`（いずれも最大500文字）・`updatedBy`・`updatedAt`
+- API: `bot-stack`の`GET/POST /family-profile`（`functions/familyProfileApi.js`、データアクセスは`functions/familyProfile.js`に切り出し）。認証は想定問答の閲覧画面と同じ短期トークン方式（`/_voice-token`）。`GET`は現在の値（未設定時は空文字）を返し、`POST`は`{schoolCharacteristics, otherContext}`を受け取り上書き保存する
+- 参照側:
+  - 音声対話ページ（`voiceChat.js`）は練習開始・各ターンのGemini呼び出しのたびにサーバー側で`getFamilyProfile()`から直接値を解決する。クライアント（`VoicePractice.jsx`）から`schoolCharacteristics`・`otherContext`を送ることはできず、送っても無視される。画面には参照用に読み込み専用で現在の値を表示し、「プロフィール編集で変更する」リンクで編集画面へ誘導する
+  - LINE bot（`lineWebhook.js`）は練習開始時（シチュエーション入力の直後）にサーバー側で`getFamilyProfile()`から値を解決する。以前あった「志望先の特色」「その他前提情報」をLINE上で追加入力させる2ステップは撤去した
+- 家族向けサイトのためユーザーごとではなく家族（`familySlug`）単位で1件のみ保持する。複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）実装時は他のfamilySlugベースのテーブルと同様の拡張になる見込み
 
 ## 必要なGitHub Secrets / Variables
 

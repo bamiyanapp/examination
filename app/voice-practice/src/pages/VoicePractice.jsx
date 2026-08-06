@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（Job Summaryの「LINE bot Webhook URL」と同じAPI）
 const VOICE_CHAT_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/voice-chat";
+const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile";
 
 const DEFAULT_SITUATION = "小学校受験の面接";
 
@@ -19,15 +20,20 @@ function speak(text) {
 }
 
 // 音声対話ページ（examination#62）。チャット風UIでユーザー自身の発言も画面に表示し、
-// シチュエーション・志望先の特色を自由入力できるようにして汎用的な受験・面接練習
-// アプリへ拡張した（examination#76）。音声認識・音声合成はブラウザ標準API
-// （SpeechRecognition/SpeechSynthesis）を使う。一時期ブラウザ内AIモデル（ONNX Runtime
-// Web + Piper、examination#73）へ置き換えたが、実機での動作未検証のまま公開してしまい
-// 実際には音声認識・合成のいずれも動作せず、読み込みも重くなっていたため
-// examination#112でブラウザ標準APIへ戻した
+// シチュエーションを自由入力できるようにして汎用的な受験・面接練習アプリへ拡張した
+// （examination#76）。志望先の特色・その他前提情報は以前はこの画面で毎回自由入力して
+// いたが、練習の度に入力し直すものではないため、専用のプロフィール編集画面
+// （app/profile-edit/）へ移設した（examination#125）。この画面では保存済みの内容を
+// 参照表示するのみで、編集はできない（実際にGeminiへ渡す値もサーバー側
+// （voiceChat.js）がプロフィールから直接解決する）。音声認識・音声合成はブラウザ
+// 標準API（SpeechRecognition/SpeechSynthesis）を使う。一時期ブラウザ内AIモデル
+// （ONNX Runtime Web + Piper、examination#73）へ置き換えたが、実機での動作未検証の
+// まま公開してしまい実際には音声認識・合成のいずれも動作せず、読み込みも重く
+// なっていたためexamination#112でブラウザ標準APIへ戻した
 export default function VoicePractice() {
   const [role, setRole] = useState("本人");
   const [situation, setSituation] = useState(DEFAULT_SITUATION);
+  const [profileStatus, setProfileStatus] = useState("loading");
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
   const [otherContext, setOtherContext] = useState("");
   const [started, setStarted] = useState(false);
@@ -40,6 +46,35 @@ export default function VoicePractice() {
   const voiceTokenRef = useRef(null);
   const historyRef = useRef([]);
   const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const res = await fetch("/_voice-token", { method: "POST" });
+        const tokenData = await res.json();
+        if (!res.ok) throw new Error(tokenData.error || `トークンの発行に失敗しました（${res.status}）`);
+        const profileRes = await fetch(FAMILY_PROFILE_API_URL, {
+          headers: { Authorization: `Bearer ${tokenData.token}` },
+        });
+        const profileData = await profileRes.json();
+        if (!profileRes.ok) throw new Error(profileData.error || `プロフィールの取得に失敗しました（${profileRes.status}）`);
+        if (!cancelled) {
+          setSchoolCharacteristics(profileData.schoolCharacteristics || "");
+          setOtherContext(profileData.otherContext || "");
+          setProfileStatus("loaded");
+        }
+      } catch {
+        // プロフィールの参照表示に失敗しても、練習自体（サーバー側が別途プロフィールを
+        // 参照する）はブロックしない
+        if (!cancelled) setProfileStatus("error");
+      }
+    }
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function issueVoiceToken() {
     const res = await fetch("/_voice-token", { method: "POST" });
@@ -57,8 +92,6 @@ export default function VoicePractice() {
       body: JSON.stringify({
         role,
         situation,
-        schoolCharacteristics,
-        otherContext,
         history: historyRef.current,
         message: message || undefined,
       }),
@@ -154,8 +187,6 @@ export default function VoicePractice() {
         body: JSON.stringify({
           role,
           situation,
-          schoolCharacteristics,
-          otherContext,
           history: historyRef.current,
           action: "end",
         }),
@@ -206,26 +237,22 @@ export default function VoicePractice() {
                 className="input w-full"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">志望先の特色（任意）:</span>
-              <textarea
-                value={schoolCharacteristics}
-                onChange={(event) => setSchoolCharacteristics(event.target.value)}
-                placeholder="例: 自由な校風で、生徒の主体性を重視する"
-                rows={3}
-                className="textarea w-full"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">その他前提情報（任意）:</span>
-              <textarea
-                value={otherContext}
-                onChange={(event) => setOtherContext(event.target.value)}
-                placeholder="例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"
-                rows={3}
-                className="textarea w-full"
-              />
-            </label>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">志望先の特色・その他前提情報:</span>
+              {profileStatus === "loading" && <span className="text-sm text-base-content/60">読み込み中...</span>}
+              {profileStatus === "loaded" && (
+                <div className="rounded-box bg-base-200 p-3 text-sm text-base-content/80">
+                  <p>志望先の特色: {schoolCharacteristics || "（未設定）"}</p>
+                  <p>その他前提情報: {otherContext || "（未設定）"}</p>
+                </div>
+              )}
+              {profileStatus === "error" && (
+                <span className="text-sm text-base-content/60">プロフィールの読み込みに失敗しました。</span>
+              )}
+              <a href="/settings/profile-edit/" className="link link-primary self-start text-sm">
+                プロフィール編集で変更する →
+              </a>
+            </div>
             <div className="card-actions">
               <button type="button" onClick={handleStart} disabled={isBusy} className="btn btn-primary">
                 会話を始める

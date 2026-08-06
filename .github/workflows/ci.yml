@@ -32,7 +32,8 @@ jobs:
         {"dir":"app/top","build":true,"node_version":"24"},
         {"dir":"app/interview-questions","build":true,"node_version":"24"},
         {"dir":"app/education-overview","build":true,"node_version":"24"},
-        {"dir":"app/mock-interviews","build":true,"node_version":"24"}]
+        {"dir":"app/mock-interviews","build":true,"node_version":"24"},
+        {"dir":"app/profile-edit","build":true,"node_version":"24"}]
       enable_standards_check: true
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}

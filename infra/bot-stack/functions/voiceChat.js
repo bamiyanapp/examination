@@ -11,6 +11,7 @@ const {
 } = require("./geminiConversation");
 const { verifyBearerEmail } = require("./apiAuth");
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
+const { getFamilyProfile } = require("./familyProfile");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -39,9 +40,11 @@ exports.handler = async (event) => {
     return jsonResponse(400, { error: "roleは本人・父・母のいずれかを指定してください" });
   }
   const situation = sanitizeFreeText(payload.situation, DEFAULT_SITUATION);
-  const schoolCharacteristics = sanitizeFreeText(payload.schoolCharacteristics, "");
-  // 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
-  const otherContext = sanitizeFreeText(payload.otherContext, "");
+  // 志望先の特色・その他前提情報はプロフィール編集画面で編集・保存された値を
+  // サーバー側で参照する（examination#125）。以前はクライアントから毎回自由入力を
+  // 受け取っていたが、練習の度に入力し直すものではないため撤去した。LINE bot
+  // （lineWebhook.js）とも同じ単一の情報源を参照することで両チャネルの一貫性を保つ
+  const { schoolCharacteristics, otherContext } = await getFamilyProfile();
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
 
