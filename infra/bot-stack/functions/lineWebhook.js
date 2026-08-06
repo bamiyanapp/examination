@@ -21,6 +21,7 @@ const {
 } = require("./geminiConversation");
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
 const { getFamilyProfile } = require("./familyProfile");
+const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
 
 const { FAMILY_SLUG } = require("./familyConfig");
 
@@ -203,10 +204,15 @@ async function handlePracticeRoleSelected(lineUserId, text) {
 // LINEから追加で自由入力させていたが、練習の度に入力し直すものではないため撤去した。
 // voiceChat.js（音声対話ページ）とも同じ単一の情報源を参照することで両チャネルの
 // 一貫性を保つ
-async function handlePracticeSituationEntered(lineUserId, session, text) {
+async function handlePracticeSituationEntered(lineUserId, session, text, email) {
   const situation = sanitizeFreeText(text, DEFAULT_SITUATION);
   const { schoolCharacteristics, otherContext } = await getFamilyProfile();
   const practiceState = { role: session.practiceState.role, situation, schoolCharacteristics, otherContext };
+  // AI API呼び出しの1日あたりの上限チェック（examination#124）
+  if (!(await incrementAndCheckAiApiUsage(email))) {
+    await clearSession(lineUserId);
+    return `本日のAI応答生成の上限（${AI_API_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`;
+  }
   let rawReply;
   try {
     rawReply = await callGemini([{ role: "system", content: buildSystemPrompt(practiceState) }]);
@@ -225,14 +231,19 @@ async function handlePracticeSituationEntered(lineUserId, session, text) {
   return `${reply}\n\n（練習を終えるには「終了」と送ってください）`;
 }
 
-async function handlePracticeTurn(lineUserId, session, text) {
+async function handlePracticeTurn(lineUserId, session, text, email) {
   if (PRACTICE_EXIT_PATTERN.test(text.trim())) {
     const practiceState = session.practiceState;
     await clearSession(lineUserId);
     if (!hasMeaningfulContent(practiceState.history)) {
       return "面接練習を終了しました。お疲れさまでした。";
     }
-    // 会話の振り返り（examination#93）。失敗しても練習の終了自体はブロックしない
+    // 会話の振り返り（examination#93）。失敗しても練習の終了自体はブロックしない。
+    // サマリー生成もGemini呼び出しの1つとして上限にカウントする（examination#124）
+    if (!(await incrementAndCheckAiApiUsage(email))) {
+      console.warn("AI API daily limit exceeded (line practice end)", email);
+      return "面接練習を終了しました。振り返りの記録には失敗しましたが、お疲れさまでした。";
+    }
     try {
       const summary = await summarizeMockInterview(practiceState);
       await saveMockInterviewSummary({ ...practiceState, channel: "line", summary, createdBy: lineUserId });
@@ -241,6 +252,10 @@ async function handlePracticeTurn(lineUserId, session, text) {
       console.error("Mock interview summary failed", error.message);
       return "面接練習を終了しました。振り返りの記録には失敗しましたが、お疲れさまでした。";
     }
+  }
+  // AI API呼び出しの1日あたりの上限チェック（examination#124）
+  if (!(await incrementAndCheckAiApiUsage(email))) {
+    return `本日のAI応答生成の上限（${AI_API_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`;
   }
   const practiceState = session.practiceState;
   const messages = [
@@ -270,7 +285,12 @@ async function handleRegisterStart(lineUserId) {
   return "登録したい想定問答を自由な文章で教えてください。（例: 父の面接で「志望理由は？」と聞かれたら「〜」と答える予定）";
 }
 
-async function handleRegisterExtract(lineUserId, freeText, createdBy) {
+async function handleRegisterExtract(lineUserId, freeText, createdBy, email) {
+  // AI API呼び出しの1日あたりの上限チェック（examination#124）
+  if (!(await incrementAndCheckAiApiUsage(email))) {
+    await clearSession(lineUserId);
+    return `本日のAI応答生成の上限（${AI_API_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`;
+  }
   const prompt =
     "次の文章から、小学校受験の面接想定問答を抽出してください。" +
     '厳密なJSON形式（{"category": "本人面接" または "父の保護者面接" または "母の保護者面接", "question": "質問文", "answer": "回答文"}）' +
@@ -352,13 +372,13 @@ async function handleTextMessage(lineUserId, text) {
     return handlePracticeRoleSelected(lineUserId, text);
   }
   if (session.mode === "practice_select_situation") {
-    return handlePracticeSituationEntered(lineUserId, session, text);
+    return handlePracticeSituationEntered(lineUserId, session, text, linkedEmail);
   }
   if (session.mode === "practice") {
-    return handlePracticeTurn(lineUserId, session, text);
+    return handlePracticeTurn(lineUserId, session, text, linkedEmail);
   }
   if (session.mode === "register") {
-    return handleRegisterExtract(lineUserId, text, lineUserId);
+    return handleRegisterExtract(lineUserId, text, lineUserId, linkedEmail);
   }
   if (session.mode === "register_confirm") {
     return handleRegisterConfirm(lineUserId, session, text);

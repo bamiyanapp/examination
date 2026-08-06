@@ -20,10 +20,13 @@ const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const VOICE_TOKEN_TTL_SECONDS = 60 * 60;
 const VOICE_TOKEN_ISSUANCE_TABLE = "examination-voice-token-issuance";
-// 誤操作・アカウント乗っ取り等でGemini API呼び出しが想定外に増えるリスクを抑える
-// ための1日あたりの発行上限（examination#69）。運用しながら調整できるよう定数として
-// 分離する
-const VOICE_TOKEN_DAILY_LIMIT = 20;
+// 誤操作・アカウント乗っ取り等でAPI呼び出しが想定外に増えるリスクを抑えるための
+// 1日あたりの発行上限（examination#69、examination#124で20→1000に見直し）。
+// これはブラウザ向け各種API（voiceChat/interviewQuestions/mockInterviewsApi）
+// 利用のゲートとしてのAPI発行回数の上限であり、Gemini呼び出し回数そのものの上限は
+// 別途bot-stack側（examination-ai-api-issuance、examination#124）で管理する。
+// 運用しながら調整できるよう定数として分離する
+const VOICE_TOKEN_DAILY_LIMIT = 1000;
 // checkAuth.jsはLambda@Edgeとしてus-east-1にのみデプロイされ、テーブルも同じ
 // スタック（us-east-1）内に存在するためリージョンを固定する
 const ddb = new DynamoDBClient({ region: "us-east-1" });
@@ -366,7 +369,8 @@ async function handleVoiceTokenApi(request) {
   }
 
   // 1日あたりの発行上限チェック（examination#69）。誤操作やアカウント乗っ取り等で
-  // Gemini API呼び出しが想定外に増えるリスクを抑える
+  // API呼び出しが想定外に増えるリスクを抑える。Gemini呼び出し回数そのものの上限は
+  // 別途bot-stack側でチェックする（examination#124）
   if (!(await incrementAndCheckVoiceTokenIssuance(requesterEmail))) {
     return jsonResponse(429, "Too Many Requests", {
       error: `本日の発行上限（${VOICE_TOKEN_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`,

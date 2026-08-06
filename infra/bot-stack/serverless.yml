@@ -30,6 +30,13 @@ provider:
             - !GetAtt LineLinksTable.Arn
             - !GetAtt MockInterviewsTable.Arn
             - !GetAtt FamilyProfileTable.Arn
+        # Gemini API呼び出し回数の1日あたり上限カウンタ（examination#124）。UpdateItemの
+        # みで完結するため他テーブルとはActionを分けて宣言する
+        - Effect: Allow
+          Action:
+            - dynamodb:UpdateItem
+          Resource:
+            - !GetAtt AiApiIssuanceTable.Arn
         # site-stackが所有するテーブルへのクロススタックアクセス（examination#49）。
         # 別Serverless serviceのため、CloudFormationのFn::ImportValueではなくARNを直接組み立てる。
         # us-east-1に統一済みのため、Resourceのリージョン部分はAWS::Regionでよい
@@ -198,3 +205,24 @@ resources:
           - AttributeName: familySlug
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+
+    # Gemini API呼び出し回数の1日あたり上限カウンタ（examination#124）。/_voice-token
+    # 発行回数の上限（examination#69、site-stack）とは別に、実際のAI呼び出し回数
+    # そのものをアカウント（email）単位で制限する。パーティションキーは
+    # "email#YYYY-MM-DD"の複合文字列とし、UpdateItem(ADD + ConditionExpression)で
+    # アトミックにインクリメント・上限判定する。TTLで日付が変わった古いカウンタを
+    # 自動失効させる
+    AiApiIssuanceTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-ai-api-issuance
+        AttributeDefinitions:
+          - AttributeName: emailDate
+            AttributeType: S
+        KeySchema:
+          - AttributeName: emailDate
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
