@@ -42,6 +42,7 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 - `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のdeploy.yml変更は不要
 - 登録は各アプリへ共通コンポーネント（`ServiceWorkerRegistration.jsx`）として複製する既存方針（`NavigationOverlay`等と同様）を踏襲する
 - **バックエンドAPIのプロアクティブなウォームアップ**: 上記のバックエンドAPIキャッシュは「そのページを一度でも開いた後にキャッシュされる」受動的な仕組みのため、どのページを最初に開いても`BackendCacheWarmer.jsx`（同じく各アプリへ複製）がバックグラウンドで`/interview-questions`・`/mock-interviews`を先に取得し、Service Workerのキャッシュを温めておく。`/_voice-token`の発行回数には1日あたりの上限がある（[Issue #69](https://github.com/bamiyanapp/examination/issues/69)、20回/日）ため、`sessionStorage`でブラウザセッションあたり1回だけ実行するよう制御し、通常の閲覧だけで上限を消費しないようにしている
+- **更新の通知**（[Issue #122](https://github.com/bamiyanapp/examination/issues/122)）: Service Worker導入後、新しいバージョンが有効化されても表示中のページには自動的に反映されず、PWA（ホーム画面に追加した状態）で更新に気づけずホーム画面からの削除・再追加が必要になる問題が起きた。`UpdateNotifier.jsx`（同じく各アプリへ複製）が`navigator.serviceWorker`の`controllerchange`イベントを監視し、ページ読み込み時点で既に有効なService Workerの制御下にあった場合（＝初回インストールではなく既存バージョンからの切り替わりの場合）のみ「新しいバージョンがあります」というバナーを表示する。タップで`location.reload()`する方式とし、入力中のフォーム等を妨げる自動リロードは行わない
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
