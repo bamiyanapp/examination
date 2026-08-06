@@ -12,8 +12,6 @@ const config = require("./configuration.json");
 // 面接練習の会話ロジックはvoiceChat.js（音声対話）と共通化している（examination#76）
 const {
   postJson,
-  DEFAULT_SITUATION,
-  sanitizeFreeText,
   buildSystemPrompt,
   callGemini,
   parseDualReply,
@@ -187,27 +185,19 @@ async function handlePracticeAskRole(lineUserId) {
   return "誰の面接練習をしますか？「本人」「父」「母」のいずれかを送ってください。";
 }
 
-async function handlePracticeRoleSelected(lineUserId, text) {
+// シチュエーション・志望先の特色・その他前提情報はプロフィール編集画面
+// （app/profile-edit/）で編集・保存された値をサーバー側で参照する
+// （examination#125、シチュエーションはexamination#135）。以前はここでLINEから
+// 追加で自由入力させていたが、練習の度に入力し直すものではないため撤去した。
+// voiceChat.js（音声対話ページ）とも同じ単一の情報源を参照することで両チャネルの
+// 一貫性を保つ。ロール（本人/父/母）は練習のたびに変わり得るため引き続きここで選ぶ
+async function handlePracticeRoleSelected(lineUserId, text, email) {
   const role = ROLE_ALIASES[text.trim()];
   if (!role) {
     return "「本人」「父」「母」のいずれかを送ってください。";
   }
-  await saveSession(lineUserId, { mode: "practice_select_situation", practiceState: { role } });
-  return (
-    "シチュエーションを教えてください（例: 小学校受験の面接、就職の面接、大学入試の面接）。" +
-    `特に指定がなければ「${DEFAULT_SITUATION}」と送ってください。`
-  );
-}
-
-// 志望先の特色・その他前提情報はプロフィール編集画面（app/profile-edit/）で
-// 編集・保存された値をサーバー側で参照する（examination#125）。以前はここで
-// LINEから追加で自由入力させていたが、練習の度に入力し直すものではないため撤去した。
-// voiceChat.js（音声対話ページ）とも同じ単一の情報源を参照することで両チャネルの
-// 一貫性を保つ
-async function handlePracticeSituationEntered(lineUserId, session, text, email) {
-  const situation = sanitizeFreeText(text, DEFAULT_SITUATION);
-  const { schoolCharacteristics, otherContext } = await getFamilyProfile();
-  const practiceState = { role: session.practiceState.role, situation, schoolCharacteristics, otherContext };
+  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile();
+  const practiceState = { role, situation, schoolCharacteristics, otherContext };
   // AI API呼び出しの1日あたりの上限チェック（examination#124）
   if (!(await incrementAndCheckAiApiUsage(email))) {
     await clearSession(lineUserId);
@@ -369,10 +359,7 @@ async function handleTextMessage(lineUserId, text) {
     return handleRegisterStart(lineUserId);
   }
   if (session.mode === "practice_select_role") {
-    return handlePracticeRoleSelected(lineUserId, text);
-  }
-  if (session.mode === "practice_select_situation") {
-    return handlePracticeSituationEntered(lineUserId, session, text, linkedEmail);
+    return handlePracticeRoleSelected(lineUserId, text, linkedEmail);
   }
   if (session.mode === "practice") {
     return handlePracticeTurn(lineUserId, session, text, linkedEmail);

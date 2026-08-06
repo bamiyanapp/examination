@@ -2,8 +2,6 @@
 
 const {
   ROLE_DESCRIPTIONS,
-  DEFAULT_SITUATION,
-  sanitizeFreeText,
   buildSystemPrompt,
   callGemini,
   parseDualReply,
@@ -40,12 +38,12 @@ exports.handler = async (event) => {
   if (!ROLE_DESCRIPTIONS[role]) {
     return jsonResponse(400, { error: "roleは本人・父・母のいずれかを指定してください" });
   }
-  const situation = sanitizeFreeText(payload.situation, DEFAULT_SITUATION);
-  // 志望先の特色・その他前提情報はプロフィール編集画面で編集・保存された値を
-  // サーバー側で参照する（examination#125）。以前はクライアントから毎回自由入力を
-  // 受け取っていたが、練習の度に入力し直すものではないため撤去した。LINE bot
-  // （lineWebhook.js）とも同じ単一の情報源を参照することで両チャネルの一貫性を保つ
-  const { schoolCharacteristics, otherContext } = await getFamilyProfile();
+  // シチュエーション・志望先の特色・その他前提情報はプロフィール編集画面で
+  // 編集・保存された値をサーバー側で参照する（examination#125、シチュエーションは
+  // examination#135）。以前はクライアントから毎回自由入力を受け取っていたが、
+  // 練習の度に入力し直すものではないため撤去した。LINE bot（lineWebhook.js）とも
+  // 同じ単一の情報源を参照することで両チャネルの一貫性を保つ
+  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile();
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
 

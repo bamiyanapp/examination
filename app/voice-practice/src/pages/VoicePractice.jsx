@@ -20,20 +20,20 @@ function speak(text) {
 }
 
 // 音声対話ページ（examination#62）。チャット風UIでユーザー自身の発言も画面に表示し、
-// シチュエーションを自由入力できるようにして汎用的な受験・面接練習アプリへ拡張した
-// （examination#76）。志望先の特色・その他前提情報は以前はこの画面で毎回自由入力して
-// いたが、練習の度に入力し直すものではないため、専用のプロフィール編集画面
-// （app/profile-edit/）へ移設した（examination#125）。この画面では保存済みの内容を
-// 参照表示するのみで、編集はできない（実際にGeminiへ渡す値もサーバー側
-// （voiceChat.js）がプロフィールから直接解決する）。音声認識・音声合成はブラウザ
-// 標準API（SpeechRecognition/SpeechSynthesis）を使う。一時期ブラウザ内AIモデル
-// （ONNX Runtime Web + Piper、examination#73）へ置き換えたが、実機での動作未検証の
-// まま公開してしまい実際には音声認識・合成のいずれも動作せず、読み込みも重く
-// なっていたためexamination#112でブラウザ標準APIへ戻した
+// 汎用的な受験・面接練習アプリへ拡張した（examination#76）。シチュエーション・
+// 志望先の特色・その他前提情報は以前はこの画面で毎回自由入力していたが、練習の度に
+// 入力し直すものではないため、専用のプロフィール編集画面（app/profile-edit/）へ
+// 移設した（examination#125、シチュエーションはexamination#135）。この画面では
+// 保存済みの内容を参照表示するのみで、編集はできない（実際にGeminiへ渡す値も
+// サーバー側（voiceChat.js）がプロフィールから直接解決する）。音声認識・音声合成は
+// ブラウザ標準API（SpeechRecognition/SpeechSynthesis）を使う。一時期ブラウザ内AI
+// モデル（ONNX Runtime Web + Piper、examination#73）へ置き換えたが、実機での動作
+// 未検証のまま公開してしまい実際には音声認識・合成のいずれも動作せず、読み込みも
+// 重くなっていたためexamination#112でブラウザ標準APIへ戻した
 export default function VoicePractice() {
   const [role, setRole] = useState("本人");
-  const [situation, setSituation] = useState(DEFAULT_SITUATION);
   const [profileStatus, setProfileStatus] = useState("loading");
+  const [situation, setSituation] = useState(DEFAULT_SITUATION);
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
   const [otherContext, setOtherContext] = useState("");
   const [started, setStarted] = useState(false);
@@ -60,6 +60,7 @@ export default function VoicePractice() {
         const profileData = await profileRes.json();
         if (!profileRes.ok) throw new Error(profileData.error || `プロフィールの取得に失敗しました（${profileRes.status}）`);
         if (!cancelled) {
+          setSituation(profileData.situation || DEFAULT_SITUATION);
           setSchoolCharacteristics(profileData.schoolCharacteristics || "");
           setOtherContext(profileData.otherContext || "");
           setProfileStatus("loaded");
@@ -91,7 +92,6 @@ export default function VoicePractice() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${voiceTokenRef.current}` },
       body: JSON.stringify({
         role,
-        situation,
         history: historyRef.current,
         message: message || undefined,
       }),
@@ -186,7 +186,6 @@ export default function VoicePractice() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${voiceTokenRef.current}` },
         body: JSON.stringify({
           role,
-          situation,
           history: historyRef.current,
           action: "end",
         }),
@@ -227,21 +226,12 @@ export default function VoicePractice() {
                 <option value="母">母</option>
               </select>
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">シチュエーション:</span>
-              <input
-                type="text"
-                value={situation}
-                onChange={(event) => setSituation(event.target.value)}
-                placeholder="例: 小学校受験の面接、就職の面接、大学入試の面接"
-                className="input w-full"
-              />
-            </label>
             <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">志望先の特色・その他前提情報:</span>
+              <span className="text-sm font-medium">シチュエーション・志望先の特色・その他前提情報:</span>
               {profileStatus === "loading" && <span className="text-sm text-base-content/60">読み込み中...</span>}
               {profileStatus === "loaded" && (
                 <div className="rounded-box bg-base-200 p-3 text-sm text-base-content/80">
+                  <p>シチュエーション: {situation}</p>
                   <p>志望先の特色: {schoolCharacteristics || "（未設定）"}</p>
                   <p>その他前提情報: {otherContext || "（未設定）"}</p>
                 </div>

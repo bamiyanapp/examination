@@ -25,8 +25,9 @@ beforeEach(() => {
 });
 
 // マウント時にプロフィール参照表示用のトークン発行(1)・プロフィール取得(2)が
-// 先に走る（examination#125）ため、これをまとめてモックしてから会話開始のテストへ進む
-function mockProfileLoad(profile = { schoolCharacteristics: "", otherContext: "" }) {
+// 先に走る（examination#125、シチュエーションはexamination#135）ため、
+// これをまとめてモックしてから会話開始のテストへ進む
+function mockProfileLoad(profile = { situation: "小学校受験の面接", schoolCharacteristics: "", otherContext: "" }) {
   global.fetch
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "profile-token" }) })
     .mockResolvedValueOnce({ ok: true, json: async () => profile });
@@ -42,21 +43,23 @@ function mockTokenAndOpening(openingReply) {
 }
 
 describe("VoicePractice", () => {
-  it("shows the saved profile (school characteristics / other context) as read-only on mount (examination#125)", async () => {
-    mockProfileLoad({ schoolCharacteristics: "自由な校風", otherContext: "妹がいる4人家族" });
+  it("shows the saved profile (situation / school characteristics / other context) as read-only on mount (examination#125, #135)", async () => {
+    mockProfileLoad({ situation: "就職の面接", schoolCharacteristics: "自由な校風", otherContext: "妹がいる4人家族" });
 
     render(<VoicePractice />);
 
     await waitFor(() => {
-      expect(screen.getByText("志望先の特色: 自由な校風")).toBeInTheDocument();
+      expect(screen.getByText("シチュエーション: 就職の面接")).toBeInTheDocument();
     });
+    expect(screen.getByText("志望先の特色: 自由な校風")).toBeInTheDocument();
     expect(screen.getByText("その他前提情報: 妹がいる4人家族")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/例: 小学校受験の面接/)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/自由な校風で、生徒の主体性を重視する/)).not.toBeInTheDocument();
     const editLink = screen.getByRole("link", { name: "プロフィール編集で変更する →" });
     expect(editLink).toHaveAttribute("href", "/settings/profile-edit/");
   });
 
-  it("starts a conversation and shows the opening question as a chat bubble", async () => {
+  it("starts a conversation and shows the opening question as a chat bubble, without sending profile fields to the server (examination#135)", async () => {
     mockProfileLoad();
     render(<VoicePractice />);
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
@@ -72,28 +75,12 @@ describe("VoicePractice", () => {
     const startCall = global.fetch.mock.calls[3];
     expect(startCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/voice-chat");
     const sentBody = JSON.parse(startCall[1].body);
-    expect(sentBody.situation).toBe("小学校受験の面接");
     expect(sentBody.role).toBe("本人");
-    // 志望先の特色・その他前提情報はサーバー側(voiceChat.js)がプロフィールから
-    // 直接解決するため、クライアントからは送らない（examination#125）
+    // シチュエーション・志望先の特色・その他前提情報はサーバー側(voiceChat.js)が
+    // プロフィールから直接解決するため、クライアントからは送らない（examination#135）
+    expect(sentBody.situation).toBeUndefined();
     expect(sentBody.schoolCharacteristics).toBeUndefined();
     expect(sentBody.otherContext).toBeUndefined();
-  });
-
-  it("sends the custom situation when starting", async () => {
-    mockProfileLoad();
-    render(<VoicePractice />);
-    await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
-
-    mockTokenAndOpening("自己PRをお願いします。");
-    fireEvent.change(screen.getByPlaceholderText(/例: 小学校受験の面接/), {
-      target: { value: "就職の面接" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
-
-    await waitFor(() => screen.getByText("自己PRをお願いします。"));
-    const sentBody = JSON.parse(global.fetch.mock.calls[3][1].body);
-    expect(sentBody.situation).toBe("就職の面接");
   });
 
   it("shows the user's own recognized speech and the AI reply as separate bubbles", async () => {
