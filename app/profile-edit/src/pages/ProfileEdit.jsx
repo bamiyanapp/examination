@@ -42,6 +42,7 @@ async function saveProfile(token, profile) {
 export default function ProfileEdit() {
   const [status, setStatus] = useState("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [situation, setSituation] = useState("");
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
   const [otherContext, setOtherContext] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +57,7 @@ export default function ProfileEdit() {
         tokenRef.current = token;
         const profile = await fetchProfile(token);
         if (!cancelled) {
+          setSituation(profile.situation || "");
           setSchoolCharacteristics(profile.schoolCharacteristics || "");
           setOtherContext(profile.otherContext || "");
           setStatus("loaded");
@@ -81,7 +83,7 @@ export default function ProfileEdit() {
     try {
       const token = tokenRef.current || (await issueVoiceToken());
       tokenRef.current = token;
-      await saveProfile(token, { schoolCharacteristics, otherContext });
+      await saveProfile(token, { situation, schoolCharacteristics, otherContext });
       setSavedMessage("保存しました。");
     } catch (error) {
       setErrorMessage(error.message);
@@ -95,7 +97,7 @@ export default function ProfileEdit() {
       <h1 className="text-2xl font-bold">プロフィール編集</h1>
       <p className="mt-2 text-base-content/70">
         面接練習（音声対話ページ・LINE
-        bot）で使う「志望先の特色」「その他前提情報」をここで編集・保存します。面接練習画面ではここで保存した内容を参照するのみで、その場での編集はできません。
+        bot）で使う「シチュエーション」「志望先の特色」「その他前提情報」をここで編集・保存します。面接練習画面ではここで保存した内容を参照するのみで、その場での編集はできません。
       </p>
 
       {status === "loading" && (
@@ -114,6 +116,16 @@ export default function ProfileEdit() {
       {status === "loaded" && (
         <form onSubmit={handleSave} className="card card-border mt-6 bg-base-100">
           <div className="card-body gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">シチュエーション:</span>
+              <input
+                type="text"
+                value={situation}
+                onChange={(event) => setSituation(event.target.value)}
+                placeholder="例: 小学校受験の面接、就職の面接、大学入試の面接"
+                className="input w-full"
+              />
+            </label>
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium">志望先の特色（任意）:</span>
               <textarea

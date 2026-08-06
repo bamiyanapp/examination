@@ -2,6 +2,7 @@
 
 const { verifyBearerEmail } = require("./apiAuth");
 const { MAX_FIELD_LENGTH, getFamilyProfile, saveFamilyProfile } = require("./familyProfile");
+const { DEFAULT_SITUATION } = require("./geminiConversation");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -32,10 +33,11 @@ exports.handler = async (event) => {
     } catch {
       return jsonResponse(400, { error: "invalid JSON" });
     }
+    const situation = sanitizeField(payload.situation) || DEFAULT_SITUATION;
     const schoolCharacteristics = sanitizeField(payload.schoolCharacteristics);
     const otherContext = sanitizeField(payload.otherContext);
-    await saveFamilyProfile({ schoolCharacteristics, otherContext, updatedBy: email });
-    return jsonResponse(200, { schoolCharacteristics, otherContext });
+    await saveFamilyProfile({ situation, schoolCharacteristics, otherContext, updatedBy: email });
+    return jsonResponse(200, { situation, schoolCharacteristics, otherContext });
   }
 
   return jsonResponse(405, { error: "method not allowed" });

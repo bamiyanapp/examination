@@ -14,13 +14,14 @@ function mockTokenAndProfile(profile) {
 
 describe("ProfileEdit", () => {
   it("issues a token and loads the saved profile on mount", async () => {
-    mockTokenAndProfile({ schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" });
+    mockTokenAndProfile({ situation: "就職の面接", schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" });
 
     render(<ProfileEdit />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("自由な校風")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("就職の面接")).toBeInTheDocument();
     });
+    expect(screen.getByDisplayValue("自由な校風")).toBeInTheDocument();
     expect(screen.getByDisplayValue("共働き家庭")).toBeInTheDocument();
 
     expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
@@ -30,15 +31,18 @@ describe("ProfileEdit", () => {
   });
 
   it("saves edited values via POST and shows a confirmation message", async () => {
-    mockTokenAndProfile({ schoolCharacteristics: "", otherContext: "" });
+    mockTokenAndProfile({ situation: "", schoolCharacteristics: "", otherContext: "" });
     render(<ProfileEdit />);
     await waitFor(() => screen.getByRole("button", { name: "保存する" }));
 
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" }),
+      json: async () => ({ situation: "就職の面接", schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" }),
     });
 
+    fireEvent.change(screen.getByPlaceholderText(/例: 小学校受験の面接/), {
+      target: { value: "就職の面接" },
+    });
     fireEvent.change(screen.getByPlaceholderText("例: 自由な校風で、生徒の主体性を重視する"), {
       target: { value: "自由な校風" },
     });
@@ -52,7 +56,11 @@ describe("ProfileEdit", () => {
     const saveCall = global.fetch.mock.calls[2];
     expect(saveCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile");
     expect(saveCall[1].method).toBe("POST");
-    expect(JSON.parse(saveCall[1].body)).toEqual({ schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" });
+    expect(JSON.parse(saveCall[1].body)).toEqual({
+      situation: "就職の面接",
+      schoolCharacteristics: "自由な校風",
+      otherContext: "共働き家庭",
+    });
   });
 
   it("shows an error message when token issuance fails", async () => {
