@@ -8,7 +8,7 @@
 
 コンテンツはClaude Codeと自分が更新し、GitHub Pushで反映します。妻・子どもなど閲覧側はGitを意識せず、ブラウザからサイトを見るだけで最新の内容を確認できることを目指しています（サイトの公開先・認証は[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で別途整備予定）。
 
-トップページ・音声対話・管理画面等は、MkDocs静的サイトからReactアプリへ段階移行中です（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)、[Issue #82](https://github.com/bamiyanapp/examination/issues/82)）。`app/`配下にページごとの独立したReact（Vite）アプリとしてビルドし、`deploy.yml`でMkDocsが生成した同一URLパスへ成果物を上書き配置します。家族情報等の静的コンテンツページは当面`knowledge/`配下のMarkdownのままです。
+トップページ・音声対話・管理画面等は、MkDocs静的サイトからReactアプリへ段階移行中です（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)、[Issue #82](https://github.com/bamiyanapp/examination/issues/82)）。`app/`配下にページごとの独立したReact（Vite）アプリとしてビルドし、`cd.yml`（`deploy`ジョブ）でMkDocsが生成した同一URLパスへ成果物を上書き配置します。家族情報等の静的コンテンツページは当面`knowledge/`配下のMarkdownのままです。
 
 ## ディレクトリ構成
 

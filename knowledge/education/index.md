@@ -1,7 +1,7 @@
 <!--
 このページはReactアプリ（app/education-overview/、examination#92）で実装されている。
 mkdocsのnav検証（strictモード）を通すためのプレースホルダーであり、
-deploy.ymlのビルドステップでこのファイルの生成物（site/education/index.html）は
+cd.ymlのビルドステップでこのファイルの生成物（site/education/index.html）は
 app/education-overview/のビルド成果物で上書きされる。実装本体は
 app/education-overview/src/pages/EducationOverview.jsx を参照。
 

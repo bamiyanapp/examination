@@ -5,7 +5,7 @@
 // 即座に返しつつ裏側で必ず最新を取得してキャッシュを更新するため、
 // 「更新が永久に反映されない」状態にはならず両立できる……はずだったが、
 // ページ本体（HTMLナビゲーション）にまでStale-While-Revalidateを適用していたため、
-// 表示は常に「1回前のデプロイ内容」になり、deploy.ymlの`aws s3 sync --delete`で
+// 表示は常に「1回前のデプロイ内容」になり、cd.ymlの`aws s3 sync --delete`で
 // 削除された古いハッシュ付きJS/CSSを参照したまま壊れて見えることがあった
 // （examination#133）。ページ本体はNetwork Firstに変更し、常に最新を取得する
 const CACHE_VERSION = "v2";

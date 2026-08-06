@@ -45,7 +45,7 @@ functions:
 resources:
   Resources:
     # サイトの閲覧を許可するメールアドレス一覧。checkAuth.jsが参照し、既に許可された
-    # ユーザーが/_admin/emailsで登録・削除できる（初期値はdeploy.ymlのシード処理で投入）
+    # ユーザーが/_admin/emailsで登録・削除できる（初期値はcd.ymlのシード処理で投入）
     AllowedEmailsTable:
       Type: AWS::DynamoDB::Table
       Properties:
