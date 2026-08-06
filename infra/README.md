@@ -8,11 +8,11 @@ Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のイン�
 - `site-stack/`: S3バケット（MkDocsビルド成果物の格納先）・CloudFrontディストリビューション（Origin Access Control経由でS3へアクセス）・Lambda@Edge（`functions/checkAuth.js`、CloudFrontの`viewer-request`イベントで全リクエストの認証チェックを行う）・DynamoDBテーブル（`examination-allowed-emails`、閲覧許可メールアドレス一覧）
 - `bot-stack/`: LINE bot（面接練習・想定問答の登録。[Issue #43](https://github.com/bamiyanapp/examination/issues/43)）。Lambda（`functions/lineWebhook.js`）をLambda Function URLで公開し、LINE Messaging APIのWebhookを受ける。DynamoDBテーブル（`examination-interview-questions`・`examination-bot-sessions`）を持つ
 
-デプロイは`.github/workflows/deploy.yml`が`main`へのpush時に自動実行する。
+デプロイは`.github/workflows/cd.yml`の`deploy`ジョブが`main`へのpush時に自動実行する。`deploy`ジョブは同じワークフロー内の`release`ジョブ（semantic-release、[Issue #137](https://github.com/bamiyanapp/examination/issues/137)。詳細は`docs/cicd-pipeline-specification.md`参照）に依存（`needs: release`）しており、`release`ジョブが確定させた`package.json`のバージョンを読み取ってから実行される。
 
 ## なぜ2つのスタックに分けているか
 
-CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビューション作成後は不変だが、作成前には分からない。一方Cognito User Pool ClientのCallback URL / Logout URLには実際のCloudFrontドメインを含める必要がある（一致しないとCognitoが認可リクエストを拒否する）。この循環依存を解消するため、`deploy.yml`は以下の順序でデプロイする。
+CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビューション作成後は不変だが、作成前には分からない。一方Cognito User Pool ClientのCallback URL / Logout URLには実際のCloudFrontドメインを含める必要がある（一致しないとCognitoが認可リクエストを拒否する）。この循環依存を解消するため、`cd.yml`は以下の順序でデプロイする。
 
 1. 既存の`site-stack`があれば、そのCloudFrontドメインを取得する（無ければプレースホルダー`TBD.cloudfront.net`）
 2. その値で`auth-stack`をデプロイし、Cognitoの各種IDとシークレットを取得する
@@ -24,7 +24,7 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 ## サイトのキャッシュ戦略（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）
 
-`.github/workflows/deploy.yml`の「Sync site to S3」ステップは、`aws s3 sync`を2回に分けて実行し、ファイル種別ごとに異なる`Cache-Control`ヘッダーを明示的に付与する（静的サイト配信の標準的な戦略）。
+`.github/workflows/cd.yml`の「Sync site to S3」ステップは、`aws s3 sync`を2回に分けて実行し、ファイル種別ごとに異なる`Cache-Control`ヘッダーを明示的に付与する（静的サイト配信の標準的な戦略）。
 
 - `*assets/*`配下（各Reactアプリ・MkDocs Materialテーマのハッシュ付きJS/CSS。ただし`favicon`は除く）: `public, max-age=31536000, immutable`。内容が変わればファイル名（コンテンツハッシュ）自体が変わるため、長期不変キャッシュにしてよい
 - それ以外（`index.html`・`search/search_index.json`・`favicon.svg`等）: `no-cache`。内容が変わってもファイル名が変わらないため、CloudFront・ブラウザともに使用前に必ずオリジンへ再検証（条件付きGET）させる
@@ -38,13 +38,13 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 - **静的ページの先読み**: `install`イベントで、主要ページ（音声で面接練習ページを除く。理由はexamination#100・#105・#112と同じ）をまとめてキャッシュへ格納する
 - **バックエンドAPIのキャッシュ**: `GET /interview-questions`・`GET /mock-interviews`等（`bot-stack`のHTTP API）へのGETリクエストをキャッシュする。POST等の非GETリクエスト（`/_voice-token`発行等）はキャッシュ対象から除外する
 - **Stale-While-Revalidate**: キャッシュがあれば即座に返しつつ、裏側で必ずネットワーク取得してキャッシュを更新する。Issue #72で問題になった「更新が永久に反映されない」状態にはならず、[Issue #72](https://github.com/bamiyanapp/examination/issues/72)の方針と両立する……はずだったが、これをページ本体（HTMLナビゲーション）にまで適用していたため、表示が常に「1回前のデプロイ内容」で固定される問題があった（下記「ページ本体はNetwork First」参照）
-- **ページ本体はNetwork First**（[Issue #133](https://github.com/bamiyanapp/examination/issues/133)）: `request.mode === "navigate"`（フルページ遷移の標準的な判定方法）のリクエストのみ、Stale-While-Revalidateではなく**Network First**（まずネットワークから取得し、オフライン時のみキャッシュにフォールバック）にする。Stale-While-Revalidateのままだと、`deploy.yml`の`aws s3 sync --delete`で削除された古いハッシュ付きJS/CSSを参照する古い`index.html`がキャッシュされ続け、更新後も1回前の内容が表示され続ける（ひどい場合はアセットの404で壊れて見える）ことがあった。ハッシュ付きJS/CSS等のサブリソース・バックエンドAPIは引き続きStale-While-Revalidateのまま（速度優先で問題ない）
+- **ページ本体はNetwork First**（[Issue #133](https://github.com/bamiyanapp/examination/issues/133)）: `request.mode === "navigate"`（フルページ遷移の標準的な判定方法）のリクエストのみ、Stale-While-Revalidateではなく**Network First**（まずネットワークから取得し、オフライン時のみキャッシュにフォールバック）にする。Stale-While-Revalidateのままだと、`cd.yml`の`aws s3 sync --delete`で削除された古いハッシュ付きJS/CSSを参照する古い`index.html`がキャッシュされ続け、更新後も1回前の内容が表示され続ける（ひどい場合はアセットの404で壊れて見える）ことがあった。ハッシュ付きJS/CSS等のサブリソース・バックエンドAPIは引き続きStale-While-Revalidateのまま（速度優先で問題ない）
 - キャッシュ名にはバージョン番号を含め（`examination-static-v1`等）、`activate`イベントで古いバージョンのキャッシュを削除する
-- `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のdeploy.yml変更は不要
+- `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のcd.yml変更は不要
 - 登録は各アプリへ共通コンポーネント（`ServiceWorkerRegistration.jsx`）として複製する既存方針（`NavigationOverlay`等と同様）を踏襲する
 - **バックエンドAPIのプロアクティブなウォームアップ**: 上記のバックエンドAPIキャッシュは「そのページを一度でも開いた後にキャッシュされる」受動的な仕組みのため、どのページを最初に開いても`BackendCacheWarmer.jsx`（同じく各アプリへ複製）がバックグラウンドで`/interview-questions`・`/mock-interviews`を先に取得し、Service Workerのキャッシュを温めておく。`/_voice-token`の発行回数には1日あたりの上限がある（[Issue #69](https://github.com/bamiyanapp/examination/issues/69)、20回/日）ため、`sessionStorage`でブラウザセッションあたり1回だけ実行するよう制御し、通常の閲覧だけで上限を消費しないようにしている
 - **更新の通知**（[Issue #122](https://github.com/bamiyanapp/examination/issues/122)）: Service Worker導入後、新しいバージョンが有効化されても表示中のページには自動的に反映されず、PWA（ホーム画面に追加した状態）で更新に気づけずホーム画面からの削除・再追加が必要になる問題が起きた。`UpdateNotifier.jsx`（同じく各アプリへ複製）が`navigator.serviceWorker`の`controllerchange`イベントを監視し、ページ読み込み時点で既に有効なService Workerの制御下にあった場合（＝初回インストールではなく既存バージョンからの切り替わりの場合）のみ「新しいバージョンがあります」というバナーを表示する。タップで`location.reload()`する方式とし、入力中のフォーム等を妨げる自動リロードは行わない
-- **ビルドバージョン・更新日時の表示**（[Issue #131](https://github.com/bamiyanapp/examination/issues/131)）: 上記の更新通知はService Workerが切り替わった時にしか出ないプッシュ型のため、任意のタイミングで「今表示されているのはどのバージョンか」を確認する手段として、トップページ（`app/top/src/pages/TopPage.jsx`）のフッターにビルドSHA・ビルド日時を表示する。`deploy.yml`の`app/top`ビルドステップで`VITE_BUILD_SHA`（`github.sha`の先頭7文字）・`VITE_BUILD_TIME`（ビルド時刻のUTC ISO8601）を環境変数として設定し、Viteが自動的に`import.meta.env.VITE_*`として公開する仕組みをそのまま利用する（追加のビルド設定は不要）。全アプリを同一コミットから一括ビルドするデプロイのため、トップページのビルド情報をサイト全体のバージョンとして扱う。ローカル開発時（`npm run dev`）は環境変数が未設定のため「開発版」とフォールバック表示する
+- **ビルドバージョン・更新日時の表示**（[Issue #131](https://github.com/bamiyanapp/examination/issues/131)、セマンティックバージョンは[Issue #137](https://github.com/bamiyanapp/examination/issues/137)）: 上記の更新通知はService Workerが切り替わった時にしか出ないプッシュ型のため、任意のタイミングで「今表示されているのはどのバージョンか」を確認する手段として、トップページ（`app/top/src/pages/TopPage.jsx`）のフッターにセマンティックバージョン・ビルドSHA・ビルド日時を表示する。`cd.yml`の`deploy`ジョブ（`release`ジョブに依存）の`app/top`ビルドステップで、`VITE_BUILD_VERSION`（`release`ジョブが更新した`package.json`のバージョン）・`VITE_BUILD_SHA`（`git rev-parse --short HEAD`）・`VITE_BUILD_TIME`（ビルド時刻のUTC ISO8601）を環境変数として設定し、Viteが自動的に`import.meta.env.VITE_*`として公開する仕組みをそのまま利用する（追加のビルド設定は不要）。全アプリを同一コミットから一括ビルドするデプロイのため、トップページのビルド情報をサイト全体のバージョンとして扱う。`docs`/`chore`等バージョンが上がらないコミットではセマンティックバージョンがデプロイのたびには変わらないため、実際に最新がデプロイされたかの確認にはビルドSHA・日時をあわせて使う。ローカル開発時（`npm run dev`）は環境変数が未設定のため「開発版」とフォールバック表示する
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
@@ -66,7 +66,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
   - `GET`: 現在の許可メールアドレス一覧を返す
   - `POST {"action":"add","email":"..."}`: 追加する
   - `POST {"action":"remove","email":"..."}`: 削除する（自分自身、および最後の1件は削除不可）
-- 初期値: `deploy.yml`の「Seed initial allowed emails」ステップが、テーブルが空の場合のみ投入する（既存ユーザーが削除した後の再デプロイで復活することはない。全件削除された場合のみ、締め出し防止のため次回デプロイで初期値に戻る）
+- 初期値: `cd.yml`の「Seed initial allowed emails」ステップが、テーブルが空の場合のみ投入する（既存ユーザーが削除した後の再デプロイで復活することはない。全件削除された場合のみ、締め出し防止のため次回デプロイで初期値に戻る）
 - 反映タイミング: `checkAuth.js`はLambda@Edgeの実行環境（エッジロケーションごとに独立）内で許可判定を60秒キャッシュするため、追加・削除は最大60秒程度で全世界に反映される（即時ではない）
 
 ## LINE bot（`bot-stack/`）
@@ -80,7 +80,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 - フィードバックの内容: 回答に対するフィードバックは、模範解答・改善ポイントを含む内容にしている（[Issue #89](https://github.com/bamiyanapp/examination/issues/89)）。音声（読み上げ・チャット表示）とLINE（テキスト表示）で最適な情報量が異なるため、`geminiConversation.js`の`buildSystemPrompt`が1回のGemini呼び出しで「voice」（読み上げ用の簡潔な話し言葉）・「text」（模範解答・改善ポイントを含む詳しい内容）の2種類をJSON形式で生成させ、`parseDualReply`でパースする。音声対話ページは`voice`を表示・読み上げの両方に使い、LINEは`text`をそのまま返信に使う。次ターンのGeminiへの入力コンテキスト（会話履歴）にはどちらのチャネルも`text`を記録する。Geminiが厳密なJSON以外を返した場合は生テキストを両方にフォールバックさせる
 - データ: `examination-interview-questions`（登録モードで蓄積する想定問答本体。練習モードの出題には現在使用していない）・`examination-bot-sessions`（会話状態。練習モード中は選択したロール・保存済みプロフィールから読み込んだシチュエーション・志望先特色・会話履歴を`practiceState`属性にJSON文字列として保持し、TTLで自動失効）・`examination-line-links`（LINEアカウントとGoogleアカウントの紐付け、下記参照）・`examination-mock-interviews`（模擬面接記録、下記参照）・`examination-family-profile`（プロフィール、下記「プロフィール編集」参照）
 - **模擬面接記録の自動サマリー化**（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）: 練習モード終了時（LINEの「終了」コマンド／音声対話ページの「練習を終える」ボタン）、それまでの会話履歴をGeminiが振り返り「よかった点」「改善が必要な点」「次回までのアクション」の3項目でサマリーを生成し、`examination-mock-interviews`（`familySlug`・`sessionId`をキーとする新規テーブル）へ保存する（`geminiConversation.js`の`summarizeMockInterview`、`mockInterviews.js`の`saveMockInterviewSummary`）。ユーザーの発言が1件も無い（誤操作等の）セッションは記録の対象外とする（`hasMeaningfulContent`）。旧`knowledge/education/mock-interviews.md`の既存記録2件は`scripts/seed-mock-interviews.js`で一度きり同じテーブルへ移行し、以降このMarkdownファイルは更新しない（記録の閲覧画面は下記「模擬面接記録の閲覧」を参照）
-- **想定問答データはDynamoDB（`examination-interview-questions`）を唯一の正本とする**（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）。`knowledge/education/interview-*.md`は今後の追記・編集は行わず、`deploy.yml`の「Sync interview questions from Markdown」ステップ（`scripts/seed-interview-questions.js`）が毎回のデプロイでMarkdownの内容をDynamoDBへ同期する。`familySlug`・`category`・`question`から決定的な`questionId`（SHA-256ハッシュ）を生成しているため、同じ行を何度でも安全に上書きでき、LINE botの登録モード（`saveQuestion`、時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しない。各行の属性: `category`・`targetPerson`（対象者: 本人/父/母。閲覧画面のフィルタリング用、下記参照）・`question`・`answer`（回答の要点）・`example`（盛り込む具体例、無い場合は空文字）・`impression`（面接官への印象、無い場合は空文字）・`modelAnswer`（AIによる模範解答。現時点では空文字のプレースホルダーで、生成ロジックは未実装）。想定問答の閲覧画面（React、1画面統合）は下記「想定問答の閲覧」を参照
+- **想定問答データはDynamoDB（`examination-interview-questions`）を唯一の正本とする**（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)）。`knowledge/education/interview-*.md`は今後の追記・編集は行わず、`cd.yml`の「Sync interview questions from Markdown」ステップ（`scripts/seed-interview-questions.js`）が毎回のデプロイでMarkdownの内容をDynamoDBへ同期する。`familySlug`・`category`・`question`から決定的な`questionId`（SHA-256ハッシュ）を生成しているため、同じ行を何度でも安全に上書きでき、LINE botの登録モード（`saveQuestion`、時刻+ランダム値のID）で追加された行とはID体系が異なり衝突しない。各行の属性: `category`・`targetPerson`（対象者: 本人/父/母。閲覧画面のフィルタリング用、下記参照）・`question`・`answer`（回答の要点）・`example`（盛り込む具体例、無い場合は空文字）・`impression`（面接官への印象、無い場合は空文字）・`modelAnswer`（AIによる模範解答。現時点では空文字のプレースホルダーで、生成ロジックは未実装）。想定問答の閲覧画面（React、1画面統合）は下記「想定問答の閲覧」を参照
 - 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）は未実装のため、v1では家族を`chofu-suzuki`固定として扱う
 - 初回デプロイ後、Job Summaryに表示されるWebhook URL（`<HTTP APIのURL>/webhook`）を、LINE Developers ConsoleのMessaging APIチャネル設定でWebhook URLとして登録する必要がある（URLが変わった場合のみ再登録が必要）
 

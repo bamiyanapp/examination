@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   // MkDocs静的サイトの/education/interview-questions/配下へビルド成果物を上書き配置する
-  // （deploy.yml、examination#77）ため、サイトルートではなくこのサブパスを基準にする
+  // （cd.yml、examination#77）ため、サイトルートではなくこのサブパスを基準にする
   base: '/education/interview-questions/',
   test: {
     environment: 'jsdom',

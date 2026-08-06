@@ -1,7 +1,7 @@
 <!--
 このページはReactアプリ（app/interview-questions/、examination#77）で実装されている。
 mkdocsのnav検証（strictモード）を通すためのプレースホルダーであり、
-deploy.ymlのビルドステップでこのファイルの生成物（site/education/interview-questions/index.html）は
+cd.ymlのビルドステップでこのファイルの生成物（site/education/interview-questions/index.html）は
 app/interview-questions/のビルド成果物で上書きされる。実装本体は
 app/interview-questions/src/pages/InterviewQuestions.jsx を参照。
 

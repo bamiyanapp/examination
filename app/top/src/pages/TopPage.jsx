@@ -26,13 +26,18 @@ const SECTIONS = [
   },
 ];
 
-// デプロイ（deploy.yml）は全アプリを同一コミットから一括ビルドするため、トップページの
-// ビルド情報をサイト全体のバージョン表示として扱う（examination#131）。ビルド時に
-// VITE_BUILD_SHA/VITE_BUILD_TIMEが未設定の場合（ローカル開発時等）はフォールバック表示にする
+// デプロイ（cd.yml）は全アプリを同一コミットから一括ビルドするため、トップページの
+// ビルド情報をサイト全体のバージョン表示として扱う（examination#131）。VITE_BUILD_VERSION
+// はConventional Commitsからsemantic-releaseが算出したセマンティックバージョン
+// （examination#137）。docs/chore等バージョンが上がらないコミットではデプロイの
+// たびには変わらないため、実際に最新がデプロイされたかどうかの確認にはビルドSHA・
+// 日時（VITE_BUILD_SHA/VITE_BUILD_TIME）をあわせて表示する。ビルド時にこれらが
+// 未設定の場合（ローカル開発時等）はフォールバック表示にする
 function formatBuildInfo() {
+  const version = import.meta.env.VITE_BUILD_VERSION;
   const sha = import.meta.env.VITE_BUILD_SHA;
   const time = import.meta.env.VITE_BUILD_TIME;
-  if (!sha || !time) {
+  if (!version || !sha || !time) {
     return "開発版";
   }
   const formattedTime = new Date(time).toLocaleString("ja-JP", {
@@ -43,7 +48,7 @@ function formatBuildInfo() {
     hour: "2-digit",
     minute: "2-digit",
   });
-  return `${sha}（${formattedTime}更新）`;
+  return `${version}（${sha}, ${formattedTime}更新）`;
 }
 
 export default function TopPage() {

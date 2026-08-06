@@ -39,7 +39,7 @@ resources:
 
     # CloudFrontドメインは作成後不変のため、初回ブートストラップ時のみプレースホルダーを使い、
     # 実際のドメイン判明後にCallbackURLs/LogoutURLsを更新するため2回deployする
-    # （.github/workflows/deploy.yml参照）
+    # （.github/workflows/cd.yml参照）
     UserPoolClient:
       Type: AWS::Cognito::UserPoolClient
       DependsOn: GoogleIdentityProvider

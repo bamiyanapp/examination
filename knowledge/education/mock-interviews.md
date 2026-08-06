@@ -1,7 +1,7 @@
 <!--
 このページはReactアプリ（app/mock-interviews/、examination#103）で実装されている。
 mkdocsのnav検証（strictモード）を通すためのプレースホルダーであり、
-deploy.ymlのビルドステップでこのファイルの生成物（site/education/mock-interviews/index.html）は
+cd.ymlのビルドステップでこのファイルの生成物（site/education/mock-interviews/index.html）は
 app/mock-interviews/のビルド成果物で上書きされる。実装本体は
 app/mock-interviews/src/pages/MockInterviews.jsx を参照。
 

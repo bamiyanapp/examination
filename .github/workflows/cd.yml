@@ -1,4 +1,4 @@
-name: Deploy
+name: CD
 
 on:
   push:
@@ -8,16 +8,35 @@ on:
 
 # 複数回のpushが短時間に重なった場合、AWSリソースへの同時デプロイで競合しないよう直列化する
 concurrency:
-  group: deploy-${{ github.repository }}
+  group: cd-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
+  # Conventional Commitsからセマンティックバージョンを算出し、package.jsonの更新・
+  # CHANGELOG.mdの生成・GitHub Releaseの作成を行う（examination#137）。npm公開は
+  # 行わない（dev-standards共有設定の既定npmPublish: false）。docs/cicd-pipeline-
+  # specification.mdのアーキテクチャ図（merge job → CD Workflow → release job →
+  # （プロダクト固有）Deploy jobs）に合わせ、下記deployジョブをこのジョブに
+  # 依存させることで、デプロイ時点で確定済みのバージョンを読み取れるようにする
+  release:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-cd.yml@v1.15.1
+    with:
+      enable_shared_release_config: true
+    secrets:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+
   deploy:
+    needs: release
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      # releaseジョブがバージョン更新コミットをmainへ直接pushしている場合があるため、
+      # このワークフローの発端になったコミット（github.sha）ではなく、常にmainの
+      # 最新状態を明示的に取得する
       - uses: actions/checkout@v7
+        with:
+          ref: main
 
       - uses: actions/setup-python@v7
         with:
@@ -137,12 +156,15 @@ jobs:
         working-directory: app/top
         # VITE_で始まる環境変数はViteがimport.meta.env.VITE_*として自動的に公開する
         # （examination#131）。全アプリを同一コミットから一括ビルドするデプロイのため、
-        # トップページのビルド情報をサイト全体のバージョン表示として扱う
-        env:
-          VITE_BUILD_SHA: ${{ github.sha }}
+        # トップページのビルド情報をサイト全体のバージョン表示として扱う。
+        # VITE_BUILD_VERSIONはreleaseジョブ（semantic-release）が更新した
+        # package.jsonのバージョンを読み取る（examination#137）。docs/chore等
+        # バージョンが上がらないコミットではデプロイ前回と同じ値になるため、
+        # 実際にデプロイが最新かどうかの確認にはVITE_BUILD_SHA・VITE_BUILD_TIMEを使う
         run: |
-          export VITE_BUILD_SHA="${VITE_BUILD_SHA:0:7}"
+          export VITE_BUILD_SHA="$(git rev-parse --short HEAD)"
           export VITE_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          export VITE_BUILD_VERSION="v$(node -p "require('../../package.json').version")"
           npm ci
           npm run build
           cp -r dist/. ../../site/
