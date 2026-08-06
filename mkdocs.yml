@@ -51,3 +51,4 @@ nav:
   - 設定:
       - 閲覧許可メールアドレス管理: settings/allowed-emails.md
       - LINE連携: settings/line-link.md
+      - プロフィール編集: settings/profile-edit.md

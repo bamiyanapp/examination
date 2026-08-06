@@ -5,6 +5,7 @@ import { useEffect } from "react";
 const BACKEND_LIST_ENDPOINTS = [
   "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions",
   "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/mock-interviews",
+  "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile",
 ];
 
 const WARMED_FLAG = "examination-backend-cache-warmed";

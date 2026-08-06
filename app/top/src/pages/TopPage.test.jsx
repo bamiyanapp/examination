@@ -13,6 +13,7 @@ describe("TopPage", () => {
       "/education/voice-practice/",
       "/settings/allowed-emails/",
       "/settings/line-link/",
+      "/settings/profile-edit/",
     ];
 
     for (const href of expectedHrefs) {

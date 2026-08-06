@@ -29,6 +29,7 @@ provider:
             - !GetAtt BotSessionsTable.Arn
             - !GetAtt LineLinksTable.Arn
             - !GetAtt MockInterviewsTable.Arn
+            - !GetAtt FamilyProfileTable.Arn
         # Gemini API呼び出し回数の1日あたり上限カウンタ（examination#124）。UpdateItemの
         # みで完結するため他テーブルとはActionを分けて宣言する
         - Effect: Allow
@@ -106,6 +107,20 @@ functions:
           path: /mock-interviews
           method: GET
 
+  # プロフィール（志望先の特色・その他前提情報）の取得・更新API（examination#125）。
+  # app/profile-edit/がブラウザから直接呼ぶ。interviewQuestionsと同じ短期トークンで認証する
+  familyProfileApi:
+    handler: functions/familyProfileApi.handler
+    memorySize: 256
+    timeout: 10
+    events:
+      - httpApi:
+          path: /family-profile
+          method: GET
+      - httpApi:
+          path: /family-profile
+          method: POST
+
 resources:
   Resources:
     # 面接想定問答（ユーザー登録データ）。familySlugは複数家族対応(examination#44)を
@@ -174,6 +189,21 @@ resources:
             KeyType: HASH
           - AttributeName: sessionId
             KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    # プロフィール（志望先の特色・その他前提情報）。家族単位で1件のみ保持する
+    # （examination#125）。以前は面接練習のたびに毎回自由入力していたが、
+    # プロフィール編集画面で編集・保存し、面接練習側は参照するのみにする
+    FamilyProfileTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-family-profile
+        AttributeDefinitions:
+          - AttributeName: familySlug
+            AttributeType: S
+        KeySchema:
+          - AttributeName: familySlug
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
     # Gemini API呼び出し回数の1日あたり上限カウンタ（examination#124）。/_voice-token

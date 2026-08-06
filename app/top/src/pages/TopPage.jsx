@@ -21,6 +21,7 @@ const SECTIONS = [
     links: [
       { label: "閲覧許可メールアドレス管理", href: "/settings/allowed-emails/" },
       { label: "LINE連携", href: "/settings/line-link/" },
+      { label: "プロフィール編集", href: "/settings/profile-edit/" },
     ],
   },
 ];

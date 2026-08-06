@@ -36,6 +36,7 @@ jobs:
             app/interview-questions/package-lock.json
             app/education-overview/package-lock.json
             app/mock-interviews/package-lock.json
+            app/profile-edit/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -103,6 +104,17 @@ jobs:
           rm -rf ../../site/education/mock-interviews
           mkdir -p ../../site/education/mock-interviews
           cp -r dist/. ../../site/education/mock-interviews/
+
+      # プロフィール編集ページ（examination#125）。志望先の特色・その他前提情報の編集を
+      # 音声対話ページから移設した専用画面
+      - name: Build and embed the React app (プロフィール編集)
+        working-directory: app/profile-edit
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../../site/settings/profile-edit
+          mkdir -p ../../site/settings/profile-edit
+          cp -r dist/. ../../site/settings/profile-edit/
 
       # 教育セクションの概要ページ（examination#92）。鈴木家固有の情報（家族名入りの
       # チェックリスト等）を排除し、汎用的な方法論のみを残した。site/education/配下には

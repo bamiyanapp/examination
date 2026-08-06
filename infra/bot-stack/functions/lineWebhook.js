@@ -20,6 +20,7 @@ const {
   summarizeMockInterview,
 } = require("./geminiConversation");
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
+const { getFamilyProfile } = require("./familyProfile");
 const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
 
 const { FAMILY_SLUG } = require("./familyConfig");
@@ -198,28 +199,15 @@ async function handlePracticeRoleSelected(lineUserId, text) {
   );
 }
 
-async function handlePracticeSituationEntered(lineUserId, session, text) {
+// 志望先の特色・その他前提情報はプロフィール編集画面（app/profile-edit/）で
+// 編集・保存された値をサーバー側で参照する（examination#125）。以前はここで
+// LINEから追加で自由入力させていたが、練習の度に入力し直すものではないため撤去した。
+// voiceChat.js（音声対話ページ）とも同じ単一の情報源を参照することで両チャネルの
+// 一貫性を保つ
+async function handlePracticeSituationEntered(lineUserId, session, text, email) {
   const situation = sanitizeFreeText(text, DEFAULT_SITUATION);
-  await saveSession(lineUserId, {
-    mode: "practice_select_characteristics",
-    practiceState: { ...session.practiceState, situation },
-  });
-  return "志望先の特色があれば教えてください（無ければ「なし」と送ってください）。";
-}
-
-async function handlePracticeCharacteristicsEntered(lineUserId, session, text) {
-  const schoolCharacteristics = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
-  await saveSession(lineUserId, {
-    mode: "practice_select_other_context",
-    practiceState: { ...session.practiceState, schoolCharacteristics },
-  });
-  return "その他、AIに伝えておきたい前提情報があれば教えてください（無ければ「なし」と送ってください）。";
-}
-
-// 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
-async function handlePracticeOtherContextEntered(lineUserId, session, text, email) {
-  const otherContext = /^(なし|無し|特になし)$/.test(text.trim()) ? "" : sanitizeFreeText(text, "");
-  const practiceState = { ...session.practiceState, otherContext };
+  const { schoolCharacteristics, otherContext } = await getFamilyProfile();
+  const practiceState = { role: session.practiceState.role, situation, schoolCharacteristics, otherContext };
   // AI API呼び出しの1日あたりの上限チェック（examination#124）
   if (!(await incrementAndCheckAiApiUsage(email))) {
     await clearSession(lineUserId);
@@ -384,13 +372,7 @@ async function handleTextMessage(lineUserId, text) {
     return handlePracticeRoleSelected(lineUserId, text);
   }
   if (session.mode === "practice_select_situation") {
-    return handlePracticeSituationEntered(lineUserId, session, text);
-  }
-  if (session.mode === "practice_select_characteristics") {
-    return handlePracticeCharacteristicsEntered(lineUserId, session, text);
-  }
-  if (session.mode === "practice_select_other_context") {
-    return handlePracticeOtherContextEntered(lineUserId, session, text, linkedEmail);
+    return handlePracticeSituationEntered(lineUserId, session, text, linkedEmail);
   }
   if (session.mode === "practice") {
     return handlePracticeTurn(lineUserId, session, text, linkedEmail);
