@@ -26,6 +26,26 @@ const SECTIONS = [
   },
 ];
 
+// デプロイ（deploy.yml）は全アプリを同一コミットから一括ビルドするため、トップページの
+// ビルド情報をサイト全体のバージョン表示として扱う（examination#131）。ビルド時に
+// VITE_BUILD_SHA/VITE_BUILD_TIMEが未設定の場合（ローカル開発時等）はフォールバック表示にする
+function formatBuildInfo() {
+  const sha = import.meta.env.VITE_BUILD_SHA;
+  const time = import.meta.env.VITE_BUILD_TIME;
+  if (!sha || !time) {
+    return "開発版";
+  }
+  const formattedTime = new Date(time).toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${sha}（${formattedTime}更新）`;
+}
+
 export default function TopPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
@@ -55,6 +75,7 @@ export default function TopPage() {
           </section>
         ))}
       </div>
+      <p className="mt-10 text-center text-xs text-base-content/50">バージョン: {formatBuildInfo()}</p>
     </main>
   );
 }

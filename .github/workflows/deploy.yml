@@ -135,7 +135,14 @@ jobs:
       # 「aws s3 sync --delete」でS3からも自動的に削除される
       - name: Build and embed the React app (トップページ)
         working-directory: app/top
+        # VITE_で始まる環境変数はViteがimport.meta.env.VITE_*として自動的に公開する
+        # （examination#131）。全アプリを同一コミットから一括ビルドするデプロイのため、
+        # トップページのビルド情報をサイト全体のバージョン表示として扱う
+        env:
+          VITE_BUILD_SHA: ${{ github.sha }}
         run: |
+          export VITE_BUILD_SHA="${VITE_BUILD_SHA:0:7}"
+          export VITE_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           npm ci
           npm run build
           cp -r dist/. ../../site/

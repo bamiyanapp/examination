@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import TopPage from "./TopPage.jsx";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("TopPage", () => {
   it("renders links to all existing pages", () => {
@@ -50,5 +54,19 @@ describe("TopPage", () => {
   it("does not link to the removed family profile page (examination#102)", () => {
     render(<TopPage />);
     expect(document.querySelector('a[href="/family/profile/"]')).toBeNull();
+  });
+
+  it("shows the build SHA and formatted build time when set (examination#131)", () => {
+    vi.stubEnv("VITE_BUILD_SHA", "abc1234");
+    vi.stubEnv("VITE_BUILD_TIME", "2026-08-06T03:04:00Z");
+    render(<TopPage />);
+    expect(screen.getByText(/バージョン: abc1234/)).toBeInTheDocument();
+  });
+
+  it("falls back to a placeholder when build info is not set (e.g. local dev, examination#131)", () => {
+    vi.stubEnv("VITE_BUILD_SHA", "");
+    vi.stubEnv("VITE_BUILD_TIME", "");
+    render(<TopPage />);
+    expect(screen.getByText("バージョン: 開発版")).toBeInTheDocument();
   });
 });
