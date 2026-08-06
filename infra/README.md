@@ -41,6 +41,7 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 - キャッシュ名にはバージョン番号を含め（`examination-static-v1`等）、`activate`イベントで古いバージョンのキャッシュを削除する
 - `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のdeploy.yml変更は不要
 - 登録は各アプリへ共通コンポーネント（`ServiceWorkerRegistration.jsx`）として複製する既存方針（`NavigationOverlay`等と同様）を踏襲する
+- **バックエンドAPIのプロアクティブなウォームアップ**: 上記のバックエンドAPIキャッシュは「そのページを一度でも開いた後にキャッシュされる」受動的な仕組みのため、どのページを最初に開いても`BackendCacheWarmer.jsx`（同じく各アプリへ複製）がバックグラウンドで`/interview-questions`・`/mock-interviews`を先に取得し、Service Workerのキャッシュを温めておく。`/_voice-token`の発行回数には1日あたりの上限がある（[Issue #69](https://github.com/bamiyanapp/examination/issues/69)、20回/日）ため、`sessionStorage`でブラウザセッションあたり1回だけ実行するよう制御し、通常の閲覧だけで上限を消費しないようにしている
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
