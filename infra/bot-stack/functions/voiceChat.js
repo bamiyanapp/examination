@@ -11,6 +11,7 @@ const {
 } = require("./geminiConversation");
 const { verifyBearerEmail } = require("./apiAuth");
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
+const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -53,6 +54,12 @@ exports.handler = async (event) => {
     if (!hasMeaningfulContent(history)) {
       return jsonResponse(200, { saved: false });
     }
+    // サマリー生成もGemini呼び出しの1つとして上限にカウントする。ただし練習の
+    // 終了自体は他の失敗ケースと同様にブロックしない（examination#124）
+    if (!(await incrementAndCheckAiApiUsage(email))) {
+      console.warn("AI API daily limit exceeded (end)", email);
+      return jsonResponse(200, { saved: false });
+    }
     try {
       const summary = await summarizeMockInterview({ role, situation, schoolCharacteristics, history });
       await saveMockInterviewSummary({ role, situation, schoolCharacteristics, channel: "voice", summary, createdBy: email });
@@ -61,6 +68,14 @@ exports.handler = async (event) => {
       console.error("Mock interview summary failed", error.message);
       return jsonResponse(200, { saved: false });
     }
+  }
+
+  // AI API呼び出しの1日あたりの上限チェック（examination#124）。/_voice-token発行回数の
+  // 上限（examination#69）とは別に、実際のGemini呼び出し回数そのものを制限する
+  if (!(await incrementAndCheckAiApiUsage(email))) {
+    return jsonResponse(429, {
+      error: `本日のAI応答生成の上限（${AI_API_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`,
+    });
   }
 
   const messages = [
