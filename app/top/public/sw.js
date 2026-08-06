@@ -3,8 +3,12 @@
 // examination#72では「PWAで更新が反映されない」問題への対応として意図的に
 // Service Workerを新設しない方針を採ったが、Stale-While-Revalidateはキャッシュを
 // 即座に返しつつ裏側で必ず最新を取得してキャッシュを更新するため、
-// 「更新が永久に反映されない」状態にはならず両立できる
-const CACHE_VERSION = "v1";
+// 「更新が永久に反映されない」状態にはならず両立できる……はずだったが、
+// ページ本体（HTMLナビゲーション）にまでStale-While-Revalidateを適用していたため、
+// 表示は常に「1回前のデプロイ内容」になり、deploy.ymlの`aws s3 sync --delete`で
+// 削除された古いハッシュ付きJS/CSSを参照したまま壊れて見えることがあった
+// （examination#133）。ページ本体はNetwork Firstに変更し、常に最新を取得する
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `examination-static-${CACHE_VERSION}`;
 const API_CACHE = `examination-api-${CACHE_VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, API_CACHE];
@@ -59,7 +63,9 @@ self.addEventListener("activate", (event) => {
 });
 
 // キャッシュを即座に返しつつ、裏側でネットワーク取得してキャッシュを更新する。
-// キャッシュが無い場合のみネットワークの結果を待って返す
+// キャッシュが無い場合のみネットワークの結果を待って返す。ページ本体以外の
+// サブリソース（ハッシュ付きJS/CSS等、内容が変われば別ファイル名になるもの）・
+// バックエンドAPIには引き続きこの方式を使う
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -70,6 +76,23 @@ async function staleWhileRevalidate(request, cacheName) {
     })
     .catch(() => undefined);
   return cached || (await networkFetch) || Response.error();
+}
+
+// ページ本体（HTMLナビゲーション）用。まずネットワークから最新を取得し、
+// 取得できた場合のみキャッシュを更新して返す。オフライン等でネットワークが
+// 使えない場合のみキャッシュ（インストール時のプリキャッシュ等）にフォールバックする
+// （examination#133）。Stale-While-Revalidateと異なり、表示が「1回前のデプロイ内容」
+// のまま固定されることがなく、常に最新のHTMLを取得する
+async function networkFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    return cached || Response.error();
+  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -86,6 +109,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin === self.location.origin) {
-    event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+    // request.modeが"navigate"のリクエストはページ本体そのもの（URL直接入力・
+    // リンククリック等によるフルページ遷移）を指す標準的な判定方法。それ以外の
+    // 同一オリジンGET（ハッシュ付きJS/CSS等のサブリソース）はStale-While-Revalidateのまま
+    if (request.mode === "navigate") {
+      event.respondWith(networkFirst(request, STATIC_CACHE));
+    } else {
+      event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+    }
   }
 });
