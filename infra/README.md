@@ -37,7 +37,8 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 - **静的ページの先読み**: `install`イベントで、主要ページ（音声で面接練習ページを除く。理由はexamination#100・#105・#112と同じ）をまとめてキャッシュへ格納する
 - **バックエンドAPIのキャッシュ**: `GET /interview-questions`・`GET /mock-interviews`等（`bot-stack`のHTTP API）へのGETリクエストをキャッシュする。POST等の非GETリクエスト（`/_voice-token`発行等）はキャッシュ対象から除外する
-- **Stale-While-Revalidate**: キャッシュがあれば即座に返しつつ、裏側で必ずネットワーク取得してキャッシュを更新する。Issue #72で問題になった「更新が永久に反映されない」状態にはならず、[Issue #72](https://github.com/bamiyanapp/examination/issues/72)の方針と両立する
+- **Stale-While-Revalidate**: キャッシュがあれば即座に返しつつ、裏側で必ずネットワーク取得してキャッシュを更新する。Issue #72で問題になった「更新が永久に反映されない」状態にはならず、[Issue #72](https://github.com/bamiyanapp/examination/issues/72)の方針と両立する……はずだったが、これをページ本体（HTMLナビゲーション）にまで適用していたため、表示が常に「1回前のデプロイ内容」で固定される問題があった（下記「ページ本体はNetwork First」参照）
+- **ページ本体はNetwork First**（[Issue #133](https://github.com/bamiyanapp/examination/issues/133)）: `request.mode === "navigate"`（フルページ遷移の標準的な判定方法）のリクエストのみ、Stale-While-Revalidateではなく**Network First**（まずネットワークから取得し、オフライン時のみキャッシュにフォールバック）にする。Stale-While-Revalidateのままだと、`deploy.yml`の`aws s3 sync --delete`で削除された古いハッシュ付きJS/CSSを参照する古い`index.html`がキャッシュされ続け、更新後も1回前の内容が表示され続ける（ひどい場合はアセットの404で壊れて見える）ことがあった。ハッシュ付きJS/CSS等のサブリソース・バックエンドAPIは引き続きStale-While-Revalidateのまま（速度優先で問題ない）
 - キャッシュ名にはバージョン番号を含め（`examination-static-v1`等）、`activate`イベントで古いバージョンのキャッシュを削除する
 - `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のdeploy.yml変更は不要
 - 登録は各アプリへ共通コンポーネント（`ServiceWorkerRegistration.jsx`）として複製する既存方針（`NavigationOverlay`等と同様）を踏襲する
