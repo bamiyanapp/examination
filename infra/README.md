@@ -29,7 +29,18 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 - `*assets/*`配下（各Reactアプリ・MkDocs Materialテーマのハッシュ付きJS/CSS。ただし`favicon`は除く）: `public, max-age=31536000, immutable`。内容が変わればファイル名（コンテンツハッシュ）自体が変わるため、長期不変キャッシュにしてよい
 - それ以外（`index.html`・`search/search_index.json`・`favicon.svg`等）: `no-cache`。内容が変わってもファイル名が変わらないため、CloudFront・ブラウザともに使用前に必ずオリジンへ再検証（条件付きGET）させる
 
-**このヘッダーを明示的に指定していなかったこと自体が、PWAとして開いた際にサイト更新が反映されない不具合の根本原因だった**（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）。S3はデフォルトで`Cache-Control`を付与せず、CloudFrontの`DefaultCacheBehavior`（`Managed-CachingOptimized`）はオリジンがヘッダーを返さない場合`DefaultTTL`（1日）でエッジキャッシュする。デプロイ時の`aws cloudfront create-invalidation --paths "/*"`はCloudFrontのエッジキャッシュのみを無効化し、ユーザーのブラウザ本体のキャッシュ（ホーム画面に追加した状態では通常のリロード操作が効きにくい）までは無効化しない。この問題はService Worker等を新設せず、キャッシュヘッダーの是正のみで解消する方針とした。
+**このヘッダーを明示的に指定していなかったこと自体が、PWAとして開いた際にサイト更新が反映されない不具合の根本原因だった**（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）。S3はデフォルトで`Cache-Control`を付与せず、CloudFrontの`DefaultCacheBehavior`（`Managed-CachingOptimized`）はオリジンがヘッダーを返さない場合`DefaultTTL`（1日）でエッジキャッシュする。デプロイ時の`aws cloudfront create-invalidation --paths "/*"`はCloudFrontのエッジキャッシュのみを無効化し、ユーザーのブラウザ本体のキャッシュ（ホーム画面に追加した状態では通常のリロード操作が効きにくい）までは無効化しない。この問題はこの時点ではService Worker等を新設せず、キャッシュヘッダーの是正のみで解消する方針とした。
+
+### Service Workerによる先読み・APIキャッシュ（[Issue #118](https://github.com/bamiyanapp/examination/issues/118)）
+
+[Issue #105](https://github.com/bamiyanapp/examination/issues/105)のSpeculation Rules APIはChromium系ブラウザ限定で、Safari（iOS含む）では効果が無い。より確実にページ遷移を高速化するため、`app/top/public/sw.js`（`/sw.js`としてサイトルートから配信）でService Workerを導入した。上記のキャッシュヘッダー方針とは異なり、今回は意図的にStale-While-Revalidate方式を採用する。
+
+- **静的ページの先読み**: `install`イベントで、主要ページ（音声で面接練習ページを除く。理由はexamination#100・#105・#112と同じ）をまとめてキャッシュへ格納する
+- **バックエンドAPIのキャッシュ**: `GET /interview-questions`・`GET /mock-interviews`等（`bot-stack`のHTTP API）へのGETリクエストをキャッシュする。POST等の非GETリクエスト（`/_voice-token`発行等）はキャッシュ対象から除外する
+- **Stale-While-Revalidate**: キャッシュがあれば即座に返しつつ、裏側で必ずネットワーク取得してキャッシュを更新する。Issue #72で問題になった「更新が永久に反映されない」状態にはならず、[Issue #72](https://github.com/bamiyanapp/examination/issues/72)の方針と両立する
+- キャッシュ名にはバージョン番号を含め（`examination-static-v1`等）、`activate`イベントで古いバージョンのキャッシュを削除する
+- `sw.js`自体はハッシュ付きファイル名ではないため、既存のCache-Control分類上「それ以外」（`no-cache`）に自動的に該当し、追加のdeploy.yml変更は不要
+- 登録は各アプリへ共通コンポーネント（`ServiceWorkerRegistration.jsx`）として複製する既存方針（`NavigationOverlay`等と同様）を踏襲する
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
