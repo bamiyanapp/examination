@@ -31,6 +31,12 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 **このヘッダーを明示的に指定していなかったこと自体が、PWAとして開いた際にサイト更新が反映されない不具合の根本原因だった**（[Issue #72](https://github.com/bamiyanapp/examination/issues/72)）。S3はデフォルトで`Cache-Control`を付与せず、CloudFrontの`DefaultCacheBehavior`（`Managed-CachingOptimized`）はオリジンがヘッダーを返さない場合`DefaultTTL`（1日）でエッジキャッシュする。デプロイ時の`aws cloudfront create-invalidation --paths "/*"`はCloudFrontのエッジキャッシュのみを無効化し、ユーザーのブラウザ本体のキャッシュ（ホーム画面に追加した状態では通常のリロード操作が効きにくい）までは無効化しない。この問題はこの時点ではService Worker等を新設せず、キャッシュヘッダーの是正のみで解消する方針とした。
 
+### 動的エンドポイントはキャッシュ対象から除外する（[Issue #143](https://github.com/bamiyanapp/examination/issues/143)）
+
+`checkAuth.js`（Lambda@Edge）が処理する`/_callback`・`/_logout`・`/_admin/emails`・`/_link-line`・`/_voice-token`は、リクエストのたびに結果が変わる動的エンドポイントである。しかしCloudFrontの`DefaultCacheBehavior`（`Managed-CachingOptimized`）はこれら全パスにも適用されており、このポリシーのキャッシュキーは**クエリ文字列・Cookieを含まずURLパスのみ**のため、あるリクエストへの応答（`/_callback?code=...&state=...`へのリダイレクトや、一時的なエラー）が同じパスへの別のリクエストにもそのまま返り得る状態になっていた。これがログイン後に「invalid state」と表示され続け、TTLが切れるまで誰がログインしても復旧しない不具合の原因だった。
+
+対応として、`site-stack/serverless.yml`の`SiteDistribution`に上記5パスそれぞれの`CacheBehaviors`（`CachingDisabled`、AWSマネージドポリシー）を追加し、`checkAuth`関数の`lambdaAtEdge`もこれらのパスへ関連付けた（1つのLambda関数を複数のキャッシュビヘイビアへ関連付ける場合、`@silvermine/serverless-plugin-cloudfront-lambda-edge`の`lambdaAtEdge`は配列で指定し、各要素の`pathPattern`が対応する`CacheBehaviors`の`PathPattern`と完全一致する必要がある）。
+
 ### Service Workerによる先読み・APIキャッシュ（[Issue #118](https://github.com/bamiyanapp/examination/issues/118)）
 
 [Issue #105](https://github.com/bamiyanapp/examination/issues/105)のSpeculation Rules APIはChromium系ブラウザ限定で、Safari（iOS含む）では効果が無い。より確実にページ遷移を高速化するため、`app/top/public/sw.js`（`/sw.js`としてサイトルートから配信）でService Workerを導入した。上記のキャッシュヘッダー方針とは異なり、今回は意図的にStale-While-Revalidate方式を採用する。
