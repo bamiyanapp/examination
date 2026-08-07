@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/bamiyanapp/examination/compare/v1.0.2...v1.0.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* **auth:** 未認証のバックグラウンドfetchがcsrf_stateを上書きしないようにする ([#146](https://github.com/bamiyanapp/examination/issues/146)) ([c71ea18](https://github.com/bamiyanapp/examination/commit/c71ea188c1e7c5f5ad4e6072488bf58b7147c2eb)), closes [#143](https://github.com/bamiyanapp/examination/issues/143)
+
 ## [1.0.2](https://github.com/bamiyanapp/examination/compare/v1.0.1...v1.0.2) (2026-08-07)
 
 
