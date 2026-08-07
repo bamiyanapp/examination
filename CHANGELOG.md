@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/bamiyanapp/examination/compare/v1.0.3...v1.1.0) (2026-08-07)
+
+
+### Features
+
+* **interview:** 練習の回答から模範解答・面接官への印象を生成し想定問答へ反映する ([#148](https://github.com/bamiyanapp/examination/issues/148)) ([c63e91d](https://github.com/bamiyanapp/examination/commit/c63e91d0b418c763b4f66ef6e86ada41cb775b74)), closes [#147](https://github.com/bamiyanapp/examination/issues/147)
+
 ## [1.0.3](https://github.com/bamiyanapp/examination/compare/v1.0.2...v1.0.3) (2026-08-07)
 
 
