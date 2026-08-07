@@ -70,9 +70,15 @@ export default function AllowedEmails() {
         <li>一覧に残り1件しかない場合、それは削除できません</li>
         <li>追加・削除は最大60秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
       </ul>
-      {status && (
-        <div role="alert" className={`alert mt-4 ${isError ? "alert-error" : "alert-info"}`}>
+      {isError && status && (
+        <div role="alert" className="alert alert-error mt-4">
           <span>{status}</span>
+        </div>
+      )}
+      {!isError && status && (
+        <div className="mt-4 flex items-center gap-2 text-base-content/70">
+          <span className="loading loading-spinner loading-sm" />
+          {status}
         </div>
       )}
       <ul className="list mt-4 rounded-box bg-base-100 shadow-sm">

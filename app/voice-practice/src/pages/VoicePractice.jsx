@@ -228,7 +228,12 @@ export default function VoicePractice() {
             </label>
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">シチュエーション・志望先の特色・その他前提情報:</span>
-              {profileStatus === "loading" && <span className="text-sm text-base-content/60">読み込み中...</span>}
+              {profileStatus === "loading" && (
+                <span className="flex items-center gap-2 text-sm text-base-content/60">
+                  <span className="loading loading-spinner loading-xs" />
+                  読み込み中...
+                </span>
+              )}
               {profileStatus === "loaded" && (
                 <div className="rounded-box bg-base-200 p-3 text-sm text-base-content/80">
                   <p>シチュエーション: {situation}</p>
