@@ -38,7 +38,13 @@ self.addEventListener("install", (event) => {
       await Promise.all(
         PRECACHE_URLS.map(async (url) => {
           try {
-            const response = await fetch(url);
+            // X-Precache-Requestは未認証時にcheckAuth.js（Lambda@Edge）へ「これは
+            // ページ本体への実際のナビゲーションではなくバックグラウンドの先読み
+            // fetchである」ことを伝えるための独自ヘッダー。ブラウザが自動付与する
+            // Sec-Fetch-Modeヘッダーだけに頼ると、送信されない・ブラウザ実装依存で
+            // 信頼できない場合があり（examination#143の再発）、この独自ヘッダーは
+            // 自前のfetch呼び出しである限り常に確実に送信できる
+            const response = await fetch(url, { headers: { "X-Precache-Request": "1" } });
             if (response.ok) {
               await cache.put(url, response);
             }
