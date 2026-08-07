@@ -35,12 +35,38 @@ functions:
     handler: functions/checkAuth.handler
     memorySize: 128
     timeout: 5
+    # /_callback・/_logout・/_admin/emails・/_link-line・/_voice-tokenは
+    # リクエストのたびに結果が変わる動的エンドポイントのため、DefaultCacheBehavior
+    # （静的コンテンツ向け）とは別に、これらのPathPatternに対応するCacheBehaviors
+    # （下記resources参照、CachingDisabled）へもこの関数を関連付ける必要がある
+    # （examination#143）。1つの関数を複数のキャッシュビヘイビアへ関連付ける場合、
+    # lambdaAtEdgeは配列で指定する（プラグインのREADME参照）
     lambdaAtEdge:
-      distribution: "SiteDistribution"
-      eventType: "viewer-request"
-      # 許可メールアドレスの登録・削除API（POST /_admin/emails）でJSONボディを
-      # 読み取るために必要（既定はfalseでボディが渡されない）
-      includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        # 許可メールアドレスの登録・削除API（POST /_admin/emails）でJSONボディを
+        # 読み取るために必要（既定はfalseでボディが渡されない）
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        pathPattern: "_callback"
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        pathPattern: "_logout"
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        pathPattern: "_admin/emails"
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        pathPattern: "_link-line"
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
+        pathPattern: "_voice-token"
+        includeBody: true
 
 resources:
   Resources:
@@ -160,6 +186,41 @@ resources:
               - POST
               - PATCH
               - DELETE
+          # /_callback・/_logout・/_admin/emails・/_link-line・/_voice-tokenは
+          # checkAuth.jsが毎回異なる結果（認可コード交換、ログイン状態に応じたJSON等）を
+          # 返す動的エンドポイントだが、DefaultCacheBehaviorのManaged-CachingOptimizedは
+          # クエリ文字列・Cookieをキャッシュキーに含めずURLパスのみでキャッシュするため、
+          # あるリクエストへの応答（例: /_callback?code=A&state=Xへのリダイレクト、または
+          # 一時的なエラー）が同じパスへの別のリクエストにもそのまま返り得る
+          # （examination#143、ログイン後に「invalid state」から復旧しなくなる不具合の
+          # 原因）。CachingDisabled（AWSマネージドポリシー、全アカウント共通の固定ID）を
+          # 個別のCacheBehaviorとして割り当て、これらのパスをキャッシュ対象から除外する
+          CacheBehaviors:
+            - PathPattern: "_callback"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            - PathPattern: "_logout"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            - PathPattern: "_admin/emails"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            - PathPattern: "_link-line"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            - PathPattern: "_voice-token"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
           CustomErrorResponses:
             - ErrorCode: 403
               ResponseCode: 404
