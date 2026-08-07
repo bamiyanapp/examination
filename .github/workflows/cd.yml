@@ -6,6 +6,14 @@ on:
       - main
   workflow_dispatch: {}
 
+# releaseジョブが呼び出すreusable-cd.ymlのreleaseジョブはcontents: write・
+# pull-requests: writeを要求する（dev-standards自身のcd.ymlと同じ設定）。呼び出し元
+# ジョブに十分な権限が無いと、GitHub Actionsがワークフロー解析時点でジョブを1件も
+# 起動せずstartup_failureになる（examination#140）
+permissions:
+  contents: write
+  pull-requests: write
+
 # 複数回のpushが短時間に重なった場合、AWSリソースへの同時デプロイで競合しないよう直列化する
 concurrency:
   group: cd-${{ github.repository }}
