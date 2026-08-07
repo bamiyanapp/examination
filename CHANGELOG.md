@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/bamiyanapp/examination/compare/v1.0.1...v1.0.2) (2026-08-07)
+
+
+### Bug Fixes
+
+* **ui:** 残っていたテキストのみのローディング表現をスピナーに統一する ([#145](https://github.com/bamiyanapp/examination/issues/145)) ([3c1b66f](https://github.com/bamiyanapp/examination/commit/3c1b66f9a2f48c3a4af5883dabe2fa595440179d)), closes [#107](https://github.com/bamiyanapp/examination/issues/107)
+
 ## [1.0.1](https://github.com/bamiyanapp/examination/compare/v1.0.0...v1.0.1) (2026-08-07)
 
 
