@@ -509,13 +509,20 @@ exports.handler = async (event) => {
   // 未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを新しいnonceで
   // 上書きしてしまう。ユーザー自身が実際に進めているログインフロー（別のnonceで
   // 開始済み）と競合し、/_callback側の照合が失敗して「invalid state」になる
-  // （examination#143）。Sec-Fetch-Modeはブラウザが自動付与するリクエストヘッダーで、
-  // 実際のトップレベルナビゲーションのみ"navigate"になる（fetch()呼び出しは
-  // ページ・Service Workerのどちらから発行されても"navigate"にはならない）。
-  // ヘッダー自体を送らない古いブラウザ・クライアントとの互換性のため、ヘッダーが
-  // 存在する場合のみ判定し、無い場合は従来通りリダイレクトする
+  // （examination#143）。
+  //
+  // X-Precache-Requestはsw.jsの先読みfetch呼び出しが必ず自前で付与する独自ヘッダー
+  // （examination#143再発対応）。Sec-Fetch-Modeはブラウザが自動付与するリクエスト
+  // ヘッダーで実際のトップレベルナビゲーションのみ"navigate"になるが、Safari/iOS
+  // （PWAとしてホーム画面から開いた場合を含む）では送信されないことがあり、
+  // それのみに頼ると同じ不具合が再発する。そのため自前で確実に制御できる独自
+  // ヘッダーを主たる判定手段とし、Sec-Fetch-Modeは（将来他の未知のバックグラウンド
+  // fetchが増えた場合の）補助的な判定として残す。いずれのヘッダーも送らない
+  // 古いブラウザ・クライアントとの互換性のため、ヘッダーが存在する場合のみ判定し、
+  // 無い場合は従来通りリダイレクトする
+  const isPrecacheRequest = Boolean((request.headers["x-precache-request"] || [])[0]);
   const secFetchMode = (request.headers["sec-fetch-mode"] || [])[0]?.value;
-  if (secFetchMode && secFetchMode !== "navigate") {
+  if (isPrecacheRequest || (secFetchMode && secFetchMode !== "navigate")) {
     return { status: "401", statusDescription: "Unauthorized", body: "authentication required" };
   }
 
