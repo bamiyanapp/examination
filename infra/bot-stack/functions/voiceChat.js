@@ -11,6 +11,7 @@ const { verifyBearerEmail } = require("./apiAuth");
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
 const { getFamilyProfile } = require("./familyProfile");
 const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
+const { queryQuestionsByTargetPerson, applyReconciliationResults } = require("./interviewQuestionsStore");
 
 function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -62,8 +63,25 @@ exports.handler = async (event) => {
       return jsonResponse(200, { saved: false });
     }
     try {
-      const summary = await summarizeMockInterview({ role, situation, schoolCharacteristics, history });
+      // 対象者（role）に紐づく既存の想定問答を候補として渡し、この会話で出た
+      // 質問・回答が既存のどの質問に対応するか、模範解答・面接官への印象を
+      // 更新する価値があるかをAI自身に判定させる（examination#77要望3、#147）
+      const existingQuestions = await queryQuestionsByTargetPerson(role);
+      const { summary, questions } = await summarizeMockInterview({
+        role,
+        situation,
+        schoolCharacteristics,
+        history,
+        existingQuestions,
+      });
       await saveMockInterviewSummary({ role, situation, schoolCharacteristics, channel: "voice", summary, createdBy: email });
+      // 想定問答バンクへの反映は付随的な処理のため、失敗してもサマリー自体の
+      // 保存成功・終了レスポンス（{ saved: true }）は変えない
+      try {
+        await applyReconciliationResults(questions, role, existingQuestions);
+      } catch (error) {
+        console.error("Question bank reconciliation failed", error.message);
+      }
       return jsonResponse(200, { saved: true });
     } catch (error) {
       console.error("Mock interview summary failed", error.message);

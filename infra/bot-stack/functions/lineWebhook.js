@@ -20,10 +20,8 @@ const {
 const { hasMeaningfulContent, saveMockInterviewSummary } = require("./mockInterviews");
 const { getFamilyProfile } = require("./familyProfile");
 const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
+const { saveQuestion, queryQuestionsByTargetPerson, applyReconciliationResults } = require("./interviewQuestionsStore");
 
-const { FAMILY_SLUG } = require("./familyConfig");
-
-const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
 const BOT_SESSIONS_TABLE = "examination-bot-sessions";
 const LINE_LINKS_TABLE = "examination-line-links";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
@@ -124,39 +122,6 @@ async function isEmailAllowed(email) {
   return Boolean(result.Item);
 }
 
-// categoryは「本人面接」「父の保護者面接」「母の保護者面接」のいずれかとして
-// Geminiに抽出させている（handleRegisterExtract参照）。対象者（examination#77）は
-// このcategoryから機械的に導出し、AIに別途出力させて食い違うリスクを避ける
-const CATEGORY_TARGET_PERSON = {
-  本人面接: "本人",
-  父の保護者面接: "父",
-  母の保護者面接: "母",
-};
-
-function deriveTargetPerson(category) {
-  return CATEGORY_TARGET_PERSON[category] || "";
-}
-
-async function saveQuestion({ category, question, answer, createdBy }) {
-  const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-  await ddb.send(
-    new PutItemCommand({
-      TableName: INTERVIEW_QUESTIONS_TABLE,
-      Item: {
-        familySlug: { S: FAMILY_SLUG },
-        questionId: { S: questionId },
-        category: { S: category },
-        targetPerson: { S: deriveTargetPerson(category) },
-        question: { S: question },
-        answer: { S: answer },
-        createdBy: { S: createdBy },
-        createdAt: { S: new Date().toISOString() },
-      },
-    })
-  );
-  return questionId;
-}
-
 function isYes(text) {
   return /^(はい|OK|ok|うん|お願いします?)$/i.test(text.trim());
 }
@@ -235,8 +200,19 @@ async function handlePracticeTurn(lineUserId, session, text, email) {
       return "面接練習を終了しました。振り返りの記録には失敗しましたが、お疲れさまでした。";
     }
     try {
-      const summary = await summarizeMockInterview(practiceState);
+      // 対象者（role）に紐づく既存の想定問答を候補として渡し、この会話で出た
+      // 質問・回答が既存のどの質問に対応するか、模範解答・面接官への印象を
+      // 更新する価値があるかをAI自身に判定させる（examination#77要望3、#147）
+      const existingQuestions = await queryQuestionsByTargetPerson(practiceState.role);
+      const { summary, questions } = await summarizeMockInterview({ ...practiceState, existingQuestions });
       await saveMockInterviewSummary({ ...practiceState, channel: "line", summary, createdBy: lineUserId });
+      // 想定問答バンクへの反映は付随的な処理のため、失敗してもサマリー自体の
+      // 保存成功・練習終了の返信は変えない
+      try {
+        await applyReconciliationResults(questions, practiceState.role, existingQuestions);
+      } catch (error) {
+        console.error("Question bank reconciliation failed", error.message);
+      }
       return "面接練習を終了しました。今回の振り返りを記録しました。お疲れさまでした。";
     } catch (error) {
       console.error("Mock interview summary failed", error.message);
