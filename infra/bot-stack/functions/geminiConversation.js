@@ -182,25 +182,76 @@ async function callGemini(messages) {
 // （examination#93）。既存の記録フォーマット（knowledge/education/mock-interviews.md）
 // を踏襲し「よかった点」「改善が必要な点」「次回までのアクション」の3項目でまとめる。
 // このサマリーは音声で読み上げず記録として保存するだけのため、buildSystemPrompt/
-// parseDualReplyのような二形式JSON出力は不要（読みやすさのため箇条書きも許容する）
-function buildSummaryPrompt({ role, situation, schoolCharacteristics, history }) {
+// parseDualReplyのような二形式JSON出力は不要（読みやすさのため箇条書きも許容する）。
+//
+// あわせて、想定問答バンク（examination-interview-questions）との照合・模範解答/
+// 面接官への印象の生成もこの1回のGemini呼び出しに含める（examination#77要望3、
+// examination#147）。練習モード自体は引き続きAIが自由に質問を生成する方式
+// （examination#76）のままで、出題内容とテーブルの行は元々紐付いていないため、
+// 練習終了時にまとめて「今回の会話は既存のどの質問に対応するか」をAI自身に
+// 判定させる。別のGemini呼び出しを新設すると1日あたりのAI API上限
+// （aiApiLimit.js）を追加消費してしまうため、既存のサマリー生成と統合し
+// 呼び出し回数を増やさない
+function buildSummaryPrompt({ role, situation, schoolCharacteristics, history, existingQuestions }) {
   const roleDescription = ROLE_DESCRIPTIONS[role] || role;
   const transcript = (history || [])
     .map((message) => `${message.role === "user" ? "回答者" : "面接官"}: ${message.content}`)
     .join("\n");
   const characteristicsText = schoolCharacteristics ? `志望先の特色: ${schoolCharacteristics}。` : "";
+  const questionsList = (existingQuestions || [])
+    .map((q) => `- id: ${q.questionId} / 質問: ${q.question}${q.modelAnswer ? ` / 既存の模範解答: ${q.modelAnswer}` : ""}`)
+    .join("\n");
   return (
     `以下は${situation}の練習会話です。相手は${roleDescription}です。${characteristicsText}` +
     "この会話を振り返り、模擬面接の記録として「よかった点」「改善が必要な点」「次回までのアクション」の" +
     "3項目で日本語のサマリーを作成してください。各項目は「・」で始まる箇条書きで、実際の発言内容に" +
-    "具体的に触れながらまとめてください。出力はこの3項目のみとし、前置き・後書きは不要です。\n\n" +
-    `会話内容:\n${transcript}`
+    "具体的に触れながらまとめてください。\n\n" +
+    "あわせて、この会話で実際にやり取りされた質問と回答のペアを抽出し、それぞれについて次を行ってください。\n" +
+    "1. 下記の「既存の質問一覧」の中に同じ話題の質問が無いか確認する（あればそのidをmatchedQuestionIdとする。無ければnull）\n" +
+    "2. 回答者の回答をもとに、より良い模範解答と、その回答が面接官にどう評価されるか（面接官への印象）を生成する\n" +
+    "3. matchedQuestionIdがある場合、生成した模範解答が既存の模範解答より明らかに優れている場合のみ" +
+    "shouldUpdateModelAnswerをtrueにする（大差が無い場合はfalseにし、既存の模範解答を変更しない）\n" +
+    "4. 雑談や、同じ話題を掘り下げる追加質問（1つの話題を複数ターンに分けて深掘りしたもの）は1件にまとめ、" +
+    "最も内容が深まった回答を採用する。想定問答バンクに残す価値のある独立した質問と判断した場合のみ" +
+    "shouldPersistをtrueにする（世間話等、質問と呼べないやり取りはshouldPersistをfalseにするか抽出しない）\n\n" +
+    "既存の質問一覧（対象者: " +
+    roleDescription +
+    "）:\n" +
+    (questionsList || "（該当なし）") +
+    "\n\n会話内容:\n" +
+    transcript +
+    "\n\n出力は必ず次のJSON形式のみとし、他の文章を含めないでください。summaryは上記3項目の箇条書き文字列、" +
+    "questionsは抽出した質問ごとのオブジェクトの配列です（該当が無ければ空配列）。\n" +
+    '{"summary": "・...", "questions": [{"matchedQuestionId": "IDまたはnull", "question": "質問文（matchedQuestionIdがnullの場合のみ使用）", ' +
+    '"answer": "回答内容", "modelAnswer": "模範解答", "impression": "面接官への印象", "shouldPersist": true, "shouldUpdateModelAnswer": true}]}'
   );
 }
 
-async function summarizeMockInterview({ role, situation, schoolCharacteristics, history }) {
-  const prompt = buildSummaryPrompt({ role, situation, schoolCharacteristics, history });
-  return callGemini([{ role: "user", content: prompt }]);
+// buildSummaryPromptの出力（{summary, questions}のJSON）をパースする。questions配列の
+// 各要素は個別にバリデーションし、不正な要素は取り除く（1件の形式不備で全体を
+// 諦めるとせっかくのsummaryも失われるため）。JSON自体の抽出・改行エスケープは
+// parseDualReplyと同じ方針を再利用する
+function parseReconciliationReply(rawText) {
+  try {
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const jsonText = escapeControlCharsInJsonStrings(jsonMatch ? jsonMatch[0] : rawText);
+    const parsed = JSON.parse(jsonText);
+    const summary = typeof parsed.summary === "string" ? parsed.summary : rawText;
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions.filter(
+          (q) => q && typeof q.answer === "string" && typeof q.modelAnswer === "string" && typeof q.impression === "string"
+        )
+      : [];
+    return { summary, questions };
+  } catch {
+    return { summary: rawText, questions: [] };
+  }
+}
+
+async function summarizeMockInterview({ role, situation, schoolCharacteristics, history, existingQuestions }) {
+  const prompt = buildSummaryPrompt({ role, situation, schoolCharacteristics, history, existingQuestions });
+  const raw = await callGemini([{ role: "user", content: prompt }]);
+  return parseReconciliationReply(raw);
 }
 
 module.exports = {
