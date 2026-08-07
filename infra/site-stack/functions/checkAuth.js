@@ -504,6 +504,21 @@ exports.handler = async (event) => {
     return forbiddenResponse();
   }
 
+  // Service Workerのプリキャッシュ（examination#118、sw.jsのinstallイベントによる
+  // 主要ページへのバックグラウンドfetch）等、ページ本体のナビゲーションを伴わない
+  // 未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを新しいnonceで
+  // 上書きしてしまう。ユーザー自身が実際に進めているログインフロー（別のnonceで
+  // 開始済み）と競合し、/_callback側の照合が失敗して「invalid state」になる
+  // （examination#143）。Sec-Fetch-Modeはブラウザが自動付与するリクエストヘッダーで、
+  // 実際のトップレベルナビゲーションのみ"navigate"になる（fetch()呼び出しは
+  // ページ・Service Workerのどちらから発行されても"navigate"にはならない）。
+  // ヘッダー自体を送らない古いブラウザ・クライアントとの互換性のため、ヘッダーが
+  // 存在する場合のみ判定し、無い場合は従来通りリダイレクトする
+  const secFetchMode = (request.headers["sec-fetch-mode"] || [])[0]?.value;
+  if (secFetchMode && secFetchMode !== "navigate") {
+    return { status: "401", statusDescription: "Unauthorized", body: "authentication required" };
+  }
+
   // 未認証: 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ
   // リダイレクトする。nonceはcsrf_stateクッキーにも保存し、/_callback側で照合する
   const nonce = crypto.randomBytes(16).toString("hex");
