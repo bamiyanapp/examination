@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/bamiyanapp/examination/compare/v1.1.0...v1.1.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **pwa:** Safari/iOSでのinvalid state再発とPWA更新未検知を修正 ([#149](https://github.com/bamiyanapp/examination/issues/149)) ([7445a40](https://github.com/bamiyanapp/examination/commit/7445a40a25609cff7fadf4f8640b9c902fbc3f2f)), closes [#143](https://github.com/bamiyanapp/examination/issues/143) [#122](https://github.com/bamiyanapp/examination/issues/122)
+
 # [1.1.0](https://github.com/bamiyanapp/examination/compare/v1.0.3...v1.1.0) (2026-08-07)
 
 
