@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/bamiyanapp/examination/compare/v1.0.0...v1.0.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **auth:** 動的エンドポイントをCloudFrontのキャッシュ対象から除外する ([#144](https://github.com/bamiyanapp/examination/issues/144)) ([e586529](https://github.com/bamiyanapp/examination/commit/e586529628105a2f0b72a5278a913401d1a23418)), closes [#143](https://github.com/bamiyanapp/examination/issues/143)
+
 # 1.0.0 (2026-08-07)
 
 
