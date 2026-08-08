@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/bamiyanapp/examination/compare/v1.7.0...v1.7.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **interview-questions:** 追加・編集フォームの入力欄をテキスト量に応じて可変にする ([#168](https://github.com/bamiyanapp/examination/issues/168)) ([918fd07](https://github.com/bamiyanapp/examination/commit/918fd077e2edc59f7a30e5978baddeb8b366c512))
+
 # [1.7.0](https://github.com/bamiyanapp/examination/compare/v1.6.0...v1.7.0) (2026-08-08)
 
 
