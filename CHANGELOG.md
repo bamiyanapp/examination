@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/bamiyanapp/examination/compare/v1.5.1...v1.5.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **voice-practice:** 画面見出しもシチュエーション名にする ([#163](https://github.com/bamiyanapp/examination/issues/163)) ([8ab54ea](https://github.com/bamiyanapp/examination/commit/8ab54ea54ce454f2d615f2710736e9ce397d7556))
+
 ## [1.5.1](https://github.com/bamiyanapp/examination/compare/v1.5.0...v1.5.1) (2026-08-08)
 
 
