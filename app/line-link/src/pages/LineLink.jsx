@@ -7,10 +7,14 @@ export default function LineLink() {
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
+  const [code, setCode] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   async function issueCode() {
     setIsIssuing(true);
     setIsError(false);
+    setCode(null);
+    setCopied(false);
     setStatus("発行中...");
     try {
       const res = await fetch("/_link-line", { method: "POST" });
@@ -18,12 +22,22 @@ export default function LineLink() {
       if (!res.ok) {
         throw new Error(data.error || `発行に失敗しました（${res.status}）`);
       }
-      setStatus(`コード: ${data.code}（このコードをLINE botへ送信してください。10分間有効です）`);
+      setCode(data.code);
+      setStatus("");
     } catch (error) {
       setIsError(true);
       setStatus(error.message);
     } finally {
       setIsIssuing(false);
+    }
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      // クリップボードAPIが使えない環境では、コードのテキスト選択・手動コピーで代替する
     }
   }
 
@@ -49,6 +63,17 @@ export default function LineLink() {
               コードを発行
             </button>
           </div>
+          {code && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <code className="rounded-box bg-base-200 px-4 py-2 font-mono text-2xl tracking-widest">{code}</code>
+                <button type="button" onClick={handleCopy} className="btn btn-sm">
+                  {copied ? "コピーしました" : "コピー"}
+                </button>
+              </div>
+              <p className="text-sm text-base-content/70">このコードをLINE botへ送信してください。10分間有効です。</p>
+            </div>
+          )}
           {status && (
             <div role="alert" className={`alert ${isError ? "alert-error" : "alert-info"}`}>
               <span>{status}</span>
