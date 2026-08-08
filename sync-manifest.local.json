@@ -1,0 +1,228 @@
+{
+  "symlinks": [
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/top/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/mock-interviews/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/education-overview/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/interview-questions/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/profile-edit/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/voice-practice/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/line-link/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/ServiceWorkerRegistration.jsx",
+      "target": "app/allowed-emails/src/components/ServiceWorkerRegistration.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/top/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/mock-interviews/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/education-overview/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/interview-questions/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/profile-edit/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/voice-practice/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/line-link/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/pwa/UpdateNotifier.jsx",
+      "target": "app/allowed-emails/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/top/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/mock-interviews/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/education-overview/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/interview-questions/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/profile-edit/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/voice-practice/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/line-link/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/NavigationOverlay.jsx",
+      "target": "app/allowed-emails/src/components/NavigationOverlay.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/top/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/mock-interviews/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/education-overview/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/interview-questions/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/profile-edit/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/voice-practice/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/line-link/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/ui/SpeculationRules.jsx",
+      "target": "app/allowed-emails/src/components/SpeculationRules.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/top/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/mock-interviews/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/education-overview/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/interview-questions/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/profile-edit/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/voice-practice/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/line-link/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/pwa/BackendCacheWarmer.jsx",
+      "target": "app/allowed-emails/src/components/BackendCacheWarmer.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/top/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/mock-interviews/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/education-overview/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/interview-questions/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/profile-edit/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/voice-practice/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/line-link/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/ShareButton.jsx",
+      "target": "app/allowed-emails/src/components/ShareButton.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/mock-interviews/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/education-overview/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/interview-questions/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/profile-edit/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/voice-practice/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/line-link/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/allowed-emails/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/pwa/sw.js",
+      "target": "app/top/public/sw.js"
+    }
+  ]
+}

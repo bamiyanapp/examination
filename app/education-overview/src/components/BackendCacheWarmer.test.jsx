@@ -2,6 +2,29 @@ import { render, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import BackendCacheWarmer from "./BackendCacheWarmer.jsx";
 
+const BACKEND_LIST_ENDPOINTS = [
+  "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions",
+  "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/mock-interviews",
+  "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile",
+];
+
+async function getAuthToken() {
+  const res = await fetch("/_voice-token", { method: "POST" });
+  if (!res.ok) return undefined;
+  const { token } = await res.json();
+  return token;
+}
+
+function renderWarmer() {
+  return render(
+    <BackendCacheWarmer
+      endpoints={BACKEND_LIST_ENDPOINTS}
+      getAuthToken={getAuthToken}
+      warmedFlagKey="examination-backend-cache-warmed"
+    />
+  );
+}
+
 beforeEach(() => {
   sessionStorage.clear();
   global.fetch = vi.fn();
@@ -15,7 +38,7 @@ describe("BackendCacheWarmer", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ summaries: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ schoolCharacteristics: "", otherContext: "" }) });
 
-    render(<BackendCacheWarmer />);
+    renderWarmer();
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
     expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
@@ -32,11 +55,11 @@ describe("BackendCacheWarmer", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ summaries: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ schoolCharacteristics: "", otherContext: "" }) });
 
-    const { unmount } = render(<BackendCacheWarmer />);
+    const { unmount } = renderWarmer();
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
     unmount();
 
-    render(<BackendCacheWarmer />);
+    renderWarmer();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(global.fetch).toHaveBeenCalledTimes(4);
   });
@@ -44,7 +67,7 @@ describe("BackendCacheWarmer", () => {
   it("トークン発行に失敗しても例外を投げない", async () => {
     global.fetch.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    expect(() => render(<BackendCacheWarmer />)).not.toThrow();
+    expect(() => renderWarmer()).not.toThrow();
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
   });
 });

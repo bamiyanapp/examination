@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import ShareButton from "./ShareButton.jsx";
 
 // ログイン中のユーザー名・アイコン（Googleアカウントのプロフィール画像）を表示し、
 // ログアウトへの導線を提供する（examination#150）。id_tokenクッキーはHttpOnlyで
@@ -10,11 +10,10 @@ import { QRCodeSVG } from "qrcode.react";
 // ページのURLをQRコードで共有する機能（examination#127）もこのメニューへ追加する。
 // スマートフォンオンリーの利用環境（家族間の画面共有）では、既存のこの
 // 右上ユーティリティメニューへ載せる方が、新規の重複コンポーネントを増やすより
-// シンプルなため
+// シンプルなため。QRコード共有部分自体はプロダクト固有の値を持たないため、
+// 共有コンポーネント（ShareButton.jsx、dev-standards#163）に切り出している
 export default function UserMenu() {
   const [user, setUser] = useState(null);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,21 +33,6 @@ export default function UserMenu() {
   if (!user) return null;
 
   const displayName = user.name || user.email;
-  const shareUrl = window.location.href;
-
-  function openShare() {
-    setCopied(false);
-    setShareOpen(true);
-  }
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-    } catch {
-      // クリップボードAPIが使えない環境では、URLのテキスト選択・手動コピーで代替する
-    }
-  }
 
   return (
     <div className="dropdown dropdown-end fixed top-2 right-2 z-40">
@@ -68,40 +52,12 @@ export default function UserMenu() {
           <span>{displayName}</span>
         </li>
         <li>
-          <button type="button" onClick={openShare}>
-            このページを共有
-          </button>
+          <ShareButton />
         </li>
         <li>
           <a href="/_logout">ログアウト</a>
         </li>
       </ul>
-
-      {shareOpen ? (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="text-lg font-bold">このページを共有</h3>
-            <div className="my-4 flex justify-center">
-              <QRCodeSVG value={shareUrl} size={200} />
-            </div>
-            <p className="bg-base-200 rounded-box p-2 text-sm break-all select-all">{shareUrl}</p>
-            <div className="modal-action">
-              <button type="button" className="btn btn-sm" onClick={handleCopy}>
-                {copied ? "コピーしました" : "URLをコピー"}
-              </button>
-              <button type="button" className="btn btn-sm" onClick={() => setShareOpen(false)}>
-                閉じる
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="modal-backdrop"
-            aria-label="閉じる"
-            onClick={() => setShareOpen(false)}
-          />
-        </div>
-      ) : null}
     </div>
   );
 }
