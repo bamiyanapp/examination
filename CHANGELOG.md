@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/bamiyanapp/examination/compare/v1.2.0...v1.2.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **auth:** UserPoolClientのReadAttributesにname・pictureを明示する ([#152](https://github.com/bamiyanapp/examination/issues/152)) ([a3d22e7](https://github.com/bamiyanapp/examination/commit/a3d22e79abd4ec9286fd27ea5ebda036b7344b0d)), closes [#150](https://github.com/bamiyanapp/examination/issues/150)
+
 # [1.2.0](https://github.com/bamiyanapp/examination/compare/v1.1.1...v1.2.0) (2026-08-08)
 
 
