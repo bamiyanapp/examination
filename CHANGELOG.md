@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/bamiyanapp/examination/compare/v1.2.2...v1.2.3) (2026-08-08)
+
+
+### Bug Fixes
+
+* **auth:** CSRF対策のnonce検証をCookieからDynamoDBへ変更する ([#154](https://github.com/bamiyanapp/examination/issues/154)) ([d351a5e](https://github.com/bamiyanapp/examination/commit/d351a5e6a31f138c10cbd1574d439ed7fd8b25aa)), closes [#143](https://github.com/bamiyanapp/examination/issues/143)
+
 ## [1.2.2](https://github.com/bamiyanapp/examination/compare/v1.2.1...v1.2.2) (2026-08-08)
 
 
