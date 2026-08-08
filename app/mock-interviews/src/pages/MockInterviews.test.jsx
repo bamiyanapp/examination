@@ -25,6 +25,7 @@ const SAMPLE_SUMMARIES = [
 
 beforeEach(() => {
   global.fetch = vi.fn();
+  sessionStorage.clear();
 });
 
 function mockTokenAndSummaries(summaries) {
@@ -81,5 +82,45 @@ describe("MockInterviews", () => {
     await waitFor(() => {
       expect(screen.getByText("サーバーエラー")).toBeInTheDocument();
     });
+  });
+
+  it("shows cached summaries immediately (dimmed) instead of a spinner when a previous fetch was cached (examination#167)", async () => {
+    sessionStorage.setItem("examination-mock-interviews-cache", JSON.stringify(SAMPLE_SUMMARIES));
+    mockTokenAndSummaries(SAMPLE_SUMMARIES);
+
+    render(<MockInterviews />);
+
+    expect(screen.getByText("父親の保護者面接練習")).toBeInTheDocument();
+    expect(screen.getByText("最新の情報を確認しています...")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByText("最新の情報を確認しています...")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("父親の保護者面接練習")).toBeInTheDocument();
+  });
+
+  it("keeps showing cached summaries with a non-blocking warning when the background refresh fails (examination#167)", async () => {
+    sessionStorage.setItem("examination-mock-interviews-cache", JSON.stringify(SAMPLE_SUMMARIES));
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
+
+    render(<MockInterviews />);
+
+    expect(screen.getByText("父親の保護者面接練習")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("最新の情報を取得できませんでした: サーバーエラー")).toBeInTheDocument();
+    });
+    expect(screen.getByText("父親の保護者面接練習")).toBeInTheDocument();
+  });
+
+  it("caches fetched summaries for the next mount (examination#167)", async () => {
+    mockTokenAndSummaries(SAMPLE_SUMMARIES);
+    render(<MockInterviews />);
+
+    await waitFor(() => screen.getByText("父親の保護者面接練習"));
+
+    expect(JSON.parse(sessionStorage.getItem("examination-mock-interviews-cache"))).toEqual(SAMPLE_SUMMARIES);
   });
 });

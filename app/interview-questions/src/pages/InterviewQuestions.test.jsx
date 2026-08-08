@@ -37,6 +37,7 @@ const SAMPLE_QUESTIONS = [
 
 beforeEach(() => {
   global.fetch = vi.fn();
+  sessionStorage.clear();
 });
 
 function mockTokenAndQuestions(questions) {
@@ -219,5 +220,48 @@ describe("InterviewQuestions", () => {
 
     const textarea = screen.getByLabelText("質問:");
     expect(textarea.style.height).not.toBe("");
+  });
+
+  it("shows cached questions immediately (dimmed) instead of a spinner when a previous fetch was cached (examination#167)", async () => {
+    sessionStorage.setItem("examination-interview-questions-cache", JSON.stringify(SAMPLE_QUESTIONS));
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+
+    render(<InterviewQuestions />);
+
+    // キャッシュがあるため、スピナーのみの「読み込み中...」ではなく、
+    // 古いデータ自体が最初から（薄く）表示される
+    expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+    expect(screen.getByText("最新の情報を確認しています...")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByText("最新の情報を確認しています...")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+  });
+
+  it("keeps showing cached questions with a non-blocking warning when the background refresh fails (examination#167)", async () => {
+    sessionStorage.setItem("examination-interview-questions-cache", JSON.stringify(SAMPLE_QUESTIONS));
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
+
+    render(<InterviewQuestions />);
+
+    expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("最新の情報を取得できませんでした: サーバーエラー")).toBeInTheDocument();
+    });
+    // 再取得に失敗しても、古いキャッシュの内容は表示され続ける
+    expect(screen.getByText("志望理由を教えてください。")).toBeInTheDocument();
+  });
+
+  it("caches fetched questions for the next mount (examination#167)", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    expect(JSON.parse(sessionStorage.getItem("examination-interview-questions-cache"))).toEqual(SAMPLE_QUESTIONS);
   });
 });
