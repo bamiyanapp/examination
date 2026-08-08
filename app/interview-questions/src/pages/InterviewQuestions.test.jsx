@@ -110,4 +110,89 @@ describe("InterviewQuestions", () => {
       expect(screen.getByText("サーバーエラー")).toBeInTheDocument();
     });
   });
+
+  it("adds a new question via the form and shows it in the list (examination#165)", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getByRole("button", { name: "質問を追加" }));
+    fireEvent.change(screen.getByLabelText("質問:"), { target: { value: "得意科目は何ですか。" } });
+    fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "算数が得意です。" } });
+
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          question: {
+            questionId: "q4",
+            category: "本人面接",
+            targetPerson: "本人",
+            question: "得意科目は何ですか。",
+            answer: "算数が得意です。",
+            example: "",
+            impression: "",
+            modelAnswer: "",
+          },
+        }),
+      });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(screen.getByText("4件")).toBeInTheDocument());
+    expect(screen.getByText("得意科目は何ですか。")).toBeInTheDocument();
+    const postCall = global.fetch.mock.calls.at(-1);
+    expect(postCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions");
+    expect(postCall[1].method).toBe("POST");
+    const sentBody = JSON.parse(postCall[1].body);
+    expect(sentBody.targetPerson).toBe("本人");
+    expect(sentBody.question).toBe("得意科目は何ですか。");
+    expect(sentBody.questionId).toBeUndefined();
+  });
+
+  it("edits an existing question via the form and updates the list (examination#165)", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "編集" })[0]);
+    expect(screen.getByLabelText("質問:")).toHaveValue("志望理由を教えてください。");
+    fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "更新後の回答です。" } });
+
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          question: { ...SAMPLE_QUESTIONS[0], answer: "更新後の回答です。" },
+        }),
+      });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(screen.getByText("更新後の回答です。")).toBeInTheDocument());
+    const putCall = global.fetch.mock.calls.at(-1);
+    expect(putCall[1].method).toBe("PUT");
+    expect(JSON.parse(putCall[1].body).questionId).toBe("q1");
+  });
+
+  it("shows an error inside the form when saving fails, without closing it", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getByRole("button", { name: "質問を追加" }));
+    fireEvent.change(screen.getByLabelText("質問:"), { target: { value: "得意科目は何ですか。" } });
+    fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "算数が得意です。" } });
+
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: "questionは必須です" }) });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(screen.getByText("questionは必須です")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+  });
 });

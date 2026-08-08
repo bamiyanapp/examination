@@ -26,6 +26,15 @@ async function fetchQuestions(token) {
   return data.questions;
 }
 
+const EMPTY_FORM = {
+  targetPerson: TARGET_PERSONS[0],
+  question: "",
+  answer: "",
+  example: "",
+  impression: "",
+  modelAnswer: "",
+};
+
 // 想定問答の閲覧画面（examination#77）。旧: 本人/父/母で分かれていた
 // knowledge/education/interview-yosuke.md・interview-tomoyo.md・interview-ritsu.mdの
 // 3ページをMkDocsで個別表示していたのをやめ、1画面に統合した。データはDynamoDB
@@ -36,6 +45,16 @@ export default function InterviewQuestions() {
   const [errorMessage, setErrorMessage] = useState("");
   const [questions, setQuestions] = useState([]);
   const [filter, setFilter] = useState("すべて");
+
+  // 質問の追加・編集フォーム（examination#165）。新規追加・編集を同じモーダルで扱い、
+  // formMode/formQuestionIdで区別する
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState("add");
+  const [formQuestionId, setFormQuestionId] = useState(null);
+  const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [formStatus, setFormStatus] = useState("");
+  const [formIsError, setFormIsError] = useState(false);
+  const [formIsSaving, setFormIsSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +80,65 @@ export default function InterviewQuestions() {
   }, []);
 
   const visibleQuestions = filter === "すべて" ? questions : questions.filter((q) => q.targetPerson === filter);
+
+  function openAddForm() {
+    setFormMode("add");
+    setFormQuestionId(null);
+    setFormValues(EMPTY_FORM);
+    setFormStatus("");
+    setFormIsError(false);
+    setFormOpen(true);
+  }
+
+  function openEditForm(q) {
+    setFormMode("edit");
+    setFormQuestionId(q.questionId);
+    setFormValues({
+      targetPerson: q.targetPerson || TARGET_PERSONS[0],
+      question: q.question,
+      answer: q.answer,
+      example: q.example,
+      impression: q.impression,
+      modelAnswer: q.modelAnswer,
+    });
+    setFormStatus("");
+    setFormIsError(false);
+    setFormOpen(true);
+  }
+
+  function updateFormField(field, value) {
+    setFormValues((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleFormSubmit(event) {
+    event.preventDefault();
+    setFormIsSaving(true);
+    setFormIsError(false);
+    setFormStatus("");
+    try {
+      const token = await issueVoiceToken();
+      const res = await fetch(INTERVIEW_QUESTIONS_API_URL, {
+        method: formMode === "edit" ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(formMode === "edit" ? { questionId: formQuestionId, ...formValues } : formValues),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `保存に失敗しました（${res.status}）`);
+      }
+      if (formMode === "edit") {
+        setQuestions((prev) => prev.map((q) => (q.questionId === data.question.questionId ? data.question : q)));
+      } else {
+        setQuestions((prev) => [...prev, data.question]);
+      }
+      setFormOpen(false);
+    } catch (error) {
+      setFormIsError(true);
+      setFormStatus(error.message);
+    } finally {
+      setFormIsSaving(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
@@ -95,13 +173,23 @@ export default function InterviewQuestions() {
             ))}
           </div>
 
-          <p className="mt-4 text-sm text-base-content/70">{visibleQuestions.length}件</p>
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-base-content/70">{visibleQuestions.length}件</p>
+            <button type="button" onClick={openAddForm} className="btn btn-sm btn-primary">
+              質問を追加
+            </button>
+          </div>
 
           <div className="mt-2 flex flex-col gap-4">
             {visibleQuestions.map((q) => (
               <article className="card card-border bg-base-100" key={q.questionId}>
                 <div className="card-body">
-                  <span className="badge badge-neutral self-start">{q.targetPerson || "対象者未設定"}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="badge badge-neutral">{q.targetPerson || "対象者未設定"}</span>
+                    <button type="button" onClick={() => openEditForm(q)} className="btn btn-xs">
+                      編集
+                    </button>
+                  </div>
                   <h2 className="card-title text-base">{q.question}</h2>
                   <dl className="flex flex-col gap-1">
                     <dt className="text-xs font-semibold text-base-content/60">回答の要点</dt>
@@ -130,6 +218,86 @@ export default function InterviewQuestions() {
             ))}
           </div>
         </>
+      )}
+
+      {formOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="text-lg font-bold">{formMode === "edit" ? "質問を編集" : "質問を追加"}</h3>
+            <form onSubmit={handleFormSubmit} className="mt-4 flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">対象者:</span>
+                <select
+                  value={formValues.targetPerson}
+                  onChange={(event) => updateFormField("targetPerson", event.target.value)}
+                  className="select"
+                >
+                  {TARGET_PERSONS.map((person) => (
+                    <option key={person} value={person}>
+                      {person}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">質問:</span>
+                <textarea
+                  required
+                  value={formValues.question}
+                  onChange={(event) => updateFormField("question", event.target.value)}
+                  className="textarea"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">回答の要点:</span>
+                <textarea
+                  required
+                  value={formValues.answer}
+                  onChange={(event) => updateFormField("answer", event.target.value)}
+                  className="textarea"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">盛り込む具体例（任意）:</span>
+                <textarea
+                  value={formValues.example}
+                  onChange={(event) => updateFormField("example", event.target.value)}
+                  className="textarea"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">面接官への印象（任意）:</span>
+                <textarea
+                  value={formValues.impression}
+                  onChange={(event) => updateFormField("impression", event.target.value)}
+                  className="textarea"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">模範解答（任意）:</span>
+                <textarea
+                  value={formValues.modelAnswer}
+                  onChange={(event) => updateFormField("modelAnswer", event.target.value)}
+                  className="textarea"
+                />
+              </label>
+              {formStatus && (
+                <div role="alert" className={`alert ${formIsError ? "alert-error" : "alert-info"}`}>
+                  <span>{formStatus}</span>
+                </div>
+              )}
+              <div className="modal-action">
+                <button type="button" onClick={() => setFormOpen(false)} disabled={formIsSaving} className="btn btn-sm">
+                  キャンセル
+                </button>
+                <button type="submit" disabled={formIsSaving} className="btn btn-sm btn-primary">
+                  保存
+                </button>
+              </div>
+            </form>
+          </div>
+          <button type="button" className="modal-backdrop" aria-label="閉じる" onClick={() => setFormOpen(false)} />
+        </div>
       )}
     </main>
   );

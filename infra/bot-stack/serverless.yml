@@ -85,8 +85,10 @@ functions:
           path: /voice-chat
           method: POST
 
-  # 想定問答の一覧取得API（examination#77）。app/interview-questions/がブラウザから
-  # 直接呼ぶ読み取り専用API。voiceChatと同じ短期トークン（/_voice-token）で認証する
+  # 想定問答の一覧取得・追加・編集API（examination#77、#165）。
+  # app/interview-questions/がブラウザから直接呼ぶ。voiceChatと同じ短期トークン
+  # （/_voice-token）で認証する。追加・編集で使うPutItem/GetItemは冒頭のIAMで
+  # InterviewQuestionsTableに既に許可済みのため追加のIAM変更は無し
   interviewQuestions:
     handler: functions/interviewQuestions.handler
     memorySize: 256
@@ -95,6 +97,12 @@ functions:
       - httpApi:
           path: /interview-questions
           method: GET
+      - httpApi:
+          path: /interview-questions
+          method: POST
+      - httpApi:
+          path: /interview-questions
+          method: PUT
 
   # 模擬面接記録の一覧取得API（examination#103）。app/mock-interviews/がブラウザから
   # 直接呼ぶ読み取り専用API。interviewQuestionsと同じ短期トークンで認証する
