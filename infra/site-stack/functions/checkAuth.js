@@ -351,6 +351,46 @@ async function incrementAndCheckVoiceTokenIssuance(email) {
   }
 }
 
+// ログイン中のユーザー情報（examination#150、画面上のユーザー名・アイコン表示用）。
+// name・pictureはGoogleログイン時にauth-stackのAttributeMappingでCognitoの
+// ユーザー属性へ反映されたものがid_tokenのクレームとして返る。未設定の場合は
+// 空文字（アイコン表示側でイニシャル等へフォールバックする）
+async function handleMeApi(request) {
+  if (request.method !== "GET") {
+    return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
+  }
+  const payload = await verifyIdTokenFromCookie(request);
+  if (!payload) {
+    return forbiddenResponse();
+  }
+  if (!(await isAllowedEmail(payload.email))) {
+    return forbiddenResponse();
+  }
+  return jsonResponse(200, "OK", {
+    email: payload.email,
+    name: payload.name || "",
+    picture: payload.picture || "",
+  });
+}
+
+// refresh_tokenを使ってid_tokenを再発行する（examination#150）。/_callbackの
+// トークン交換と同じgrant_type違いのリクエストで、Cognitoは新しいrefresh_token
+// を返さない（既存のrefresh_tokenがそのまま有効期限まで使い続けられる）ため
+// refresh_tokenクッキー自体は書き換えない
+async function exchangeRefreshToken(refreshToken, cognitoDomainHost) {
+  const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
+  return postForm(
+    cognitoDomainHost,
+    "/oauth2/token",
+    {
+      grant_type: "refresh_token",
+      client_id: config.clientId,
+      refresh_token: refreshToken,
+    },
+    { Authorization: `Basic ${basicAuth}` }
+  );
+}
+
 // 音声対話ページ（クロスオリジンのbot-stack API）用の短期トークンを発行する
 // （examination#62）。HttpOnlyのid_tokenクッキーはクロスオリジンでは送られないため、
 // 同一オリジンのこのAPIでログイン中のユーザーを確認した上でBearerトークンを発行し、
@@ -405,6 +445,11 @@ exports.handler = async (event) => {
         logout_uri: `https://${domainName}/`,
       }).toString();
     return redirectResponse(logoutUrl, [cookieString("id_token", "", 0), cookieString("refresh_token", "", 0)]);
+  }
+
+  // ログイン中のユーザー情報API（examination#150）
+  if (request.uri === "/_me") {
+    return handleMeApi(request);
   }
 
   // 許可メールアドレスの管理API
@@ -504,6 +549,33 @@ exports.handler = async (event) => {
     return forbiddenResponse();
   }
 
+  // id_tokenが失効・無効でもrefresh_tokenが有効なら裏側で再発行し、Googleへの
+  // 完全な再ログイン（アカウント選択・同意画面）を経ずにセッションを継続する
+  // （examination#150）。同じURIへリダイレクトするだけの1往復で完了する
+  let extraCookiesOnLoginRedirect = [];
+  const cookies = parseCookies(request.headers);
+  if (cookies.refresh_token) {
+    try {
+      const tokens = await exchangeRefreshToken(cookies.refresh_token, cognitoDomainHost);
+      const { payload: refreshedPayload } = await jwtVerify(tokens.id_token, getJwks(), {
+        issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
+        audience: config.clientId,
+      });
+      if (!(await isAllowedEmail(refreshedPayload.email))) {
+        console.warn("email not allowed on refreshed token", refreshedPayload.email);
+        return forbiddenResponse();
+      }
+      const originalUrl =
+        `https://${domainName}${request.uri}` + (request.querystring ? `?${request.querystring}` : "");
+      return redirectResponse(originalUrl, [cookieString("id_token", tokens.id_token, tokens.expires_in)]);
+    } catch (error) {
+      console.warn("refresh_token exchange failed", error.message);
+      // refresh_token自体が失効・無効な場合は、無駄な再試行を避けるため失効させた上で
+      // 通常のログインフローへフォールスルーする
+      extraCookiesOnLoginRedirect = [cookieString("refresh_token", "", 0)];
+    }
+  }
+
   // Service Workerのプリキャッシュ（examination#118、sw.jsのinstallイベントによる
   // 主要ページへのバックグラウンドfetch）等、ページ本体のナビゲーションを伴わない
   // 未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを新しいnonceで
@@ -540,5 +612,5 @@ exports.handler = async (event) => {
       redirect_uri: redirectUri,
       state,
     }).toString();
-  return redirectResponse(authorizeUrl, [cookieString("csrf_state", nonce, 300)]);
+  return redirectResponse(authorizeUrl, [cookieString("csrf_state", nonce, 300), ...extraCookiesOnLoginRedirect]);
 };

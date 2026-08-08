@@ -56,12 +56,25 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め全リクエストで実行される）で動作する。
 
-1. リクエストに有効な`id_token`Cookieが無い/検証に失敗した場合、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
+1. リクエストに有効な`id_token`Cookieが無い/検証に失敗した場合、まず`refresh_token`Cookieがあれば裏側で`grant_type=refresh_token`によりid_tokenの再発行を試みる（下記「セッションの自動延長」参照）。それも無い/失敗した場合は、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
 2. Googleでログインすると、Cognitoが`/_callback`へ認可コード付きでリダイレクトしてくる。このLambdaが認可コードをトークン（`id_token`・`refresh_token`）に交換し、HttpOnly・Secure・SameSite=LaxのCookieとして保存した上で、`state`に保存しておいた元のパスへリダイレクトする
 3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す
 4. `/_logout`へアクセスすると、Cookieを失効させた上でCognito自体のセッションも切って`/`へ戻す
 
-`id_token`の有効期限が切れると再度Cognito Hosted UIへリダイレクトされるが、Cognito Hosted UI自体のセッションが有効な間（既定1時間、User Pool設定で変更可）はGoogleへの再ログインを求められず自動的にコードが発行される。専用のトークンリフレッシュ処理は実装していない（個人利用規模でのシンプルさを優先した）。
+### セッションの自動延長（refresh_token、[Issue #150](https://github.com/bamiyanapp/examination/issues/150)）
+
+`id_token`（Cognitoの既定で有効期限1時間）が失効しても、`refresh_token`Cookie（Max-Age 30日）が有効な間は、Googleへの完全な再ログイン（アカウント選択・同意画面）を経ずにセッションを継続する。
+
+- `id_token`検証に失敗したリクエストで`refresh_token`Cookieがあれば、`grant_type=refresh_token`でCognitoの`/oauth2/token`へ再発行をリクエストする（`/_callback`の認可コード交換と同じエンドポイント、grant_typeのみ異なる）
+- Cognitoは再発行時に新しい`refresh_token`を返さない仕様のため、`refresh_token`Cookie自体は書き換えない
+- 再発行に成功したら、新しい`id_token`Cookieを設定した上で元のURIへリダイレクトする（1往復のみで、外部のCognito Hosted UI・Googleへは遷移しない）
+- `refresh_token`自体が失効・無効な場合（30日超過、Cognito側での失効等）は再発行を諦め、無駄な再試行を避けるため`refresh_token`Cookie自体を失効させた上で、通常のログインフロー（Cognito Hosted UI経由）へフォールバックする
+
+### ログイン中のユーザー表示・ログアウト（`/_me`、`UserMenu.jsx`、Issue #150）
+
+- `checkAuth.js`が`GET /_me`として、ログイン中のユーザーの`email`・`name`・`picture`（Googleアカウントのプロフィール画像URL）をJSONで返す。`name`・`picture`は`auth-stack`のGoogleIdentityProvider `AttributeMapping`で追加した属性で、Googleログイン時にCognitoのユーザー属性へ反映されたものがid_tokenのクレームとして返る（未設定の場合は空文字）
+- 各アプリ共通のReactコンポーネント`UserMenu.jsx`（`NavigationOverlay`等と同様、ファイルコピーで複製）が`/_me`を取得し、画面右上にアイコン・名前を表示するドロップダウンメニューを出す。`picture`が無い場合は名前・emailの頭文字にフォールバックする
+- メニューの「ログアウト」は既存の`/_logout`（Cognito自体のセッションも切る）へのリンク
 
 ## 閲覧許可メールアドレスの管理（DynamoDB + `/_admin/emails`）
 
