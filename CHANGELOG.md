@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/bamiyanapp/examination/compare/v1.1.1...v1.2.0) (2026-08-08)
+
+
+### Features
+
+* **auth:** ログインユーザー表示・ログアウト導線とセッション自動延長を追加 ([#151](https://github.com/bamiyanapp/examination/issues/151)) ([d9c111b](https://github.com/bamiyanapp/examination/commit/d9c111ba78bb2e05c16182dab671e3ff4963e054)), closes [#150](https://github.com/bamiyanapp/examination/issues/150)
+
 ## [1.1.1](https://github.com/bamiyanapp/examination/compare/v1.1.0...v1.1.1) (2026-08-07)
 
 
