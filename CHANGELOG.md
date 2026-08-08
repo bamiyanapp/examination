@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/bamiyanapp/examination/compare/v1.4.0...v1.5.0) (2026-08-08)
+
+
+### Features
+
+* **voice-practice:** タブタイトルをシチュエーション名にし読み上げ音声を改善する ([#161](https://github.com/bamiyanapp/examination/issues/161)) ([2d1b03c](https://github.com/bamiyanapp/examination/commit/2d1b03cf9d09d5d477d51284a92e57ab3f2c3ebe))
+
 # [1.4.0](https://github.com/bamiyanapp/examination/compare/v1.3.0...v1.4.0) (2026-08-08)
 
 
