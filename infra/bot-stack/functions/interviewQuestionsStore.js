@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
-const { DynamoDBClient, PutItemCommand, QueryCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, PutItemCommand, QueryCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const { FAMILY_SLUG } = require("./familyConfig");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
@@ -141,9 +141,66 @@ async function applyReconciliationResults(items, targetPerson, existingQuestions
   }
 }
 
+async function getQuestionById(questionId) {
+  const result = await ddb.send(
+    new GetItemCommand({
+      TableName: INTERVIEW_QUESTIONS_TABLE,
+      Key: { familySlug: { S: FAMILY_SLUG }, questionId: { S: questionId } },
+    })
+  );
+  return result.Item ? toQuestionItem(result.Item) : null;
+}
+
+// 想定問答画面（examination#165）からの手動追加。対象者はLINE bot経由の登録
+// （saveQuestion）・練習セッションの照合（applyReconciliationResults）と同じく、
+// categoryをユーザーに自由入力させず対象者から機械的に導出し食い違いを防ぐ
+async function createQuestion({ targetPerson, question, answer, example, impression, modelAnswer, createdBy }) {
+  const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const item = {
+    familySlug: { S: FAMILY_SLUG },
+    questionId: { S: questionId },
+    category: { S: TARGET_PERSON_CATEGORY[targetPerson] || "" },
+    targetPerson: { S: targetPerson },
+    question: { S: question },
+    answer: { S: answer },
+    example: { S: example || "" },
+    impression: { S: impression || "" },
+    modelAnswer: { S: modelAnswer || "" },
+    createdBy: { S: createdBy },
+    createdAt: { S: new Date().toISOString() },
+  };
+  await ddb.send(new PutItemCommand({ TableName: INTERVIEW_QUESTIONS_TABLE, Item: item }));
+  return toQuestionItem(item);
+}
+
+// 想定問答画面（examination#165）からの手動編集。UpdateItem権限を新たに付与
+// せずに済むよう、applyReconciliationResults（examination#147）と同じく既存
+// アイテムを取得しPutItemで書き戻す。createdBy/createdAtは変更しない
+async function updateQuestion({ questionId, targetPerson, question, answer, example, impression, modelAnswer }) {
+  const existing = await getQuestionById(questionId);
+  if (!existing) return null;
+  const item = {
+    familySlug: { S: FAMILY_SLUG },
+    questionId: { S: questionId },
+    category: { S: TARGET_PERSON_CATEGORY[targetPerson] || existing.category },
+    targetPerson: { S: targetPerson },
+    question: { S: question },
+    answer: { S: answer },
+    example: { S: example || "" },
+    impression: { S: impression || "" },
+    modelAnswer: { S: modelAnswer || "" },
+    createdBy: { S: existing.createdBy },
+    createdAt: { S: existing.createdAt },
+  };
+  await ddb.send(new PutItemCommand({ TableName: INTERVIEW_QUESTIONS_TABLE, Item: item }));
+  return toQuestionItem(item);
+}
+
 module.exports = {
   deriveTargetPerson,
   saveQuestion,
   queryQuestionsByTargetPerson,
   applyReconciliationResults,
+  createQuestion,
+  updateQuestion,
 };
