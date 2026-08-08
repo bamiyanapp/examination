@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/bamiyanapp/examination/compare/v1.3.0...v1.4.0) (2026-08-08)
+
+
+### Features
+
+* **app:** PWA起動直後の白画面に静的ローディング表示を追加する ([#160](https://github.com/bamiyanapp/examination/issues/160)) ([9d9ee41](https://github.com/bamiyanapp/examination/commit/9d9ee41e3581002c93971025c5ce77ee334497c3))
+
 # [1.3.0](https://github.com/bamiyanapp/examination/compare/v1.2.3...v1.3.0) (2026-08-08)
 
 
