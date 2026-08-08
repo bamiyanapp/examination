@@ -26,6 +26,28 @@ async function fetchQuestions(token) {
   return data.questions;
 }
 
+// 初期ローディング表示までの体感速度を改善するため、前回取得した一覧を
+// sessionStorageへ保持し、マウント直後は真っ白/スピナーのみではなく
+// 古いデータを薄く表示した上でバックグラウンドで再取得する（examination#167）
+const QUESTIONS_CACHE_KEY = "examination-interview-questions-cache";
+
+function loadCachedQuestions() {
+  try {
+    const raw = sessionStorage.getItem(QUESTIONS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedQuestions(questions) {
+  try {
+    sessionStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(questions));
+  } catch {
+    // sessionStorageが使えない場合は古いキャッシュ表示自体を諦めるだけでよい
+  }
+}
+
 const EMPTY_FORM = {
   targetPerson: TARGET_PERSONS[0],
   question: "",
@@ -52,9 +74,11 @@ function resizeToFitContent(el) {
 // （examination-interview-questions）が唯一の正本で、対象者（本人/父/母）は
 // targetPerson属性としてカテゴリとは別に持つ
 export default function InterviewQuestions() {
-  const [status, setStatus] = useState("loading");
+  const [cachedQuestions] = useState(loadCachedQuestions);
+  const [status, setStatus] = useState(cachedQuestions ? "stale" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const [questions, setQuestions] = useState([]);
+  const [refreshError, setRefreshError] = useState("");
+  const [questions, setQuestions] = useState(cachedQuestions || []);
   const [filter, setFilter] = useState("すべて");
 
   // 質問の追加・編集フォーム（examination#165）。新規追加・編集を同じモーダルで扱い、
@@ -76,11 +100,19 @@ export default function InterviewQuestions() {
         if (!cancelled) {
           setQuestions(fetched);
           setStatus("loaded");
+          setRefreshError("");
+          saveCachedQuestions(fetched);
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message);
-          setStatus("error");
+          if (cachedQuestions) {
+            // 古いキャッシュを表示したままにし、再取得に失敗したことのみ通知する
+            setRefreshError(error.message);
+            setStatus("loaded");
+          } else {
+            setErrorMessage(error.message);
+            setStatus("error");
+          }
         }
       }
     }
@@ -88,7 +120,9 @@ export default function InterviewQuestions() {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // cachedQuestionsはマウント時のuseState初期化子で1度だけ読み込んだ値で、
+    // その後setterを呼ばないため参照が変わらず、依存に加えても再実行は起きない
+  }, [cachedQuestions]);
 
   const visibleQuestions = filter === "すべて" ? questions : questions.filter((q) => q.targetPerson === filter);
 
@@ -168,65 +202,78 @@ export default function InterviewQuestions() {
         </div>
       )}
 
-      {status === "loaded" && (
+      {(status === "stale" || status === "loaded") && (
         <>
-          <div className="join mt-6 flex-wrap" role="group" aria-label="対象者で絞り込む">
-            {["すべて", ...TARGET_PERSONS].map((person) => (
-              <button
-                key={person}
-                type="button"
-                aria-pressed={filter === person}
-                onClick={() => setFilter(person)}
-                className={`btn join-item ${filter === person ? "btn-primary" : "btn-outline"}`}
-              >
-                {person}
+          {status === "stale" && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-base-content/60">
+              <span className="loading loading-spinner loading-xs" />
+              最新の情報を確認しています...
+            </div>
+          )}
+          {refreshError && (
+            <div role="alert" className="alert alert-warning mt-4">
+              <span>最新の情報を取得できませんでした: {refreshError}</span>
+            </div>
+          )}
+          <div className={status === "stale" ? "opacity-50 transition-opacity" : "transition-opacity"}>
+            <div className="join mt-6 flex-wrap" role="group" aria-label="対象者で絞り込む">
+              {["すべて", ...TARGET_PERSONS].map((person) => (
+                <button
+                  key={person}
+                  type="button"
+                  aria-pressed={filter === person}
+                  onClick={() => setFilter(person)}
+                  className={`btn join-item ${filter === person ? "btn-primary" : "btn-outline"}`}
+                >
+                  {person}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-base-content/70">{visibleQuestions.length}件</p>
+              <button type="button" onClick={openAddForm} className="btn btn-sm btn-primary">
+                質問を追加
               </button>
-            ))}
-          </div>
+            </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-base-content/70">{visibleQuestions.length}件</p>
-            <button type="button" onClick={openAddForm} className="btn btn-sm btn-primary">
-              質問を追加
-            </button>
-          </div>
-
-          <div className="mt-2 flex flex-col gap-4">
-            {visibleQuestions.map((q) => (
-              <article className="card card-border bg-base-100" key={q.questionId}>
-                <div className="card-body">
-                  <div className="flex items-center justify-between">
-                    <span className="badge badge-neutral">{q.targetPerson || "対象者未設定"}</span>
-                    <button type="button" onClick={() => openEditForm(q)} className="btn btn-xs">
-                      編集
-                    </button>
+            <div className="mt-2 flex flex-col gap-4">
+              {visibleQuestions.map((q) => (
+                <article className="card card-border bg-base-100" key={q.questionId}>
+                  <div className="card-body">
+                    <div className="flex items-center justify-between">
+                      <span className="badge badge-neutral">{q.targetPerson || "対象者未設定"}</span>
+                      <button type="button" onClick={() => openEditForm(q)} className="btn btn-xs">
+                        編集
+                      </button>
+                    </div>
+                    <h2 className="card-title text-base">{q.question}</h2>
+                    <dl className="flex flex-col gap-1">
+                      <dt className="text-xs font-semibold text-base-content/60">回答の要点</dt>
+                      <dd>{q.answer}</dd>
+                      {q.example && (
+                        <>
+                          <dt className="mt-2 text-xs font-semibold text-base-content/60">盛り込む具体例</dt>
+                          <dd>{q.example}</dd>
+                        </>
+                      )}
+                      {q.impression && (
+                        <>
+                          <dt className="mt-2 text-xs font-semibold text-base-content/60">面接官への印象</dt>
+                          <dd>{q.impression}</dd>
+                        </>
+                      )}
+                      {q.modelAnswer && (
+                        <>
+                          <dt className="mt-2 text-xs font-semibold text-base-content/60">模範解答</dt>
+                          <dd>{q.modelAnswer}</dd>
+                        </>
+                      )}
+                    </dl>
                   </div>
-                  <h2 className="card-title text-base">{q.question}</h2>
-                  <dl className="flex flex-col gap-1">
-                    <dt className="text-xs font-semibold text-base-content/60">回答の要点</dt>
-                    <dd>{q.answer}</dd>
-                    {q.example && (
-                      <>
-                        <dt className="mt-2 text-xs font-semibold text-base-content/60">盛り込む具体例</dt>
-                        <dd>{q.example}</dd>
-                      </>
-                    )}
-                    {q.impression && (
-                      <>
-                        <dt className="mt-2 text-xs font-semibold text-base-content/60">面接官への印象</dt>
-                        <dd>{q.impression}</dd>
-                      </>
-                    )}
-                    {q.modelAnswer && (
-                      <>
-                        <dt className="mt-2 text-xs font-semibold text-base-content/60">模範解答</dt>
-                        <dd>{q.modelAnswer}</dd>
-                      </>
-                    )}
-                  </dl>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
           </div>
         </>
       )}
