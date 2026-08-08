@@ -195,4 +195,29 @@ describe("InterviewQuestions", () => {
     await waitFor(() => expect(screen.getByText("questionは必須です")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
   });
+
+  it("resizes a textarea to fit its content on input (examination#165)", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getByRole("button", { name: "質問を追加" }));
+    const textarea = screen.getByLabelText("質問:");
+    Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 120 });
+
+    fireEvent.input(textarea, { target: { value: "1行目\n2行目\n3行目" } });
+
+    expect(textarea.style.height).toBe("120px");
+  });
+
+  it("resizes an existing question's textarea to fit its content when opening the edit form (examination#165)", async () => {
+    mockTokenAndQuestions(SAMPLE_QUESTIONS);
+    render(<InterviewQuestions />);
+    await waitFor(() => screen.getByText("志望理由を教えてください。"));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "編集" })[0]);
+
+    const textarea = screen.getByLabelText("質問:");
+    expect(textarea.style.height).not.toBe("");
+  });
 });
