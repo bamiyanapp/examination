@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/bamiyanapp/examination/compare/v1.6.0...v1.7.0) (2026-08-08)
+
+
+### Features
+
+* **interview-questions:** 想定問答の追加・編集機能を追加する ([#166](https://github.com/bamiyanapp/examination/issues/166)) ([4363f5e](https://github.com/bamiyanapp/examination/commit/4363f5edec1f9763524a5054c2fa15ad6ba11738))
+
 # [1.6.0](https://github.com/bamiyanapp/examination/compare/v1.5.2...v1.6.0) (2026-08-08)
 
 
