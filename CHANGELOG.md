@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/bamiyanapp/examination/compare/v1.2.1...v1.2.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **auth:** Speculation Rules APIの先読みによるinvalid state再発を修正 ([#153](https://github.com/bamiyanapp/examination/issues/153)) ([fe34292](https://github.com/bamiyanapp/examination/commit/fe342927b69c7201173ec1400dbad6d8966f0750)), closes [#143](https://github.com/bamiyanapp/examination/issues/143)
+
 ## [1.2.1](https://github.com/bamiyanapp/examination/compare/v1.2.0...v1.2.1) (2026-08-08)
 
 
