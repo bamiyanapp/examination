@@ -577,24 +577,34 @@ exports.handler = async (event) => {
   }
 
   // Service Workerのプリキャッシュ（examination#118、sw.jsのinstallイベントによる
-  // 主要ページへのバックグラウンドfetch）等、ページ本体のナビゲーションを伴わない
-  // 未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを新しいnonceで
-  // 上書きしてしまう。ユーザー自身が実際に進めているログインフロー（別のnonceで
-  // 開始済み）と競合し、/_callback側の照合が失敗して「invalid state」になる
-  // （examination#143）。
+  // 主要ページへのバックグラウンドfetch）・Speculation Rules API（examination#105、
+  // SpeculationRules.jsxによるリンク先の先読み）等、ページ本体のナビゲーションを
+  // 伴わない未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを
+  // 新しいnonceで上書きしてしまう。ユーザー自身が実際に進めているログインフロー
+  // （別のnonceで開始済み）と競合し、/_callback側の照合が失敗して「invalid state」
+  // になる（examination#143）。
   //
   // X-Precache-Requestはsw.jsの先読みfetch呼び出しが必ず自前で付与する独自ヘッダー
-  // （examination#143再発対応）。Sec-Fetch-Modeはブラウザが自動付与するリクエスト
+  // （examination#143再発対応）。Sec-Purposeはブラウザが自動付与するリクエスト
+  // ヘッダーで、Speculation Rules APIによるprefetch/prerenderリクエストには
+  // "prefetch"（prerenderの場合は"prefetch;prerender"）が入る。SpeculationRules.jsxの
+  // 先読み対象にサイトルート（/）等の認証必須ページが含まれており、ログアウト直後の
+  // 再ログインのように未認証状態でこれらのURLが先読みされると、X-Precache-Request・
+  // Sec-Fetch-Modeいずれの判定もすり抜けてcsrf_stateが上書きされていた
+  // （Speculation Rules APIのprefetchはSec-Fetch-Mode: navigateを送るためすり抜ける。
+  // examination#143再々発対応）。Sec-Fetch-Modeはブラウザが自動付与するリクエスト
   // ヘッダーで実際のトップレベルナビゲーションのみ"navigate"になるが、Safari/iOS
   // （PWAとしてホーム画面から開いた場合を含む）では送信されないことがあり、
   // それのみに頼ると同じ不具合が再発する。そのため自前で確実に制御できる独自
-  // ヘッダーを主たる判定手段とし、Sec-Fetch-Modeは（将来他の未知のバックグラウンド
-  // fetchが増えた場合の）補助的な判定として残す。いずれのヘッダーも送らない
-  // 古いブラウザ・クライアントとの互換性のため、ヘッダーが存在する場合のみ判定し、
-  // 無い場合は従来通りリダイレクトする
+  // ヘッダー・Sec-Purposeを主たる判定手段とし、Sec-Fetch-Modeは（将来他の未知の
+  // バックグラウンドfetchが増えた場合の）補助的な判定として残す。いずれの
+  // ヘッダーも送らない古いブラウザ・クライアントとの互換性のため、ヘッダーが
+  // 存在する場合のみ判定し、無い場合は従来通りリダイレクトする
   const isPrecacheRequest = Boolean((request.headers["x-precache-request"] || [])[0]);
+  const secPurpose = (request.headers["sec-purpose"] || [])[0]?.value;
+  const isSpeculativeRequest = Boolean(secPurpose && secPurpose.includes("prefetch"));
   const secFetchMode = (request.headers["sec-fetch-mode"] || [])[0]?.value;
-  if (isPrecacheRequest || (secFetchMode && secFetchMode !== "navigate")) {
+  if (isPrecacheRequest || isSpeculativeRequest || (secFetchMode && secFetchMode !== "navigate")) {
     return { status: "401", statusDescription: "Unauthorized", body: "authentication required" };
   }
 
