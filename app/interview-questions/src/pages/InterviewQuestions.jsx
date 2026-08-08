@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import resizeToFitContent from "../components/resizeTextareaToFitContent.js"; // symlink先: dev-standards#164
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/voice-practice/src/pages/VoicePractice.jsxと同じAPI）
@@ -56,17 +57,6 @@ const EMPTY_FORM = {
   impression: "",
   modelAnswer: "",
 };
-
-// 追加・編集フォームのテキストエリアを、入力内容に応じて高さ可変にする
-// （examination#165）。一度高さをautoへ戻してからscrollHeightを測ることで、
-// 入力により行数が減った場合にも正しく縮む。編集フォームを開いた直後
-// （既存の複数行の内容が最初から入っている場合）にも正しい高さになるよう、
-// refコールバックとしても同じ関数を使う
-function resizeToFitContent(el) {
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = `${el.scrollHeight}px`;
-}
 
 // 想定問答の閲覧画面（examination#77）。旧: 本人/父/母で分かれていた
 // knowledge/education/interview-yosuke.md・interview-tomoyo.md・interview-ritsu.mdの
