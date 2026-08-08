@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/bamiyanapp/examination/compare/v1.5.2...v1.6.0) (2026-08-08)
+
+
+### Features
+
+* **line-link:** ワンタイムコードをコピー可能なスニペット表示にする ([#164](https://github.com/bamiyanapp/examination/issues/164)) ([4ffe7c4](https://github.com/bamiyanapp/examination/commit/4ffe7c4108266fe9c38ff83075082106b6e1f853))
+
 ## [1.5.2](https://github.com/bamiyanapp/examination/compare/v1.5.1...v1.5.2) (2026-08-08)
 
 
