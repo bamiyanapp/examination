@@ -35,6 +35,17 @@ const EMPTY_FORM = {
   modelAnswer: "",
 };
 
+// 追加・編集フォームのテキストエリアを、入力内容に応じて高さ可変にする
+// （examination#165）。一度高さをautoへ戻してからscrollHeightを測ることで、
+// 入力により行数が減った場合にも正しく縮む。編集フォームを開いた直後
+// （既存の複数行の内容が最初から入っている場合）にも正しい高さになるよう、
+// refコールバックとしても同じ関数を使う
+function resizeToFitContent(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 // 想定問答の閲覧画面（examination#77）。旧: 本人/父/母で分かれていた
 // knowledge/education/interview-yosuke.md・interview-tomoyo.md・interview-ritsu.mdの
 // 3ページをMkDocsで個別表示していたのをやめ、1画面に統合した。データはDynamoDB
@@ -245,7 +256,9 @@ export default function InterviewQuestions() {
                   required
                   value={formValues.question}
                   onChange={(event) => updateFormField("question", event.target.value)}
-                  className="textarea"
+                  onInput={(event) => resizeToFitContent(event.target)}
+                  ref={resizeToFitContent}
+                  className="textarea resize-none overflow-hidden"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -254,7 +267,9 @@ export default function InterviewQuestions() {
                   required
                   value={formValues.answer}
                   onChange={(event) => updateFormField("answer", event.target.value)}
-                  className="textarea"
+                  onInput={(event) => resizeToFitContent(event.target)}
+                  ref={resizeToFitContent}
+                  className="textarea resize-none overflow-hidden"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -262,7 +277,9 @@ export default function InterviewQuestions() {
                 <textarea
                   value={formValues.example}
                   onChange={(event) => updateFormField("example", event.target.value)}
-                  className="textarea"
+                  onInput={(event) => resizeToFitContent(event.target)}
+                  ref={resizeToFitContent}
+                  className="textarea resize-none overflow-hidden"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -270,7 +287,9 @@ export default function InterviewQuestions() {
                 <textarea
                   value={formValues.impression}
                   onChange={(event) => updateFormField("impression", event.target.value)}
-                  className="textarea"
+                  onInput={(event) => resizeToFitContent(event.target)}
+                  ref={resizeToFitContent}
+                  className="textarea resize-none overflow-hidden"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -278,7 +297,9 @@ export default function InterviewQuestions() {
                 <textarea
                   value={formValues.modelAnswer}
                   onChange={(event) => updateFormField("modelAnswer", event.target.value)}
-                  className="textarea"
+                  onInput={(event) => resizeToFitContent(event.target)}
+                  ref={resizeToFitContent}
+                  className="textarea resize-none overflow-hidden"
                 />
               </label>
               {formStatus && (
