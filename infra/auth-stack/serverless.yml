@@ -67,6 +67,14 @@ resources:
         ExplicitAuthFlows:
           - ALLOW_USER_SRP_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
+        # ReadAttributesを明示しないとAWSの既定値に依存し、name・pictureが
+        # id_tokenのクレームに含まれる保証が無い（examination#150で画面上に
+        # アイコンが表示されない不具合の原因の1つ）。AttributeMappingで
+        # マッピングしている属性は全てここにも明示する
+        ReadAttributes:
+          - email
+          - name
+          - picture
 
   Outputs:
     UserPoolId:
