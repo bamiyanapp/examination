@@ -128,6 +128,16 @@ describe("VoicePractice", () => {
     await waitFor(() => expect(document.title).toBe("小学校受験の面接 | 小学校受験対策"));
   });
 
+  it("shows the situation name as the on-page heading instead of a fixed string, since standalone PWA display has no visible browser tab (examination#157再々発)", async () => {
+    mockProfileLoad({ situation: "コンビニ受験面接", schoolCharacteristics: "", otherContext: "" });
+
+    render(<VoicePractice />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "コンビニ受験面接" })).toBeInTheDocument();
+    });
+  });
+
   it("starts a conversation and shows the opening question as a chat bubble, without sending profile fields to the server (examination#135)", async () => {
     mockProfileLoad();
     render(<VoicePractice />);
