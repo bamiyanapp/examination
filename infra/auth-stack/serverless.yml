@@ -33,9 +33,14 @@ resources:
           client_id: ${env:GOOGLE_OAUTH_CLIENT_ID}
           client_secret: ${env:GOOGLE_OAUTH_CLIENT_SECRET}
           authorize_scopes: "openid email profile"
+        # name・pictureはexamination#150（画面上のユーザー名・アイコン表示）で追加。
+        # 属性マッピングは毎回のGoogleログイン時に適用されるため、追加前に登録済みの
+        # 既存ユーザーも次回ログイン時にCognito側の属性が更新される
         AttributeMapping:
           email: email
           username: sub
+          name: name
+          picture: picture
 
     # CloudFrontドメインは作成後不変のため、初回ブートストラップ時のみプレースホルダーを使い、
     # 実際のドメイン判明後にCallbackURLs/LogoutURLsを更新するため2回deployする

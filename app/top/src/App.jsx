@@ -4,6 +4,7 @@ import SpeculationRules from './components/SpeculationRules.jsx'
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration.jsx'
 import BackendCacheWarmer from './components/BackendCacheWarmer.jsx'
 import UpdateNotifier from './components/UpdateNotifier.jsx'
+import UserMenu from './components/UserMenu.jsx'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <UpdateNotifier />
       <SpeculationRules />
       <NavigationOverlay />
+      <UserMenu />
       <TopPage />
     </>
   )
