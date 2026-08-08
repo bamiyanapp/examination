@@ -24,6 +24,7 @@ provider:
             - !GetAtt AllowedEmailsTable.Arn
             - !GetAtt LineLinkCodesTable.Arn
             - !GetAtt VoiceTokensTable.Arn
+            - !GetAtt CsrfNoncesTable.Arn
         - Effect: Allow
           Action:
             - dynamodb:UpdateItem
@@ -113,6 +114,29 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: token
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+
+    # ログインCSRF対策のnonce（examination#143）。当初はCookie（csrf_state）で
+    # 検証していたが、バックグラウンドfetch・prefetch等による上書きに加え、
+    # ログアウト直後の再ログイン（Cognito・Googleのセッションが直前まで有効な
+    # ため認証の往復が高速に完了する）でほぼ確実に再現する不具合が繰り返し
+    # 発生した。ブラウザのCookieポリシー（Safari等のITPによるバウンス
+    # トラッキング対策でのCookie破棄を含む）に一切依存しないよう、nonce自体を
+    # サーバー側（DynamoDB）で管理し、コールバック時に一度きりの検証・削除
+    # （ConditionExpression付きDeleteItem）を行う方式へ変更した。TTLで自動失効させる
+    CsrfNoncesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-csrf-nonces
+        AttributeDefinitions:
+          - AttributeName: nonce
+            AttributeType: S
+        KeySchema:
+          - AttributeName: nonce
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:
