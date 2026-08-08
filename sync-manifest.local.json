@@ -1,6 +1,14 @@
 {
   "symlinks": [
     {
+      "source": "shared/lambda/dailyRateLimit.js",
+      "target": "infra/bot-stack/functions/dailyRateLimit.js"
+    },
+    {
+      "source": "shared/lambda/dailyRateLimit.js",
+      "target": "infra/site-stack/functions/dailyRateLimit.js"
+    },
+    {
       "source": "shared/pwa/ServiceWorkerRegistration.jsx",
       "target": "app/top/src/components/ServiceWorkerRegistration.jsx"
     },
