@@ -15,7 +15,12 @@ FakeSpeechRecognition.instances = [];
 beforeEach(() => {
   FakeSpeechRecognition.instances = [];
   window.SpeechRecognition = FakeSpeechRecognition;
-  window.speechSynthesis = { speak: vi.fn() };
+  window.speechSynthesis = {
+    speak: vi.fn(),
+    getVoices: vi.fn().mockReturnValue([]),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
   window.SpeechSynthesisUtterance = class {
     constructor(text) {
       this.text = text;
@@ -57,6 +62,62 @@ describe("VoicePractice", () => {
     expect(screen.queryByPlaceholderText(/自由な校風で、生徒の主体性を重視する/)).not.toBeInTheDocument();
     const editLink = screen.getByRole("link", { name: "プロフィール編集で変更する →" });
     expect(editLink).toHaveAttribute("href", "/settings/profile-edit/");
+  });
+
+  it("speaks with a Japanese network voice over a local voice when both are available (examination#158)", async () => {
+    const localJaVoice = { lang: "ja-JP", localService: true, name: "端末内蔵" };
+    const networkJaVoice = { lang: "ja-JP", localService: false, name: "Google 日本語" };
+    window.speechSynthesis.getVoices.mockReturnValue([{ lang: "en-US", localService: false }, localJaVoice, networkJaVoice]);
+
+    mockProfileLoad();
+    render(<VoicePractice />);
+    await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
+
+    mockTokenAndOpening("好きな遊びは何ですか？");
+    fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
+
+    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
+    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    expect(utterance.voice).toBe(networkJaVoice);
+  });
+
+  it("falls back to the first Japanese voice when no network voice is available", async () => {
+    const localJaVoice = { lang: "ja-JP", localService: true, name: "端末内蔵" };
+    window.speechSynthesis.getVoices.mockReturnValue([localJaVoice]);
+
+    mockProfileLoad();
+    render(<VoicePractice />);
+    await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
+
+    mockTokenAndOpening("好きな遊びは何ですか？");
+    fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
+
+    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
+    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    expect(utterance.voice).toBe(localJaVoice);
+  });
+
+  it("does not set a voice and does not throw when no Japanese voice is available", async () => {
+    window.speechSynthesis.getVoices.mockReturnValue([{ lang: "en-US", localService: false }]);
+
+    mockProfileLoad();
+    render(<VoicePractice />);
+    await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
+
+    mockTokenAndOpening("好きな遊びは何ですか？");
+    fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
+
+    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
+    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    expect(utterance.voice).toBeUndefined();
+  });
+
+  it("sets the tab title to the situation name instead of a fixed string (examination#157)", async () => {
+    mockProfileLoad({ situation: "コンビニ受験面接", schoolCharacteristics: "", otherContext: "" });
+
+    render(<VoicePractice />);
+
+    await waitFor(() => expect(document.title).toBe("コンビニ受験面接 | 小学校受験対策"));
   });
 
   it("starts a conversation and shows the opening question as a chat bubble, without sending profile fields to the server (examination#135)", async () => {

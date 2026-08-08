@@ -12,10 +12,22 @@ function getSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition;
 }
 
-function speak(text) {
+// 利用可能な音声（SpeechSynthesis.getVoices()）の中から日本語音声のうち
+// 最も品質が高いと期待できるものを選ぶ（examination#158）。localService: false
+// （ブラウザが自動選択する端末内蔵音声ではなく、Google等が提供するネットワーク
+// 経由の音声）は一般に端末内蔵の音声より自然で聞き取りやすいため優先する
+function pickJapaneseVoice(voices) {
+  const jaVoices = (voices || []).filter((voice) => voice.lang && voice.lang.toLowerCase().startsWith("ja"));
+  if (jaVoices.length === 0) return null;
+  return jaVoices.find((voice) => voice.localService === false) || jaVoices[0];
+}
+
+function speak(text, voices) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   const utterance = new window.SpeechSynthesisUtterance(text);
   utterance.lang = "ja-JP";
+  const voice = pickJapaneseVoice(voices);
+  if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -29,7 +41,10 @@ function speak(text) {
 // ブラウザ標準API（SpeechRecognition/SpeechSynthesis）を使う。一時期ブラウザ内AI
 // モデル（ONNX Runtime Web + Piper、examination#73）へ置き換えたが、実機での動作
 // 未検証のまま公開してしまい実際には音声認識・合成のいずれも動作せず、読み込みも
-// 重くなっていたためexamination#112でブラウザ標準APIへ戻した
+// 重くなっていたためexamination#112でブラウザ標準APIへ戻した。読み上げ品質の
+// 低さ（examination#158）についても、piper-plus等のブラウザ内AIモデル再導入は
+// 追加ダウンロードがgzip後20MBを超え同種の問題を再発するリスクが高いと判断し、
+// 追加ダウンロード無しで実現できる音声選択の改善（pickJapaneseVoice）にとどめた
 export default function VoicePractice() {
   const [role, setRole] = useState("本人");
   const [profileStatus, setProfileStatus] = useState("loading");
@@ -45,7 +60,20 @@ export default function VoicePractice() {
 
   const voiceTokenRef = useRef(null);
   const historyRef = useRef([]);
+  const voicesRef = useRef([]);
   const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    // Chrome等は音声一覧の準備が非同期のため、初回取得が空配列のことがある
+    // （voiceschangedイベントで後から確定する、examination#158）
+    function updateVoices() {
+      voicesRef.current = window.speechSynthesis.getVoices();
+    }
+    updateVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", updateVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", updateVoices);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +92,12 @@ export default function VoicePractice() {
           setSchoolCharacteristics(profileData.schoolCharacteristics || "");
           setOtherContext(profileData.otherContext || "");
           setProfileStatus("loaded");
+          // タブタイトルを固定文言でなくシチュエーション名にする（examination#157）。
+          // 複数のシチュエーションを使い分ける場合や、PWAとしてホーム画面に追加した
+          // 際に、どの練習用画面かをタイトルだけで区別しやすくする
+          if (profileData.situation) {
+            document.title = `${profileData.situation} | 小学校受験対策`;
+          }
         }
       } catch {
         // プロフィールの参照表示に失敗しても、練習自体（サーバー側が別途プロフィールを
@@ -114,7 +148,7 @@ export default function VoicePractice() {
       const data = await sendToVoiceChat(null);
       historyRef.current = data.history;
       setMessages([{ speaker: "面接官", text: data.reply }]);
-      speak(data.reply);
+      speak(data.reply, voicesRef.current);
       setStarted(true);
       if (!SpeechRecognitionCtor) {
         setIsError(true);
@@ -150,7 +184,7 @@ export default function VoicePractice() {
         const data = await sendToVoiceChat(said);
         historyRef.current = data.history;
         setMessages((prev) => [...prev, { speaker: "面接官", text: data.reply }]);
-        speak(data.reply);
+        speak(data.reply, voicesRef.current);
         setStatus("");
       } catch (error) {
         setIsError(true);
