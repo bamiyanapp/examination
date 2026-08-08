@@ -17,6 +17,8 @@ const config = require("./configuration.json");
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
 const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
+const CSRF_NONCES_TABLE = "examination-csrf-nonces";
+const CSRF_NONCE_TTL_SECONDS = 300;
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const VOICE_TOKEN_TTL_SECONDS = 60 * 60;
 const VOICE_TOKEN_ISSUANCE_TABLE = "examination-voice-token-issuance";
@@ -236,6 +238,49 @@ async function verifyIdTokenFromCookie(request) {
   } catch (error) {
     console.warn("id_token verification failed", error.message);
     return null;
+  }
+}
+
+// ログインCSRF対策のnonceをサーバー側（DynamoDB）で発行する（examination#143）。
+// 以前はCookie（csrf_state）に保存しstateパラメータと突き合わせていたが、
+// バックグラウンドfetch・prefetchによる上書きや、ブラウザのCookieポリシー
+// （Safari等のITPのバウンストラッキング対策によるCookie破棄を含む）に
+// 起因すると考えられる「invalid state」の再発を繰り返した。nonce自体の
+// 有効性をサーバー側で管理すれば、これらのクライアント側の要因に一切
+// 依存しなくなる
+async function issueCsrfNonce() {
+  const nonce = crypto.randomBytes(16).toString("hex");
+  await ddb.send(
+    new PutItemCommand({
+      TableName: CSRF_NONCES_TABLE,
+      Item: {
+        nonce: { S: nonce },
+        expiresAt: { N: String(Math.floor(Date.now() / 1000) + CSRF_NONCE_TTL_SECONDS) },
+      },
+    })
+  );
+  return nonce;
+}
+
+// nonceの検証と同時に削除する（DeleteItem + ConditionExpression）ことで、
+// 有効期限内・未使用の一度きりの利用のみを許可する。同じnonceでの
+// リプレイ（多重コールバック等）・期限切れ後の利用はどちらもfalseになる
+async function consumeCsrfNonce(nonce) {
+  if (!nonce) return false;
+  try {
+    await ddb.send(
+      new DeleteItemCommand({
+        TableName: CSRF_NONCES_TABLE,
+        Key: { nonce: { S: nonce } },
+        ConditionExpression: "attribute_exists(#n) AND expiresAt > :now",
+        ExpressionAttributeNames: { "#n": "nonce" },
+        ExpressionAttributeValues: { ":now": { N: String(Math.floor(Date.now() / 1000)) } },
+      })
+    );
+    return true;
+  } catch (error) {
+    if (error.name === "ConditionalCheckFailedException") return false;
+    throw error;
   }
 }
 
@@ -476,20 +521,22 @@ exports.handler = async (event) => {
       return { status: "400", statusDescription: "Bad Request", body: "missing code or state" };
     }
 
-    // ログインCSRF対策: 未認証時のリダイレクトでcsrf_stateクッキーに保存したnonceと、
-    // stateパラメータに埋め込んだnonceが一致することを確認する（第三者が発行させた
-    // 認可コードをこのブラウザに横流しして紐付けさせる攻撃を防ぐ）
+    // ログインCSRF対策: 未認証時のリダイレクトでDynamoDBへ登録したnonceと、
+    // stateパラメータに埋め込んだnonceが一致し、かつ未使用・有効期限内であることを
+    // 確認する（第三者が発行させた認可コードをこのブラウザに横流しして紐付けさせる
+    // 攻撃を防ぐ）。以前はCookie（csrf_state）で照合していたが、examination#143
+    // 参照
     let originalUri = "/";
+    let decoded;
     try {
-      const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
-      const cookies = parseCookies(request.headers);
-      if (!decoded.nonce || decoded.nonce !== cookies.csrf_state) {
-        return { status: "400", statusDescription: "Bad Request", body: "invalid state" };
-      }
-      originalUri = decoded.uri || "/";
+      decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
     } catch {
       return { status: "400", statusDescription: "Bad Request", body: "invalid state" };
     }
+    if (!(await consumeCsrfNonce(decoded.nonce))) {
+      return { status: "400", statusDescription: "Bad Request", body: "invalid state" };
+    }
+    originalUri = decoded.uri || "/";
 
     const redirectUri = `https://${domainName}/_callback`;
     const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
@@ -530,8 +577,6 @@ exports.handler = async (event) => {
     return redirectResponse(`https://${domainName}${originalUri}`, [
       cookieString("id_token", tokens.id_token, tokens.expires_in),
       cookieString("refresh_token", tokens.refresh_token, 60 * 60 * 24 * 30),
-      // 使い切ったcsrf_stateクッキーは失効させる
-      cookieString("csrf_state", "", 0),
     ]);
   }
 
@@ -576,30 +621,14 @@ exports.handler = async (event) => {
     }
   }
 
-  // Service Workerのプリキャッシュ（examination#118、sw.jsのinstallイベントによる
-  // 主要ページへのバックグラウンドfetch）・Speculation Rules API（examination#105、
-  // SpeculationRules.jsxによるリンク先の先読み）等、ページ本体のナビゲーションを
-  // 伴わない未認証リクエストがこの先へ到達すると、下記でcsrf_stateクッキーを
-  // 新しいnonceで上書きしてしまう。ユーザー自身が実際に進めているログインフロー
-  // （別のnonceで開始済み）と競合し、/_callback側の照合が失敗して「invalid state」
-  // になる（examination#143）。
-  //
-  // X-Precache-Requestはsw.jsの先読みfetch呼び出しが必ず自前で付与する独自ヘッダー
-  // （examination#143再発対応）。Sec-Purposeはブラウザが自動付与するリクエスト
-  // ヘッダーで、Speculation Rules APIによるprefetch/prerenderリクエストには
-  // "prefetch"（prerenderの場合は"prefetch;prerender"）が入る。SpeculationRules.jsxの
-  // 先読み対象にサイトルート（/）等の認証必須ページが含まれており、ログアウト直後の
-  // 再ログインのように未認証状態でこれらのURLが先読みされると、X-Precache-Request・
-  // Sec-Fetch-Modeいずれの判定もすり抜けてcsrf_stateが上書きされていた
-  // （Speculation Rules APIのprefetchはSec-Fetch-Mode: navigateを送るためすり抜ける。
-  // examination#143再々発対応）。Sec-Fetch-Modeはブラウザが自動付与するリクエスト
-  // ヘッダーで実際のトップレベルナビゲーションのみ"navigate"になるが、Safari/iOS
-  // （PWAとしてホーム画面から開いた場合を含む）では送信されないことがあり、
-  // それのみに頼ると同じ不具合が再発する。そのため自前で確実に制御できる独自
-  // ヘッダー・Sec-Purposeを主たる判定手段とし、Sec-Fetch-Modeは（将来他の未知の
-  // バックグラウンドfetchが増えた場合の）補助的な判定として残す。いずれの
-  // ヘッダーも送らない古いブラウザ・クライアントとの互換性のため、ヘッダーが
-  // 存在する場合のみ判定し、無い場合は従来通りリダイレクトする
+  // Service Workerのプリキャッシュ（examination#118）・Speculation Rules API
+  // （examination#105）等、ページ本体のナビゲーションを伴わない未認証の
+  // バックグラウンドリクエストは、以下のいずれかのヘッダーで検出できる場合
+  // Cognitoへのリダイレクト（無駄なnonce発行・往復）自体を避ける。nonceの
+  // 検証自体はexamination#143でサーバー側（DynamoDB）管理に変更したため、
+  // これらの判定を取りこぼしてもcsrf_stateのようなクッキー上書き競合は
+  // 発生しなくなっている（あくまで効率化のための判定であり、正しさの
+  // 担保はDynamoDB側のnonce管理に一本化されている）
   const isPrecacheRequest = Boolean((request.headers["x-precache-request"] || [])[0]);
   const secPurpose = (request.headers["sec-purpose"] || [])[0]?.value;
   const isSpeculativeRequest = Boolean(secPurpose && secPurpose.includes("prefetch"));
@@ -609,8 +638,9 @@ exports.handler = async (event) => {
   }
 
   // 未認証: 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ
-  // リダイレクトする。nonceはcsrf_stateクッキーにも保存し、/_callback側で照合する
-  const nonce = crypto.randomBytes(16).toString("hex");
+  // リダイレクトする。nonceはDynamoDBへ登録し、/_callback側で一度きりの検証・削除を
+  // 行う（examination#143、クッキーには一切依存しない）
+  const nonce = await issueCsrfNonce();
   const state = Buffer.from(JSON.stringify({ uri: request.uri, nonce }), "utf-8").toString("base64");
   const redirectUri = `https://${domainName}/_callback`;
   const authorizeUrl =
@@ -622,5 +652,5 @@ exports.handler = async (event) => {
       redirect_uri: redirectUri,
       state,
     }).toString();
-  return redirectResponse(authorizeUrl, [cookieString("csrf_state", nonce, 300), ...extraCookiesOnLoginRedirect]);
+  return redirectResponse(authorizeUrl, extraCookiesOnLoginRedirect);
 };

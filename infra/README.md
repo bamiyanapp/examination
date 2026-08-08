@@ -61,6 +61,17 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す
 4. `/_logout`へアクセスすると、Cookieを失効させた上でCognito自体のセッションも切って`/`へ戻す
 
+### ログインCSRF対策のnonce管理（[Issue #143](https://github.com/bamiyanapp/examination/issues/143)）
+
+未認証時のログインリダイレクトでは、第三者が発行させた認可コードをこのブラウザに横流しして紐付けさせる攻撃（ログインCSRF）を防ぐため、`state`パラメータにnonceを埋め込みCognitoから戻ってきた際に照合する。
+
+当初はこのnonceをCookie（`csrf_state`）に保存し照合していたが、以下の要因による「invalid state」再発を繰り返し経験した。
+
+- Service Workerのプリキャッシュ・Speculation Rules APIの先読み等、未認証状態のバックグラウンドリクエストがcsrf_stateクッキーを新しいnonceで上書きしてしまう
+- ログアウト直後の再ログイン（Cognito・Googleのセッションが直前まで有効なため認証の往復が高速に完了する）で、Safari等のITP（Intelligent Tracking Prevention、バウンストラッキング対策）がクロスサイトリダイレクト直後のCookieを破棄する影響を受けていたと考えられる
+
+これらはいずれもCSRF検証をブラウザのCookieに依存させていること自体に起因する構造的な脆弱さのため、nonce自体をDynamoDBテーブル`examination-csrf-nonces`（パーティションキー: `nonce`、TTLで自動失効）でサーバー側管理する方式へ変更した。未認証時のリダイレクトでnonceをPutItemし、`/_callback`で`ConditionExpression`付き`DeleteItem`により一度きりの検証・削除を行う（存在しない・期限切れ・使用済みのいずれの場合も「invalid state」として扱う）。ブラウザのCookieの生存・上書きに一切依存しないため、上記のいずれの要因からも影響を受けない。
+
 ### セッションの自動延長（refresh_token、[Issue #150](https://github.com/bamiyanapp/examination/issues/150)）
 
 `id_token`（Cognitoの既定で有効期限1時間）が失効しても、`refresh_token`Cookie（Max-Age 30日）が有効な間は、Googleへの完全な再ログイン（アカウント選択・同意画面）を経ずにセッションを継続する。
