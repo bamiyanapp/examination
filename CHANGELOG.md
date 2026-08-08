@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/bamiyanapp/examination/compare/v1.2.3...v1.3.0) (2026-08-08)
+
+
+### Features
+
+* **app:** UserMenuにページURLのQRコード共有機能を追加する ([#159](https://github.com/bamiyanapp/examination/issues/159)) ([261c2c9](https://github.com/bamiyanapp/examination/commit/261c2c9c29b61d99b494e7a1408057443c113134))
+
 ## [1.2.3](https://github.com/bamiyanapp/examination/compare/v1.2.2...v1.2.3) (2026-08-08)
 
 
