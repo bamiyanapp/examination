@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/bamiyanapp/examination/compare/v1.8.0...v1.8.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **ci:** cd.ymlのdeployジョブでdev-standards submoduleをcheckoutする ([#173](https://github.com/bamiyanapp/examination/issues/173)) ([6e4ed17](https://github.com/bamiyanapp/examination/commit/6e4ed172cab89a94eb0ec982da5412708738e901)), closes [#172](https://github.com/bamiyanapp/examination/issues/172)
+
 # [1.8.0](https://github.com/bamiyanapp/examination/compare/v1.7.1...v1.8.0) (2026-08-08)
 
 
