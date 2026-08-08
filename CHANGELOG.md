@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/bamiyanapp/examination/compare/v1.5.0...v1.5.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **voice-practice:** シチュエーション未設定時もタブタイトルを更新する ([#162](https://github.com/bamiyanapp/examination/issues/162)) ([c020825](https://github.com/bamiyanapp/examination/commit/c020825f38ad738b5f4cea65216d0f0b0e20e415))
+
 # [1.5.0](https://github.com/bamiyanapp/examination/compare/v1.4.0...v1.5.0) (2026-08-08)
 
 
