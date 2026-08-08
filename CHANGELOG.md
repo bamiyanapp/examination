@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/bamiyanapp/examination/compare/v1.7.1...v1.8.0) (2026-08-08)
+
+
+### Features
+
+* **app:** 横断的コンポーネントをdev-standards共有ファイルへ切り替える ([#169](https://github.com/bamiyanapp/examination/issues/169)) ([96e2c06](https://github.com/bamiyanapp/examination/commit/96e2c0651ab585ec9f6c83edae321a74fad25011)), closes [dev-standards#165](https://github.com/dev-standards/issues/165) [dev-standards#175](https://github.com/dev-standards/issues/175) [dev-standards#176](https://github.com/dev-standards/issues/176)
+
 ## [1.7.1](https://github.com/bamiyanapp/examination/compare/v1.7.0...v1.7.1) (2026-08-08)
 
 
