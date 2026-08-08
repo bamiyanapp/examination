@@ -241,7 +241,7 @@ export default function VoicePractice() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">音声で面接練習</h1>
+      <h1 className="text-2xl font-bold">{situation}</h1>
       <p className="mt-2 text-base-content/70">
         ブラウザの音声認識・音声合成機能を使って、声に出しながら面接練習ができます。マイクとスピーカーが使えるスマートフォン・PCのブラウザで利用してください。
       </p>
