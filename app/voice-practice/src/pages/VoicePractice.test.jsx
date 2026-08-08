@@ -120,6 +120,14 @@ describe("VoicePractice", () => {
     await waitFor(() => expect(document.title).toBe("コンビニ受験面接 | 小学校受験対策"));
   });
 
+  it("sets the tab title to the default situation when the profile has no situation set (examination#157再発)", async () => {
+    mockProfileLoad({ situation: "", schoolCharacteristics: "", otherContext: "" });
+
+    render(<VoicePractice />);
+
+    await waitFor(() => expect(document.title).toBe("小学校受験の面接 | 小学校受験対策"));
+  });
+
   it("starts a conversation and shows the opening question as a chat bubble, without sending profile fields to the server (examination#135)", async () => {
     mockProfileLoad();
     render(<VoicePractice />);

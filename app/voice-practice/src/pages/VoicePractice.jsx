@@ -88,16 +88,18 @@ export default function VoicePractice() {
         const profileData = await profileRes.json();
         if (!profileRes.ok) throw new Error(profileData.error || `プロフィールの取得に失敗しました（${profileRes.status}）`);
         if (!cancelled) {
-          setSituation(profileData.situation || DEFAULT_SITUATION);
+          const resolvedSituation = profileData.situation || DEFAULT_SITUATION;
+          setSituation(resolvedSituation);
           setSchoolCharacteristics(profileData.schoolCharacteristics || "");
           setOtherContext(profileData.otherContext || "");
           setProfileStatus("loaded");
           // タブタイトルを固定文言でなくシチュエーション名にする（examination#157）。
           // 複数のシチュエーションを使い分ける場合や、PWAとしてホーム画面に追加した
-          // 際に、どの練習用画面かをタイトルだけで区別しやすくする
-          if (profileData.situation) {
-            document.title = `${profileData.situation} | 小学校受験対策`;
-          }
+          // 際に、どの練習用画面かをタイトルだけで区別しやすくする。プロフィールで
+          // シチュエーションを未設定の場合も、画面表示（シチュエーション:
+          // {situation}）と一致させるためDEFAULT_SITUATIONへフォールバックする
+          // （examination#157再発: 未設定時にタイトルが更新されない不具合を修正）
+          document.title = `${resolvedSituation} | 小学校受験対策`;
         }
       } catch {
         // プロフィールの参照表示に失敗しても、練習自体（サーバー側が別途プロフィールを
