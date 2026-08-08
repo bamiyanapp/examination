@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/bamiyanapp/examination/compare/v1.8.1...v1.9.0) (2026-08-08)
+
+
+### Features
+
+* **interview-questions,mock-interviews:** 初期ローディング表示までの体感速度を改善する ([#174](https://github.com/bamiyanapp/examination/issues/174)) ([c709faa](https://github.com/bamiyanapp/examination/commit/c709faa5cd6d0a2e0fdcd7ac2c1e2121d6603a1e)), closes [#167](https://github.com/bamiyanapp/examination/issues/167)
+
 ## [1.8.1](https://github.com/bamiyanapp/examination/compare/v1.8.0...v1.8.1) (2026-08-08)
 
 
