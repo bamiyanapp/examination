@@ -41,10 +41,12 @@ jobs:
     steps:
       # releaseジョブがバージョン更新コミットをmainへ直接pushしている場合があるため、
       # このワークフローの発端になったコミット（github.sha）ではなく、常にmainの
-      # 最新状態を明示的に取得する
+      # 最新状態を明示的に取得する。dev-standards submoduleをsymlink経由で参照する
+      # コンポーネントをビルドするため、submoduleも取得する（examination#172）
       - uses: actions/checkout@v7
         with:
           ref: main
+          submodules: true
 
       - uses: actions/setup-python@v7
         with:
