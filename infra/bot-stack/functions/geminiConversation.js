@@ -44,9 +44,14 @@ function postJson(hostname, path, headers, bodyObj) {
         },
       },
       (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
+        // チャンクをBufferのまま集め、レスポンス完了後に一度だけUTF-8デコードする。
+        // res.on("data")のchunkはBufferであり、"data += chunk"は暗黙にchunkごと
+        // toString()（UTF-8）してしまうため、日本語等のマルチバイト文字がチャンク
+        // 境界で分割された場合に文字化け（U+FFFD置換文字）を起こす既知の不具合を避ける
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
         res.on("end", () => {
+          const data = Buffer.concat(chunks).toString("utf-8");
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(data ? JSON.parse(data) : {});
