@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/bamiyanapp/examination/compare/v1.9.0...v1.9.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* **bot-stack,site-stack:** HTTPSレスポンスのチャンク境界でマルチバイト文字が文字化けする不具合を修正する ([#183](https://github.com/bamiyanapp/examination/issues/183)) ([f86b0f5](https://github.com/bamiyanapp/examination/commit/f86b0f57ba4e5d3ec50ecd44175fe4a04c550d89))
+
 # [1.9.0](https://github.com/bamiyanapp/examination/compare/v1.8.1...v1.9.0) (2026-08-08)
 
 
