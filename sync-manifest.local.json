@@ -231,6 +231,10 @@
     {
       "source": "shared/pwa/sw.js",
       "target": "app/top/public/sw.js"
+    },
+    {
+      "source": "shared/ui/resizeTextareaToFitContent.js",
+      "target": "app/interview-questions/src/components/resizeTextareaToFitContent.js"
     }
   ]
 }
