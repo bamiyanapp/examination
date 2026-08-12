@@ -74,9 +74,13 @@ function postForm(hostname, path, form, extraHeaders = {}) {
         },
       },
       (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
+        // チャンクをBufferのまま集め、レスポンス完了後に一度だけUTF-8デコードする
+        // （geminiConversation.js postJsonと同じ理由。マルチバイト文字のチャンク
+        // 境界分割による文字化けを避ける）
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
         res.on("end", () => {
+          const data = Buffer.concat(chunks).toString("utf-8");
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(JSON.parse(data));
