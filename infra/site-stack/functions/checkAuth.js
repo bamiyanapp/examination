@@ -11,6 +11,7 @@ const {
   ScanCommand,
   UpdateItemCommand,
 } = require("@aws-sdk/client-dynamodb");
+const { incrementAndCheckDailyLimit } = require("./dailyRateLimit"); // symlink先: dev-standards#165
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
@@ -360,40 +361,15 @@ async function handleLinkLineApi(request) {
   return jsonResponse(200, "OK", { code, expiresInSeconds: LINE_LINK_CODE_TTL_SECONDS });
 }
 
-function todayDateKey() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-// メールアドレス×当日日付の発行回数をアトミックにインクリメントし、上限を超えていないか
-// 確認する（examination#69）。DynamoDBのUpdateItem（ADD + ConditionExpression）は
-// 単一リクエストで読み取り・条件判定・更新を行うため、同時に複数のトークン発行リクエストが
-// 来ても二重カウントや上限のすり抜けが起きない
 async function incrementAndCheckVoiceTokenIssuance(email) {
-  const key = `${email}#${todayDateKey()}`;
-  // 日付境界をまたいだ集計漏れを避けるため、TTLは1日分に余裕(1時間)を持たせる
-  const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60 * 25;
-  try {
-    await ddb.send(
-      new UpdateItemCommand({
-        TableName: VOICE_TOKEN_ISSUANCE_TABLE,
-        Key: { emailDate: { S: key } },
-        UpdateExpression: "ADD #count :one SET expiresAt = :expiresAt",
-        ConditionExpression: "attribute_not_exists(#count) OR #count < :limit",
-        ExpressionAttributeNames: { "#count": "count" },
-        ExpressionAttributeValues: {
-          ":one": { N: "1" },
-          ":limit": { N: String(VOICE_TOKEN_DAILY_LIMIT) },
-          ":expiresAt": { N: String(expiresAt) },
-        },
-      })
-    );
-    return true;
-  } catch (error) {
-    if (error.name === "ConditionalCheckFailedException") {
-      return false;
-    }
-    throw error;
-  }
+  return incrementAndCheckDailyLimit({
+    ddb,
+    UpdateItemCommand,
+    tableName: VOICE_TOKEN_ISSUANCE_TABLE,
+    keyAttribute: "emailDate",
+    identifier: email,
+    limit: VOICE_TOKEN_DAILY_LIMIT,
+  });
 }
 
 // ログイン中のユーザー情報（examination#150、画面上のユーザー名・アイコン表示用）。
