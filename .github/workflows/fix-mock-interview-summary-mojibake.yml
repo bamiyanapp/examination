@@ -1,0 +1,52 @@
+name: Fix mock interview summary mojibake (one-off, examination#182)
+
+# find-mojibake.ymlの実行で見つかった、examination-mock-interviewsの特定1レコード
+# （模擬面接記録の要約）の文字化けを修正する一回限りの診断・修正用ワークフロー。
+# applyをtrueにするまでは実際の書き込みは行わず、修正前後の内容をJob Summaryで
+# 確認できる（examination#182）。手動実行のみで、通常のデプロイフローには影響しない
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "実際にDynamoDBへ書き込むかどうか（falseの場合は内容確認のみ）"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  fix-mojibake:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: infra/bot-stack/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # bot-stackはus-east-1に統一済み（examination#63）
+          aws-region: us-east-1
+
+      - name: Install dependencies
+        working-directory: infra/bot-stack
+        run: npm ci
+
+      - name: Fix mojibake
+        working-directory: infra/bot-stack
+        env:
+          APPLY: ${{ inputs.apply }}
+        run: |
+          {
+            echo "### 模擬面接記録の要約 文字化け修正（apply=${{ inputs.apply }}）"
+            echo '```'
+            node scripts/fix-mojibake.js
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
