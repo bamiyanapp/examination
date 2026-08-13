@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/bamiyanapp/examination/compare/v1.9.1...v1.9.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **bot-stack:** 模擬面接記録要約の文字化けを修正する一回限りのスクリプトを追加する ([#186](https://github.com/bamiyanapp/examination/issues/186)) ([f0bd4bb](https://github.com/bamiyanapp/examination/commit/f0bd4bb2b2796f7f3f9a63087a2fe7d3a0186174))
+
 ## [1.9.1](https://github.com/bamiyanapp/examination/compare/v1.9.0...v1.9.1) (2026-08-12)
 
 
