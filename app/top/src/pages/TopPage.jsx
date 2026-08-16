@@ -55,6 +55,7 @@ export default function TopPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <div className="mb-8 text-center">
+        <img src="/favicon.png" alt="" className="mx-auto w-40" />
         <h1 className="text-3xl font-bold">小学校受験対策</h1>
         <p className="mt-2 text-base-content/70">家族向けナレッジベースです。カテゴリからページを選んでください。</p>
       </div>
