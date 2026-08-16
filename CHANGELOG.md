@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/bamiyanapp/examination/compare/v1.11.0...v1.12.0) (2026-08-16)
+
+
+### Features
+
+* **ci:** PWA起動時の白画面ボトルネック調査用ワークフローを追加する ([#204](https://github.com/bamiyanapp/examination/issues/204)) ([6551411](https://github.com/bamiyanapp/examination/commit/655141177e2710bce9bad55d956ca42333514bd7)), closes [#175](https://github.com/bamiyanapp/examination/issues/175)
+
 # [1.11.0](https://github.com/bamiyanapp/examination/compare/v1.10.0...v1.11.0) (2026-08-16)
 
 
