@@ -1,0 +1,107 @@
+name: Measure PWA navigation latency (diagnostic, examination#175)
+
+# examination#175（PWA起動時の白画面が体感的に長い）の実際のボトルネック特定用の
+# 診断ワークフロー。HTML到達前の区間（CloudFront/TLSラウンドトリップ・
+# checkAuth.js（Lambda@Edge）の認証処理）について、
+# 1) GitHub Actionsランナーからのcurlタイミング計測（DNS/TCP/TLS/TTFB内訳）
+# 2) 実際のユーザートラフィックにおけるcheckAuth.jsのLambda Duration統計
+#    （CloudWatch Logs Insights、Lambda@Edgeは実行されたエッジリージョンの
+#    ロググループへ記録されるため候補リージョンを総当たりする）
+# の両方を取得し、Job Summaryへ出力する。スマートフォンからJob Summaryを見るだけで
+# 完結し、手動実行のみで通常のデプロイフローには影響しない
+on:
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: "Lambda Duration統計の集計対象日数"
+        required: false
+        default: "7"
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Resolve CloudFront distribution domain
+        id: dist
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" --output text)
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+          echo "CloudFront domain: $DOMAIN"
+
+      - name: Measure navigation request timing (curl)
+        run: |
+          {
+            echo "### GitHub Actionsランナーからのリクエストタイミング内訳"
+            echo "対象: https://${{ steps.dist.outputs.domain }}/"
+            echo "（未ログイン状態のため、checkAuth.jsのログイン判定〜Google認証への"
+            echo "リダイレクトまでの応答。ログイン処理自体は含まないが、"
+            echo "CloudFront/TLSラウンドトリップ＋checkAuth.js起動オーバーヘッドの"
+            echo "目安にはなる）"
+            echo '```'
+            curl -s -o /dev/null -D - "https://${{ steps.dist.outputs.domain }}/" \
+              -w "\nDNS lookup:    %{time_namelookup}s\nTCP connect:   %{time_connect}s\nTLS handshake: %{time_appconnect}s\nTTFB:          %{time_starttransfer}s\nTotal:         %{time_total}s\nHTTP status:   %{http_code}\n"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Measure checkAuth Lambda@Edge duration across candidate regions
+        run: |
+          {
+            echo "### checkAuth.js（Lambda@Edge）実行時間の統計（実際のユーザートラフィック、過去${{ inputs.since_days }}日）"
+            echo "Lambda@Edgeは実行されたエッジリージョンのCloudWatch Logsへ記録されるため、候補リージョンを総当たりする"
+            echo
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          REGIONS="us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1 sa-east-1 eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-north-1 eu-south-1 ap-northeast-1 ap-northeast-2 ap-northeast-3 ap-southeast-1 ap-southeast-2 ap-south-1 af-south-1 me-south-1"
+          FOUND_ANY=false
+
+          for REGION in $REGIONS; do
+            LOG_GROUP="/aws/lambda/${REGION}.examination-site-prod-checkAuth"
+            EXISTS=$(aws logs describe-log-groups --region "$REGION" \
+              --log-group-name-prefix "$LOG_GROUP" \
+              --query "logGroups[?logGroupName=='${LOG_GROUP}'].logGroupName" --output text 2>/dev/null || true)
+            if [ -z "$EXISTS" ]; then
+              continue
+            fi
+            FOUND_ANY=true
+            echo "#### ${REGION}（${LOG_GROUP}）" | tee -a "$GITHUB_STEP_SUMMARY"
+
+            QUERY_ID=$(aws logs start-query --region "$REGION" \
+              --log-group-name "$LOG_GROUP" \
+              --start-time "$(date -d "-${{ inputs.since_days }} days" +%s)" \
+              --end-time "$(date +%s)" \
+              --query-string 'filter @message like /REPORT/ | parse @message "Duration: * ms" as duration | stats count(*) as invocations, pct(duration, 50) as p50_ms, pct(duration, 90) as p90_ms, pct(duration, 99) as p99_ms, max(duration) as max_ms' \
+              --query "queryId" --output text)
+
+            STATUS="Running"
+            ATTEMPTS=0
+            while [ "$STATUS" = "Running" ] || [ "$STATUS" = "Scheduled" ]; do
+              ATTEMPTS=$((ATTEMPTS + 1))
+              if [ "$ATTEMPTS" -gt 15 ]; then
+                echo "(クエリがタイムアウトしました)" | tee -a "$GITHUB_STEP_SUMMARY"
+                break
+              fi
+              sleep 2
+              RESULT=$(aws logs get-query-results --region "$REGION" --query-id "$QUERY_ID")
+              STATUS=$(echo "$RESULT" | jq -r ".status")
+            done
+
+            if [ "$STATUS" = "Complete" ]; then
+              echo '```' | tee -a "$GITHUB_STEP_SUMMARY"
+              echo "$RESULT" | jq -r '.results[0][] | "\(.field): \(.value)"' | tee -a "$GITHUB_STEP_SUMMARY"
+              echo '```' | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          if [ "$FOUND_ANY" = "false" ]; then
+            echo "(候補リージョンのいずれにもcheckAuth.jsのロググループが見つかりませんでした)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
