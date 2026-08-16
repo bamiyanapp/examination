@@ -69,13 +69,33 @@ function postJson(hostname, path, headers, bodyObj) {
   });
 }
 
-function buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext }) {
+// 事前登録済みの想定問答（examination-interview-questionsテーブル、対象者で絞込み済み）
+// を練習の質問候補として組み込む（examination#207）。AIが完全に自由に質問を生成する
+// 方式（examination#76）に加え、既存の想定問答バンクをまず踏まえた上で、そこに無い
+// 新しい追加質問もできるようにレベルアップする
+function formatExistingQuestionsForPractice(existingQuestions) {
+  if (!existingQuestions || existingQuestions.length === 0) return "";
+  const lines = existingQuestions
+    .map((q) => `- ${q.question}${q.answer ? `（想定回答: ${q.answer}）` : ""}`)
+    .join("\n");
+  return (
+    "質問は、まず次の事前登録済みの想定問答を中心に（言い回しを変えても構いません、" +
+    "順不同で構いません）聞いてください。すべて聞き終えた場合や、相手の回答を深掘り" +
+    "する中で自然に話題が広がった場合は、次の想定問答一覧には無い新しい追加質問もして" +
+    "ください。\n" +
+    lines +
+    "\n\n"
+  );
+}
+
+function buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext, existingQuestions }) {
   const roleDescription = ROLE_DESCRIPTIONS[role];
   const characteristicsText = schoolCharacteristics
     ? `志望先の特色は次の通りです。${schoolCharacteristics}。これを踏まえた質問も交えてください。`
     : "";
   // 志望先の特色欄では拾いきれない情報（家族情報等）を補う自由記述欄（examination#76）
   const otherContextText = otherContext ? `その他、踏まえるべき前提情報は次の通りです。${otherContext}。` : "";
+  const existingQuestionsText = formatExistingQuestionsForPractice(existingQuestions);
   return (
     `あなたは${situation}の面接官です。相手は` +
     roleDescription +
@@ -88,9 +108,11 @@ function buildSystemPrompt({ role, situation, schoolCharacteristics, otherContex
     "一方、回答が抽象的だったり具体的なエピソードに欠ける場合は、新しい話題に移る代わりに、" +
     "実際の面接官がするように同じ話題を掘り下げる追加質問（例:「具体的にどんな場面で" +
     "そう感じましたか？」）をしても構いません。ただし同じ話題への深掘りは続けて2回までとし、" +
-    "それ以降は新しい話題の質問に進んでください。質問は面接でよく聞かれる内容（志望動機、" +
-    "家庭の様子、本人の性格や好きなこと等）から選んでください。まだ相手の回答が無い" +
-    "最初のターンでは、フィードバックは不要です。\n\n" +
+    "それ以降は新しい話題の質問に進んでください。" +
+    (existingQuestionsText ||
+      "質問は面接でよく聞かれる内容（志望動機、家庭の様子、本人の性格や好きなこと等）から" +
+        "選んでください。") +
+    "まだ相手の回答が無い最初のターンでは、フィードバックは不要です。\n\n" +
     "出力は必ず次のJSON形式のみとし、他の文章を含めないでください。\n" +
     '{"voice": "音声で読み上げる自然な話し言葉。記号や箇条書きは使わず簡潔に。", ' +
     '"text": "チャットで読む用の詳しい内容。模範解答や改善ポイントを具体的に含めてよい。"}\n\n' +

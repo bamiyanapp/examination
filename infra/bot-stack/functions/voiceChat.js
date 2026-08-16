@@ -97,8 +97,16 @@ exports.handler = async (event) => {
     });
   }
 
+  // 対象者の事前登録済み想定問答をsystem promptへ組み込む（examination#207）。
+  // voiceChat.jsはサーバー側にセッション状態を持たない（history等は毎回
+  // クライアントから受け取る）ため、lineWebhook.jsのようにセッション開始時の
+  // スナップショットを持ち越せず、ターンごとに取得する
+  const existingQuestions = await queryQuestionsByTargetPerson(role);
   const messages = [
-    { role: "system", content: buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext }) },
+    {
+      role: "system",
+      content: buildSystemPrompt({ role, situation, schoolCharacteristics, otherContext, existingQuestions }),
+    },
     ...history,
   ];
   if (userMessage) {
