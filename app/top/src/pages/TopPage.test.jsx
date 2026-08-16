@@ -56,6 +56,11 @@ describe("TopPage", () => {
     expect(document.querySelector('a[href="/family/profile/"]')).toBeNull();
   });
 
+  it("shows the school-crossing illustration (examination#210)", () => {
+    render(<TopPage />);
+    expect(document.querySelector('img[src="/favicon.png"]')).not.toBeNull();
+  });
+
   it("shows the semantic version, build SHA and formatted build time when set (examination#131, #137)", () => {
     vi.stubEnv("VITE_BUILD_VERSION", "v1.4.2");
     vi.stubEnv("VITE_BUILD_SHA", "abc1234");
