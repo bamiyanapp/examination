@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import resizeToFitContent from "../components/resizeTextareaToFitContent.js"; // symlink先: dev-standards#164
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/voice-practice/src/pages/VoicePractice.jsxと同じAPI）
@@ -131,9 +132,10 @@ export default function ProfileEdit() {
               <textarea
                 value={schoolCharacteristics}
                 onChange={(event) => setSchoolCharacteristics(event.target.value)}
+                onInput={(event) => resizeToFitContent(event.target)}
+                ref={resizeToFitContent}
                 placeholder="例: 自由な校風で、生徒の主体性を重視する"
-                rows={3}
-                className="textarea w-full"
+                className="textarea w-full resize-none overflow-hidden"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -141,9 +143,10 @@ export default function ProfileEdit() {
               <textarea
                 value={otherContext}
                 onChange={(event) => setOtherContext(event.target.value)}
+                onInput={(event) => resizeToFitContent(event.target)}
+                ref={resizeToFitContent}
                 placeholder="例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"
-                rows={3}
-                className="textarea w-full"
+                className="textarea w-full resize-none overflow-hidden"
               />
             </label>
             <div className="card-actions items-center gap-3">
