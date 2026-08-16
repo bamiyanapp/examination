@@ -239,6 +239,38 @@
     {
       "source": "shared/ui/resizeTextareaToFitContent.js",
       "target": "app/profile-edit/src/components/resizeTextareaToFitContent.js"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/top/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/mock-interviews/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/education-overview/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/interview-questions/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/profile-edit/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/voice-practice/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/line-link/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/common-theme.css",
+      "target": "app/allowed-emails/src/common-theme.css"
     }
   ]
 }
