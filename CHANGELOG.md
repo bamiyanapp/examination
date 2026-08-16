@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/bamiyanapp/examination/compare/v1.12.0...v1.13.0) (2026-08-16)
+
+
+### Features
+
+* **bot-stack:** 面接練習で事前登録済みの想定問答を踏まえて質問する ([#208](https://github.com/bamiyanapp/examination/issues/208)) ([3c639b1](https://github.com/bamiyanapp/examination/commit/3c639b1547760de0aecac5005132399a6fa0e7e5)), closes [#207](https://github.com/bamiyanapp/examination/issues/207)
+
 # [1.12.0](https://github.com/bamiyanapp/examination/compare/v1.11.0...v1.12.0) (2026-08-16)
 
 
