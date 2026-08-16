@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/bamiyanapp/examination/compare/v1.9.2...v1.10.0) (2026-08-16)
+
+
+### Features
+
+* **app:** プロフィール編集画面のtextareaを共有の自動リサイズへ対応させる ([#199](https://github.com/bamiyanapp/examination/issues/199)) ([f751cbe](https://github.com/bamiyanapp/examination/commit/f751cbea4c9143aeaae4b5a47218622027741039)), closes [#194](https://github.com/bamiyanapp/examination/issues/194)
+
 ## [1.9.2](https://github.com/bamiyanapp/examination/compare/v1.9.1...v1.9.2) (2026-08-13)
 
 
