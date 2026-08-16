@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/bamiyanapp/examination/compare/v1.10.0...v1.11.0) (2026-08-16)
+
+
+### Features
+
+* **app:** 全appへ共通テーマCSS（M PLUS Rounded 1c等）を適用する ([#202](https://github.com/bamiyanapp/examination/issues/202)) ([0bb137e](https://github.com/bamiyanapp/examination/commit/0bb137e0179e224834999664e08a3af7f4ce1463)), closes [#201](https://github.com/bamiyanapp/examination/issues/201)
+
 # [1.10.0](https://github.com/bamiyanapp/examination/compare/v1.9.2...v1.10.0) (2026-08-16)
 
 
