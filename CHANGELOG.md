@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/bamiyanapp/examination/compare/v1.13.0...v1.14.0) (2026-08-16)
+
+
+### Features
+
+* **app:** サイトのファビコン・トップページに通学イラストを設定する ([#211](https://github.com/bamiyanapp/examination/issues/211)) ([0239d5a](https://github.com/bamiyanapp/examination/commit/0239d5a3ecaf684db3a1bfe6c392e5ef2a049122)), closes [#210](https://github.com/bamiyanapp/examination/issues/210)
+
 # [1.13.0](https://github.com/bamiyanapp/examination/compare/v1.12.0...v1.13.0) (2026-08-16)
 
 
