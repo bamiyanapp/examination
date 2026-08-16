@@ -235,6 +235,10 @@
     {
       "source": "shared/ui/resizeTextareaToFitContent.js",
       "target": "app/interview-questions/src/components/resizeTextareaToFitContent.js"
+    },
+    {
+      "source": "shared/ui/resizeTextareaToFitContent.js",
+      "target": "app/profile-edit/src/components/resizeTextareaToFitContent.js"
     }
   ]
 }

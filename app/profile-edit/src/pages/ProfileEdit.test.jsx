@@ -84,4 +84,26 @@ describe("ProfileEdit", () => {
       expect(screen.getByText("サーバーエラー")).toBeInTheDocument();
     });
   });
+
+  it("resizes the schoolCharacteristics textarea to fit its content on input (examination#194)", async () => {
+    mockTokenAndProfile({ situation: "", schoolCharacteristics: "", otherContext: "" });
+    render(<ProfileEdit />);
+    const textarea = await screen.findByPlaceholderText("例: 自由な校風で、生徒の主体性を重視する");
+    Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 120 });
+
+    fireEvent.input(textarea, { target: { value: "1行目\n2行目\n3行目" } });
+
+    expect(textarea.style.height).toBe("120px");
+  });
+
+  it("resizes the otherContext textarea to fit its content on input (examination#194)", async () => {
+    mockTokenAndProfile({ situation: "", schoolCharacteristics: "", otherContext: "" });
+    render(<ProfileEdit />);
+    const textarea = await screen.findByPlaceholderText("例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など");
+    Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 150 });
+
+    fireEvent.input(textarea, { target: { value: "1行目\n2行目\n3行目\n4行目" } });
+
+    expect(textarea.style.height).toBe("150px");
+  });
 });
