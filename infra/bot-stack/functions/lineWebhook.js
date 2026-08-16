@@ -162,7 +162,10 @@ async function handlePracticeRoleSelected(lineUserId, text, email) {
     return "「本人」「父」「母」のいずれかを送ってください。";
   }
   const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile();
-  const practiceState = { role, situation, schoolCharacteristics, otherContext };
+  // 対象者の事前登録済み想定問答を練習開始時に一度だけ取得し、練習中は
+  // このスナップショットをsystem promptへ組み込む（examination#207）
+  const existingQuestions = await queryQuestionsByTargetPerson(role);
+  const practiceState = { role, situation, schoolCharacteristics, otherContext, existingQuestions };
   // AI API呼び出しの1日あたりの上限チェック（examination#124）
   if (!(await incrementAndCheckAiApiUsage(email))) {
     await clearSession(lineUserId);
