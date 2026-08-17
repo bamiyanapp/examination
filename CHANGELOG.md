@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/bamiyanapp/examination/compare/v1.14.0...v1.15.0) (2026-08-17)
+
+
+### Features
+
+* **app:** PWAアイコン（ホーム画面追加時のアイコン）を通学イラストに設定する ([#214](https://github.com/bamiyanapp/examination/issues/214)) ([4008672](https://github.com/bamiyanapp/examination/commit/40086724af0796e25f4094f20662613cefc9e44b)), closes [#213](https://github.com/bamiyanapp/examination/issues/213)
+
 # [1.14.0](https://github.com/bamiyanapp/examination/compare/v1.13.0...v1.14.0) (2026-08-16)
 
 
