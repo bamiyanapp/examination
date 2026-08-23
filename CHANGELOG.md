@@ -1,3 +1,10 @@
+## [1.24.3](https://github.com/bamiyanapp/examination/compare/v1.24.2...v1.24.3) (2026-08-23)
+
+
+### Bug Fixes
+
+* **site-stack,auth-stack:** ログアウト時にGoogleセッションも終了させる ([#272](https://github.com/bamiyanapp/examination/issues/272)) ([4db89ad](https://github.com/bamiyanapp/examination/commit/4db89ad59e3c62358a5d9644c14f9d7c40a330b8)), closes [#271](https://github.com/bamiyanapp/examination/issues/271)
+
 ## [1.24.2](https://github.com/bamiyanapp/examination/compare/v1.24.1...v1.24.2) (2026-08-23)
 
 
