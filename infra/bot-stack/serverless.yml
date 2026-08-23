@@ -30,6 +30,14 @@ provider:
             - !GetAtt LineLinksTable.Arn
             - !GetAtt MockInterviewsTable.Arn
             - !GetAtt FamilyProfileTable.Arn
+        # 新規家族登録の通知（examination#259）で、管理用Googleアカウントのemailから
+        # lineUserIdを逆引きするために必要（LineLinksTableのPKはlineUserIdのため
+        # Scan＋FilterExpressionを使う）。他のActionとは分けて宣言する
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt LineLinksTable.Arn
         # Gemini API呼び出し回数の1日あたり上限カウンタ（examination#124）。UpdateItemの
         # みで完結するため他テーブルとはActionを分けて宣言する
         - Effect: Allow
@@ -127,6 +135,18 @@ functions:
           method: GET
       - httpApi:
           path: /family-profile
+          method: POST
+
+  # 新規家族登録の通知（examination#258・#259）。site-stack（checkAuth.jsの
+  # createFamily）がサーバー間で呼ぶ内部APIで、ブラウザからは直接呼ばれない。
+  # 認証はBearerトークンではなく共有シークレット（X-Internal-Secretヘッダー）で行う
+  notifyFamilyCreated:
+    handler: functions/notifyFamilyCreated.handler
+    memorySize: 128
+    timeout: 10
+    events:
+      - httpApi:
+          path: /internal/notify-family-created
           method: POST
 
 resources:
