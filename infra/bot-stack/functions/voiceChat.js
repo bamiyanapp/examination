@@ -27,8 +27,8 @@ exports.handler = async (event) => {
   if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
-  // familySlugを使った家族スコープ化はexamination#239〜#241で対応
-  const { email } = auth;
+  // 想定問答・模擬面接記録の家族スコープ化はexamination#240〜#241で対応
+  const { email, familySlug } = auth;
 
   let payload;
   try {
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
   // examination#135）。以前はクライアントから毎回自由入力を受け取っていたが、
   // 練習の度に入力し直すものではないため撤去した。LINE bot（lineWebhook.js）とも
   // 同じ単一の情報源を参照することで両チャネルの一貫性を保つ
-  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile();
+  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile(familySlug);
   const history = Array.isArray(payload.history) ? payload.history : [];
   const userMessage = typeof payload.message === "string" ? payload.message.trim() : "";
 
