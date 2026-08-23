@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/bamiyanapp/examination/compare/v1.19.0...v1.20.0) (2026-08-23)
+
+
+### Features
+
+* **bot-stack:** 模擬面接記録の読み書きをfamilySlugでスコープ化する ([#251](https://github.com/bamiyanapp/examination/issues/251)) ([52e5344](https://github.com/bamiyanapp/examination/commit/52e534464c669a461eec320cec975e45a227f61a)), closes [#241](https://github.com/bamiyanapp/examination/issues/241)
+
 # [1.19.0](https://github.com/bamiyanapp/examination/compare/v1.18.0...v1.19.0) (2026-08-23)
 
 
