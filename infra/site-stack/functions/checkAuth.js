@@ -625,15 +625,44 @@ exports.handler = async (event) => {
   const domainName = request.headers.host[0].value;
   const cognitoDomainHost = config.cognitoDomain.replace(/^https?:\/\//, "");
 
-  // サインアウト: 自前のCookieを失効させた上でCognito自体のセッションも切る
+  // サインアウト: 自前のCookieを失効させた上でCognito自体のセッションも切る。
+  // CognitoのHosted UIログアウトは配下のGoogleセッションまでは終了させないため
+  // （examination#271）、logout_uriを直接トップページにはせず、Googleセッションも
+  // 終了させる中継ページ（/_logout-complete）へ向ける
   if (request.uri === "/_logout") {
     const logoutUrl =
       `https://${cognitoDomainHost}/logout?` +
       new URLSearchParams({
         client_id: config.clientId,
-        logout_uri: `https://${domainName}/`,
+        logout_uri: `https://${domainName}/_logout-complete`,
       }).toString();
     return redirectResponse(logoutUrl, [cookieString("id_token", "", 0), cookieString("refresh_token", "", 0)]);
+  }
+
+  // ログアウトの中継ページ（examination#271）。CognitoのHosted UIログアウトは
+  // 配下のGoogleセッションまでは終了させないため、このまま次にログインすると
+  // Googleが自身のセッションを検知して確認画面無しに同じアカウントで再ログイン
+  // させてしまう。非表示の<img>でGoogleの/Logoutエンドポイントへリクエストを
+  // 送る（いわゆる「ログアウトピクセル」パターン）ことで、レスポンスの内容に
+  // 依存せずCookie失効という副作用のみを利用してGoogleセッションも終了させた上で
+  // トップページへ戻る。この中継先URLはauth-stackのLogoutURLsに登録済みである
+  // 必要がある
+  if (request.uri === "/_logout-complete") {
+    return {
+      status: "200",
+      statusDescription: "OK",
+      headers: { "content-type": [{ key: "Content-Type", value: "text/html; charset=utf-8" }] },
+      body: [
+        "<!doctype html>",
+        '<html lang="ja"><head><meta charset="utf-8"><title>ログアウト中...</title></head>',
+        "<body>",
+        "<p>ログアウトしています...</p>",
+        '<img src="https://accounts.google.com/Logout" alt="" style="display:none" ' +
+          "onload=\"location.href='/'\" onerror=\"location.href='/'\">",
+        "<script>setTimeout(function () { location.href = '/'; }, 2000);</script>",
+        "</body></html>",
+      ].join("\n"),
+    };
   }
 
   // ログイン中のユーザー情報API（examination#150）
