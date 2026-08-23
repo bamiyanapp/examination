@@ -174,8 +174,8 @@ async function handlePracticeRoleSelected(lineUserId, text, email, familySlug) {
   const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile(familySlug);
   // 対象者の事前登録済み想定問答を練習開始時に一度だけ取得し、練習中は
   // このスナップショットをsystem promptへ組み込む（examination#207）
-  const existingQuestions = await queryQuestionsByTargetPerson(role);
-  const practiceState = { role, situation, schoolCharacteristics, otherContext, existingQuestions };
+  const existingQuestions = await queryQuestionsByTargetPerson(role, familySlug);
+  const practiceState = { role, situation, schoolCharacteristics, otherContext, existingQuestions, familySlug };
   // AI API呼び出しの1日あたりの上限チェック（examination#124）
   if (!(await incrementAndCheckAiApiUsage(email))) {
     await clearSession(lineUserId);
@@ -213,13 +213,13 @@ async function handlePracticeTurn(lineUserId, session, text, email) {
       // 対象者（role）に紐づく既存の想定問答を候補として渡し、この会話で出た
       // 質問・回答が既存のどの質問に対応するか、模範解答・面接官への印象を
       // 更新する価値があるかをAI自身に判定させる（examination#77要望3、#147）
-      const existingQuestions = await queryQuestionsByTargetPerson(practiceState.role);
+      const existingQuestions = await queryQuestionsByTargetPerson(practiceState.role, practiceState.familySlug);
       const { summary, questions } = await summarizeMockInterview({ ...practiceState, existingQuestions });
       await saveMockInterviewSummary({ ...practiceState, channel: "line", summary, createdBy: lineUserId });
       // 想定問答バンクへの反映は付随的な処理のため、失敗してもサマリー自体の
       // 保存成功・練習終了の返信は変えない
       try {
-        await applyReconciliationResults(questions, practiceState.role, existingQuestions);
+        await applyReconciliationResults(questions, practiceState.role, existingQuestions, practiceState.familySlug);
       } catch (error) {
         console.error("Question bank reconciliation failed", error.message);
       }
@@ -264,7 +264,7 @@ async function handleRegisterStart(lineUserId) {
 
 // 想定問答の登録抽出は会話のラリーそのものではないため、AI実行回数の1日あたり
 // 上限（AI_API_DAILY_LIMIT、examination#124）の対象外とする（examination#235）
-async function handleRegisterExtract(lineUserId, freeText, createdBy) {
+async function handleRegisterExtract(lineUserId, freeText, createdBy, familySlug) {
   const prompt =
     "次の文章から、小学校受験の面接想定問答を抽出してください。" +
     '厳密なJSON形式（{"category": "本人面接" または "父の保護者面接" または "母の保護者面接", "question": "質問文", "answer": "回答文"}）' +
@@ -283,7 +283,7 @@ async function handleRegisterExtract(lineUserId, freeText, createdBy) {
     await clearSession(lineUserId);
     return "うまく読み取れませんでした。もう一度「質問を登録」からやり直してください。";
   }
-  await saveSession(lineUserId, { mode: "register_confirm", draftQuestion: { ...draft, createdBy } });
+  await saveSession(lineUserId, { mode: "register_confirm", draftQuestion: { ...draft, createdBy, familySlug } });
   return (
     `以下の内容で登録します。よろしいですか？（はい/いいえ）\n\n` +
     `分類: ${draft.category}\n質問: ${draft.question}\n回答: ${draft.answer}`
@@ -334,7 +334,7 @@ async function handleTextMessage(lineUserId, text) {
   if (!allowedRecord) {
     return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
   }
-  // 想定問答・模擬面接記録の家族スコープ化はexamination#240〜#241で対応
+  // 模擬面接記録の家族スコープ化はexamination#241で対応
 
   const session = await getSession(lineUserId);
 
@@ -351,7 +351,7 @@ async function handleTextMessage(lineUserId, text) {
     return handlePracticeTurn(lineUserId, session, text, linkedEmail);
   }
   if (session.mode === "register") {
-    return handleRegisterExtract(lineUserId, text, lineUserId);
+    return handleRegisterExtract(lineUserId, text, lineUserId, allowedRecord.familySlug);
   }
   if (session.mode === "register_confirm") {
     return handleRegisterConfirm(lineUserId, session, text);

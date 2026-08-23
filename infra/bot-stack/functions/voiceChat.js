@@ -27,7 +27,7 @@ exports.handler = async (event) => {
   if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
-  // 想定問答・模擬面接記録の家族スコープ化はexamination#240〜#241で対応
+  // 模擬面接記録の家族スコープ化はexamination#241で対応
   const { email, familySlug } = auth;
 
   let payload;
@@ -64,7 +64,7 @@ exports.handler = async (event) => {
       // 対象者（role）に紐づく既存の想定問答を候補として渡し、この会話で出た
       // 質問・回答が既存のどの質問に対応するか、模範解答・面接官への印象を
       // 更新する価値があるかをAI自身に判定させる（examination#77要望3、#147）
-      const existingQuestions = await queryQuestionsByTargetPerson(role);
+      const existingQuestions = await queryQuestionsByTargetPerson(role, familySlug);
       const { summary, questions } = await summarizeMockInterview({
         role,
         situation,
@@ -76,7 +76,7 @@ exports.handler = async (event) => {
       // 想定問答バンクへの反映は付随的な処理のため、失敗してもサマリー自体の
       // 保存成功・終了レスポンス（{ saved: true }）は変えない
       try {
-        await applyReconciliationResults(questions, role, existingQuestions);
+        await applyReconciliationResults(questions, role, existingQuestions, familySlug);
       } catch (error) {
         console.error("Question bank reconciliation failed", error.message);
       }
@@ -100,7 +100,7 @@ exports.handler = async (event) => {
   // voiceChat.jsはサーバー側にセッション状態を持たない（history等は毎回
   // クライアントから受け取る）ため、lineWebhook.jsのようにセッション開始時の
   // スナップショットを持ち越せず、ターンごとに取得する
-  const existingQuestions = await queryQuestionsByTargetPerson(role);
+  const existingQuestions = await queryQuestionsByTargetPerson(role, familySlug);
   const messages = [
     {
       role: "system",

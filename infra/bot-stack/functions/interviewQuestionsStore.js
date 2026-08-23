@@ -2,11 +2,12 @@
 
 const crypto = require("crypto");
 const { DynamoDBClient, PutItemCommand, QueryCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
-const { FAMILY_SLUG } = require("./familyConfig");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
+
+// familySlugは呼び出し元が認証情報から解決した値を渡す（複数家族対応、examination#44・#240）
 
 // categoryは「本人面接」「父の保護者面接」「母の保護者面接」のいずれかとして
 // LINE botの登録モード（lineWebhook.js）がGeminiに抽出させている。対象者
@@ -44,13 +45,13 @@ function toQuestionItem(item) {
   };
 }
 
-async function saveQuestion({ category, question, answer, createdBy }) {
+async function saveQuestion({ familySlug, category, question, answer, createdBy }) {
   const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   await ddb.send(
     new PutItemCommand({
       TableName: INTERVIEW_QUESTIONS_TABLE,
       Item: {
-        familySlug: { S: FAMILY_SLUG },
+        familySlug: { S: familySlug },
         questionId: { S: questionId },
         category: { S: category },
         targetPerson: { S: deriveTargetPerson(category) },
@@ -67,14 +68,14 @@ async function saveQuestion({ category, question, answer, createdBy }) {
 // 練習セッションの照合（examination#147）で、対象者（本人/父/母）に紐づく既存の
 // 想定問答をGeminiへの候補リストとして渡すために取得する。familySlugのみが
 // キーのためQuery＋FilterExpressionで絞り込む（GSIを追加するほどの規模ではない）
-async function queryQuestionsByTargetPerson(targetPerson) {
+async function queryQuestionsByTargetPerson(targetPerson, familySlug) {
   const result = await ddb.send(
     new QueryCommand({
       TableName: INTERVIEW_QUESTIONS_TABLE,
       KeyConditionExpression: "familySlug = :slug",
       FilterExpression: "targetPerson = :targetPerson",
       ExpressionAttributeValues: {
-        ":slug": { S: FAMILY_SLUG },
+        ":slug": { S: familySlug },
         ":targetPerson": { S: targetPerson },
       },
     })
@@ -87,7 +88,7 @@ async function queryQuestionsByTargetPerson(targetPerson) {
 // UpdateItem権限を新たに付与せずに済むよう、matchedQuestionIdがある場合は
 // 事前に取得済みの既存アイテム全体を使ってPutItemで該当フィールドのみ差し替えて
 // 書き戻す（他のフィールドは維持される）
-async function applyReconciliationResults(items, targetPerson, existingQuestions) {
+async function applyReconciliationResults(items, targetPerson, existingQuestions, familySlug) {
   const existingById = new Map((existingQuestions || []).map((q) => [q.questionId, q]));
 
   for (const item of items || []) {
@@ -102,7 +103,7 @@ async function applyReconciliationResults(items, targetPerson, existingQuestions
         new PutItemCommand({
           TableName: INTERVIEW_QUESTIONS_TABLE,
           Item: {
-            familySlug: { S: FAMILY_SLUG },
+            familySlug: { S: familySlug },
             questionId: { S: existing.questionId },
             category: { S: existing.category },
             targetPerson: { S: existing.targetPerson },
@@ -125,7 +126,7 @@ async function applyReconciliationResults(items, targetPerson, existingQuestions
       new PutItemCommand({
         TableName: INTERVIEW_QUESTIONS_TABLE,
         Item: {
-          familySlug: { S: FAMILY_SLUG },
+          familySlug: { S: familySlug },
           questionId: { S: questionId },
           category: { S: TARGET_PERSON_CATEGORY[targetPerson] || "" },
           targetPerson: { S: targetPerson },
@@ -141,11 +142,11 @@ async function applyReconciliationResults(items, targetPerson, existingQuestions
   }
 }
 
-async function getQuestionById(questionId) {
+async function getQuestionById(questionId, familySlug) {
   const result = await ddb.send(
     new GetItemCommand({
       TableName: INTERVIEW_QUESTIONS_TABLE,
-      Key: { familySlug: { S: FAMILY_SLUG }, questionId: { S: questionId } },
+      Key: { familySlug: { S: familySlug }, questionId: { S: questionId } },
     })
   );
   return result.Item ? toQuestionItem(result.Item) : null;
@@ -154,10 +155,10 @@ async function getQuestionById(questionId) {
 // 想定問答画面（examination#165）からの手動追加。対象者はLINE bot経由の登録
 // （saveQuestion）・練習セッションの照合（applyReconciliationResults）と同じく、
 // categoryをユーザーに自由入力させず対象者から機械的に導出し食い違いを防ぐ
-async function createQuestion({ targetPerson, question, answer, example, impression, modelAnswer, createdBy }) {
+async function createQuestion({ familySlug, targetPerson, question, answer, example, impression, modelAnswer, createdBy }) {
   const questionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   const item = {
-    familySlug: { S: FAMILY_SLUG },
+    familySlug: { S: familySlug },
     questionId: { S: questionId },
     category: { S: TARGET_PERSON_CATEGORY[targetPerson] || "" },
     targetPerson: { S: targetPerson },
@@ -176,11 +177,11 @@ async function createQuestion({ targetPerson, question, answer, example, impress
 // 想定問答画面（examination#165）からの手動編集。UpdateItem権限を新たに付与
 // せずに済むよう、applyReconciliationResults（examination#147）と同じく既存
 // アイテムを取得しPutItemで書き戻す。createdBy/createdAtは変更しない
-async function updateQuestion({ questionId, targetPerson, question, answer, example, impression, modelAnswer }) {
-  const existing = await getQuestionById(questionId);
+async function updateQuestion({ questionId, familySlug, targetPerson, question, answer, example, impression, modelAnswer }) {
+  const existing = await getQuestionById(questionId, familySlug);
   if (!existing) return null;
   const item = {
-    familySlug: { S: FAMILY_SLUG },
+    familySlug: { S: familySlug },
     questionId: { S: questionId },
     category: { S: TARGET_PERSON_CATEGORY[targetPerson] || existing.category },
     targetPerson: { S: targetPerson },
