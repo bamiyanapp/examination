@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/bamiyanapp/examination/compare/v1.24.3...v1.25.0) (2026-08-23)
+
+
+### Features
+
+* **bot-stack:** 面接特訓講座（2026-08-23）の記録を模擬面接記録として投入する ([#276](https://github.com/bamiyanapp/examination/issues/276)) ([3aa445f](https://github.com/bamiyanapp/examination/commit/3aa445f4c1a370ec14ebf02c4e5245cc37592533)), closes [#274](https://github.com/bamiyanapp/examination/issues/274)
+
 ## [1.24.3](https://github.com/bamiyanapp/examination/compare/v1.24.2...v1.24.3) (2026-08-23)
 
 
