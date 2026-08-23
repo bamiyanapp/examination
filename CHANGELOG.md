@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/bamiyanapp/examination/compare/v1.18.0...v1.19.0) (2026-08-23)
+
+
+### Features
+
+* **bot-stack:** 想定問答の読み書きをfamilySlugでスコープ化する ([#249](https://github.com/bamiyanapp/examination/issues/249)) ([35379e9](https://github.com/bamiyanapp/examination/commit/35379e95a99c9d9898efd380e288785172210a96)), closes [#240](https://github.com/bamiyanapp/examination/issues/240)
+
 # [1.18.0](https://github.com/bamiyanapp/examination/compare/v1.17.0...v1.18.0) (2026-08-23)
 
 
