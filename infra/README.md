@@ -58,7 +58,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 1. リクエストに有効な`id_token`Cookieが無い/検証に失敗した場合、まず`refresh_token`Cookieがあれば裏側で`grant_type=refresh_token`によりid_tokenの再発行を試みる（下記「セッションの自動延長」参照）。それも無い/失敗した場合は、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
 2. Googleでログインすると、Cognitoが`/_callback`へ認可コード付きでリダイレクトしてくる。このLambdaが認可コードをトークン（`id_token`・`refresh_token`）に交換し、HttpOnly・Secure・SameSite=LaxのCookieとして保存した上で、`state`に保存しておいた元のパスへリダイレクトする
-3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。未登録の場合でも、アクセス先が家族新規作成ページ（`/family-create/`）であれば例外的に通す（下記「複数家族対応」参照）
+3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。未登録の場合、アクセス先が家族新規作成ページ（`/family-create/`）であればそのまま通し、それ以外のページであれば`/family-create/`へリダイレクトする（公開登録制のため、新規ユーザーは`/family-create/`というURLを知らない前提で誘導する。[Issue #264](https://github.com/bamiyanapp/examination/issues/264)、下記「複数家族対応」参照）
 4. `/_logout`へアクセスすると、Cookieを失効させた上でCognito自体のセッションも切って`/`へ戻す
 
 ### ログインCSRF対策のnonce管理（[Issue #143](https://github.com/bamiyanapp/examination/issues/143)）
@@ -110,7 +110,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
   - プロフィール（`examination-family-profile`）・想定問答（`examination-interview-questions`）・模擬面接記録（`examination-mock-interviews`）は、いずれも`familySlug`をパーティションキー（または属性）に持ち、家族単位でデータが分離される
 - **家族解決**: `bot-stack`の`apiAuth.js`（`verifyBearerEmail`）・`lineWebhook.js`（`getAllowedEmailRecord`）、`site-stack`の`checkAuth.js`（`getAllowedEmailRecord`）は、いずれも許可判定のために行っている`examination-allowed-emails`への`GetItem`の結果から`familySlug`もあわせて返す（追加のDB往復は発生しない）。各データアクセス関数（`familyProfile.js`・`interviewQuestionsStore.js`・`interviewQuestions.js`・`mockInterviews.js`）は呼び出し元から`familySlug`を引数で受け取る。旧`familyConfig.js`（`FAMILY_SLUG`固定値）は撤去済み
 - **家族の新規作成（公開登録制）**:
-  1. 未登録のメールアドレスでGoogleログインすると、`checkAuth.js`は（`examination-allowed-emails`にまだ存在しないため）通常は403にする代わりに、アクセス先が`/family-create/`であることを確認した上で例外的に通す（ログイン直後の`/_callback`・通常リクエスト・`refresh_token`再発行の3箇所すべてで同じ判定をする）
+  1. 未登録のメールアドレスでGoogleログインすると、`checkAuth.js`は（`examination-allowed-emails`にまだ存在しないため）403で行き止まりにする代わりに`/family-create/`へ誘導する。アクセス先が既に`/family-create/`であればそのまま通し、それ以外であれば`/family-create/`へリダイレクトする（新規ユーザーはこのURLを事前に知らない前提のため、[Issue #264](https://github.com/bamiyanapp/examination/issues/264)で403のまま行き止まりになる不具合を修正した）。ログイン直後の`/_callback`・通常リクエスト・`refresh_token`再発行の3箇所すべてで同じ判定をする
   2. `/family-create/`（Reactアプリ`app/family-create/`。他アプリと異なりPWA化・`UserMenu`等の共通コンポーネントは持たない。理由は`src/App.jsx`のコメント参照）で家族名を入力すると、`POST /_families`（`checkAuth.js`の`createFamily`）が未所属・家族名ユニークを確認した上で`examination-families`へ新規行を作成し、作成者自身を`examination-allowed-emails`へ追加する
   3. 作成成功時、`checkAuth.js`が`bot-stack`の内部API（`POST /internal/notify-family-created`、`functions/notifyFamilyCreated.js`）を呼び、サイト運営者（管理用Googleアカウント、`ADMIN_NOTIFY_EMAIL`）へLINEで通知する（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）。site-stackとbot-stackは別Serverless serviceのため、共有シークレット（`INTERNAL_API_SECRET`、`X-Internal-Secret`ヘッダー）で呼び出し元を検証する。管理用アカウントがLINE未連携の場合は通知をスキップするのみで、家族作成自体は失敗させない（ベストエフォート）
 - **メンバー管理**: 上記「閲覧許可メールアドレスの管理」の通り、一覧・追加・削除は自分の所属家族の範囲に限定される
