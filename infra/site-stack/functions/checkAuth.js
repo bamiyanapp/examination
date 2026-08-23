@@ -138,7 +138,12 @@ function cookieString(name, value, maxAgeSeconds) {
 }
 
 function forbiddenResponse() {
-  return { status: "403", statusDescription: "Forbidden", body: "アクセスが許可されていません" };
+  return {
+    status: "403",
+    statusDescription: "Forbidden",
+    headers: { "content-type": [{ key: "Content-Type", value: "text/plain; charset=utf-8" }] },
+    body: "アクセスが許可されていません",
+  };
 }
 
 // emailごとの許可判定を短時間キャッシュする。Lambda@Edgeの実行環境はエッジロケーション
@@ -711,14 +716,14 @@ exports.handler = async (event) => {
       return forbiddenResponse();
     }
     // 家族新規作成ユーザー（examination#242・#258）は、ログイン直後の時点では
-    // まだisAllowedEmailを満たさないため、リダイレクト先（originalUri）が
-    // 家族新規作成ページの場合のみ個別に許可する
-    if (!(await isAllowedEmail(payload.email)) && !isFamilyCreatePath(originalUri)) {
-      console.warn("email not allowed", payload.email);
-      return forbiddenResponse();
-    }
+    // まだisAllowedEmailを満たさない。公開登録制のため、この場合に403で
+    // 行き止まりにするのではなく、家族新規作成ページへ案内する（examination#264。
+    // 未登録ユーザーは/family-create/というURLをそもそも知らないため、元々
+    // 別のページへ向かおうとしていた場合もそちらへは通さない）
+    const destinationUri =
+      (await isAllowedEmail(payload.email)) || isFamilyCreatePath(originalUri) ? originalUri : "/family-create/";
 
-    return redirectResponse(`https://${domainName}${originalUri}`, [
+    return redirectResponse(`https://${domainName}${destinationUri}`, [
       cookieString("id_token", tokens.id_token, tokens.expires_in),
       cookieString("refresh_token", tokens.refresh_token, 60 * 60 * 24 * 30),
     ]);
@@ -741,8 +746,10 @@ exports.handler = async (event) => {
       request.uri = normalizeUri(request.uri);
       return request;
     }
-    console.warn("email not allowed on cached token", payload.email);
-    return forbiddenResponse();
+    // 公開登録制（examination#258）のため、未登録ユーザーを403で行き止まりに
+    // せず家族新規作成ページへ誘導する（examination#264。/family-create/という
+    // URLを新規ユーザーが事前に知っている前提は成り立たない）
+    return redirectResponse(`https://${domainName}/family-create/`, []);
   }
 
   // id_tokenが失効・無効でもrefresh_tokenが有効なら裏側で再発行し、Googleへの
@@ -757,13 +764,14 @@ exports.handler = async (event) => {
         issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
         audience: config.clientId,
       });
-      if (!(await isAllowedEmail(refreshedPayload.email)) && !isFamilyCreatePath(request.uri)) {
-        console.warn("email not allowed on refreshed token", refreshedPayload.email);
-        return forbiddenResponse();
-      }
-      const originalUrl =
-        `https://${domainName}${request.uri}` + (request.querystring ? `?${request.querystring}` : "");
-      return redirectResponse(originalUrl, [cookieString("id_token", tokens.id_token, tokens.expires_in)]);
+      // 未登録ユーザーは家族新規作成ページへ誘導する（examination#258・#264、
+      // 上記/_callback・通常リクエストの2箇所と同じ方針）
+      const isAllowed = await isAllowedEmail(refreshedPayload.email);
+      const destinationUrl =
+        isAllowed || isFamilyCreatePath(request.uri)
+          ? `https://${domainName}${request.uri}` + (request.querystring ? `?${request.querystring}` : "")
+          : `https://${domainName}/family-create/`;
+      return redirectResponse(destinationUrl, [cookieString("id_token", tokens.id_token, tokens.expires_in)]);
     } catch (error) {
       console.warn("refresh_token exchange failed", error.message);
       // refresh_token自体が失効・無効な場合は、無駄な再試行を避けるため失効させた上で
