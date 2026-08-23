@@ -13,10 +13,10 @@ async function createFamily(name) {
   return data;
 }
 
-// 家族の新規作成ページ（examination#44・#242）。招待制のため、招待されていない
-// メールアドレスでログインした場合や、既に家族に所属している場合は/_families側で
-// 拒否される（このページ自体の表示可否もcheckAuth.js側で招待済みかどうかを
-// 確認済み）。作成に成功したら、そのままサイトのトップページへ案内する
+// 家族の新規作成ページ（examination#44・#242・#258）。公開登録制のため、
+// Googleアカウントでログインしていれば誰でも利用できる。既に何らかの家族に
+// 所属している場合は/_families側で拒否される。作成に成功したら、そのまま
+// サイトのトップページへ案内する
 export default function FamilyCreate() {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +41,7 @@ export default function FamilyCreate() {
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-bold">家族の新規作成</h1>
       <p className="mt-2 text-base-content/70">
-        招待されたメールアドレスでログイン済みの方のみ、家族名を指定して新しい家族を作成できます。作成したメールアドレスがその家族の最初のメンバーになります。
+        Googleアカウントでログイン済みで、まだどの家族にも所属していない方なら、家族名を指定して新しい家族を作成できます。作成したメールアドレスがその家族の最初のメンバーになります。
       </p>
 
       {createdFamily ? (

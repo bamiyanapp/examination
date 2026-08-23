@@ -23,7 +23,6 @@ provider:
           Resource:
             - !GetAtt AllowedEmailsTable.Arn
             - !GetAtt FamiliesTable.Arn
-            - !GetAtt FamilyInvitesTable.Arn
             - !GetAtt LineLinkCodesTable.Arn
             - !GetAtt VoiceTokensTable.Arn
             - !GetAtt CsrfNoncesTable.Arn
@@ -93,7 +92,8 @@ resources:
 
     # 複数家族対応（examination#44）の家族登録簿。PKはランダム短縮ID（日本語家族名の
     # ローマ字化を避ける）。nameは表示名で一意性をcheckAuth.js側でチェックする
-    # （examination#242）。familySlugはAllowedEmailsTableの属性として参照される
+    # （examination#242）。familySlugはAllowedEmailsTableの属性として参照される。
+    # 公開登録制のため（examination#258）、誰でもGoogleログインの上で新規作成できる
     FamiliesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -103,24 +103,6 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: slug
-            KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
-
-    # 家族の新規作成を許可する招待済みメールアドレス（＝Googleアカウントのemailクレーム）
-    # の一覧（examination#242）。「不特定多数向けの公開サービスは目指さない」という
-    # 前提のため、Googleアカウントさえあれば誰でも家族を作成できる設計は採らず、
-    # サイト管理者が事前にこのテーブルへ直接登録した（招待メール送信等は行わない）
-    # メールアドレスのみが家族を新規作成できる。作成成功時にcheckAuth.jsが該当行を
-    # 削除する（一度きりの招待）
-    FamilyInvitesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: examination-family-invites
-        AttributeDefinitions:
-          - AttributeName: email
-            AttributeType: S
-        KeySchema:
-          - AttributeName: email
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 

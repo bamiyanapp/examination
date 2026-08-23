@@ -5,7 +5,7 @@ Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のイン�
 ## 構成
 
 - `auth-stack/`: Amazon Cognito（User Pool・Google Identity Provider・User Pool Client・Cognitoドメイン）
-- `site-stack/`: S3バケット（MkDocsビルド成果物の格納先）・CloudFrontディストリビューション（Origin Access Control経由でS3へアクセス）・Lambda@Edge（`functions/checkAuth.js`、CloudFrontの`viewer-request`イベントで全リクエストの認証チェックを行う）・DynamoDBテーブル（`examination-allowed-emails`＝閲覧許可メールアドレス一覧、`examination-families`＝家族登録簿、`examination-family-invites`＝家族新規作成の招待一覧。複数家族対応は下記「複数家族対応」参照）
+- `site-stack/`: S3バケット（MkDocsビルド成果物の格納先）・CloudFrontディストリビューション（Origin Access Control経由でS3へアクセス）・Lambda@Edge（`functions/checkAuth.js`、CloudFrontの`viewer-request`イベントで全リクエストの認証チェックを行う）・DynamoDBテーブル（`examination-allowed-emails`＝閲覧許可メールアドレス一覧、`examination-families`＝家族登録簿。複数家族対応は下記「複数家族対応」参照）
 - `bot-stack/`: LINE bot（面接練習・想定問答の登録。[Issue #43](https://github.com/bamiyanapp/examination/issues/43)）。Lambda（`functions/lineWebhook.js`）をLambda Function URLで公開し、LINE Messaging APIのWebhookを受ける。DynamoDBテーブル（`examination-interview-questions`・`examination-bot-sessions`）を持つ
 
 デプロイは`.github/workflows/cd.yml`の`deploy`ジョブが`main`へのpush時に自動実行する。`deploy`ジョブは同じワークフロー内の`release`ジョブ（semantic-release、[Issue #137](https://github.com/bamiyanapp/examination/issues/137)。詳細は`docs/cicd-pipeline-specification.md`参照）に依存（`needs: release`）しており、`release`ジョブが確定させた`package.json`のバージョンを読み取ってから実行される。
@@ -58,7 +58,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 1. リクエストに有効な`id_token`Cookieが無い/検証に失敗した場合、まず`refresh_token`Cookieがあれば裏側で`grant_type=refresh_token`によりid_tokenの再発行を試みる（下記「セッションの自動延長」参照）。それも無い/失敗した場合は、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
 2. Googleでログインすると、Cognitoが`/_callback`へ認可コード付きでリダイレクトしてくる。このLambdaが認可コードをトークン（`id_token`・`refresh_token`）に交換し、HttpOnly・Secure・SameSite=LaxのCookieとして保存した上で、`state`に保存しておいた元のパスへリダイレクトする
-3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。未登録の場合でも、アクセス先が家族新規作成ページ（`/family-create/`）かつ招待済みメールアドレスであれば例外的に通す（下記「複数家族対応」参照）
+3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。未登録の場合でも、アクセス先が家族新規作成ページ（`/family-create/`）であれば例外的に通す（下記「複数家族対応」参照）
 4. `/_logout`へアクセスすると、Cookieを失効させた上でCognito自体のセッションも切って`/`へ戻す
 
 ### ログインCSRF対策のnonce管理（[Issue #143](https://github.com/bamiyanapp/examination/issues/143)）
@@ -91,18 +91,17 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 
 サイトの閲覧を許可するメールアドレスはDynamoDBテーブル`examination-allowed-emails`（パーティションキー: `email`、`familySlug`属性で所属家族を表す）で管理する。GitHub Secrets/Variablesではなく、既に許可されたユーザー自身がサイト上から追加・削除できる。複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）により、一覧・追加・削除はいずれも**自分の所属家族のメンバーの範囲**に限定される（下記「複数家族対応」参照）。
 
-- 管理UI: サイト内の「設定 → 閲覧許可メールアドレス管理」ページ（Reactアプリ`app/allowed-emails/src/pages/AllowedEmails.jsx`。旧`knowledge/settings/allowed-emails.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）。同じ画面から家族新規作成の招待（下記「複数家族対応」参照）も発行・取り消しできる
+- 管理UI: サイト内の「設定 → 閲覧許可メールアドレス管理」ページ（Reactアプリ`app/allowed-emails/src/pages/AllowedEmails.jsx`。旧`knowledge/settings/allowed-emails.md`の埋め込みJSから移植、[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）
 - API: `checkAuth.js`が`GET/POST /_admin/emails`として提供する（既に許可されているアカウントでログイン中のみ利用可能）
-  - `GET`: 自分の所属家族のメンバー一覧（`emails`）と、保留中の家族新規作成招待一覧（`invites`）を返す
+  - `GET`: 自分の所属家族のメンバー一覧（`emails`）を返す
   - `POST {"action":"add","email":"..."}`: 自分の家族へ追加する（既に何らかの家族に所属しているメールアドレスは追加不可。1メール=1家族のv1制約）
   - `POST {"action":"remove","email":"..."}`: 自分の家族から削除する（自分自身、および自分の家族に所属していないメールアドレスは削除不可）
-  - `POST {"action":"invite-family-creator","email":"..."}` / `{"action":"revoke-invite","email":"..."}`: 家族新規作成の招待を発行・取り消しする（家族単位ではなく全メンバー共通の操作）
 - 初期値: `cd.yml`の「Seed initial allowed emails」ステップが、テーブルが空の場合のみ投入する（既存ユーザーが削除した後の再デプロイで復活することはない。全件削除された場合のみ、締め出し防止のため次回デプロイで初期値に戻る）
 - 反映タイミング: `checkAuth.js`はLambda@Edgeの実行環境（エッジロケーションごとに独立）内で許可判定を60秒キャッシュするため、追加・削除は最大60秒程度で全世界に反映される（即時ではない）
 
 ## 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）
 
-自分の親戚・知人など限定的な範囲を想定した複数家族対応。不特定多数向けの公開サービスは目指さないため、Googleアカウントさえあれば誰でも家族を作成できる設計は採らず、**招待制**にしている。
+複数家族対応。当初は「不特定多数向けの公開サービスは目指さない」という前提で招待制にしていたが（[Issue #242](https://github.com/bamiyanapp/examination/issues/242)）、ユーザーの方針転換により**公開登録制**へ変更した（[Issue #258](https://github.com/bamiyanapp/examination/issues/258)）。Googleアカウントでログインし、まだどの家族にも所属していなければ誰でも新しい家族を作成できる。
 
 - **URLは変更しない**: 8つの独立ビルドReactアプリ・MkDocs・Service Worker・PWA manifestがすべて固定パスを前提に実装済みのため、URLに家族を埋め込む設計（`/families/<slug>/...`）は採らない。v1では「1メール=1家族」に限定されるため、**ログインすること自体が実質的な家族選択**になる
 - **データモデル**:
@@ -110,10 +109,9 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
   - `examination-allowed-emails`の`familySlug`属性: そのメールアドレスがどの家族に所属するか
   - プロフィール（`examination-family-profile`）・想定問答（`examination-interview-questions`）・模擬面接記録（`examination-mock-interviews`）は、いずれも`familySlug`をパーティションキー（または属性）に持ち、家族単位でデータが分離される
 - **家族解決**: `bot-stack`の`apiAuth.js`（`verifyBearerEmail`）・`lineWebhook.js`（`getAllowedEmailRecord`）、`site-stack`の`checkAuth.js`（`getAllowedEmailRecord`）は、いずれも許可判定のために行っている`examination-allowed-emails`への`GetItem`の結果から`familySlug`もあわせて返す（追加のDB往復は発生しない）。各データアクセス関数（`familyProfile.js`・`interviewQuestionsStore.js`・`interviewQuestions.js`・`mockInterviews.js`）は呼び出し元から`familySlug`を引数で受け取る。旧`familyConfig.js`（`FAMILY_SLUG`固定値）は撤去済み
-- **家族の新規作成（招待制）**:
-  1. 既存メンバーが「設定 → 閲覧許可メールアドレス管理」から新しい家族を作りたい相手のメールアドレスを「招待する」（`examination-family-invites`パーティションキー: `email`へ登録。招待メール送信のような別チャネルは使わない）
-  2. 招待されたメールアドレスでGoogleログインすると、`checkAuth.js`は（`examination-allowed-emails`にまだ存在しないため）通常は403にする代わりに、アクセス先が`/family-create/`かつ招待済みであることを確認した上で例外的に通す（ログイン直後の`/_callback`・通常リクエスト・`refresh_token`再発行の3箇所すべてで同じ判定をする）
-  3. `/family-create/`（Reactアプリ`app/family-create/`。他アプリと異なりPWA化・`UserMenu`等の共通コンポーネントは持たない。理由は`src/App.jsx`のコメント参照）で家族名を入力すると、`POST /_families`（`checkAuth.js`の`createFamily`）が招待済み・未所属・家族名ユニークを確認した上で`examination-families`へ新規行を作成し、作成者自身を`examination-allowed-emails`へ追加する。招待は成功時に消費（削除）される一度きりの利用
+- **家族の新規作成（公開登録制）**:
+  1. 未登録のメールアドレスでGoogleログインすると、`checkAuth.js`は（`examination-allowed-emails`にまだ存在しないため）通常は403にする代わりに、アクセス先が`/family-create/`であることを確認した上で例外的に通す（ログイン直後の`/_callback`・通常リクエスト・`refresh_token`再発行の3箇所すべてで同じ判定をする）
+  2. `/family-create/`（Reactアプリ`app/family-create/`。他アプリと異なりPWA化・`UserMenu`等の共通コンポーネントは持たない。理由は`src/App.jsx`のコメント参照）で家族名を入力すると、`POST /_families`（`checkAuth.js`の`createFamily`）が未所属・家族名ユニークを確認した上で`examination-families`へ新規行を作成し、作成者自身を`examination-allowed-emails`へ追加する
 - **メンバー管理**: 上記「閲覧許可メールアドレスの管理」の通り、一覧・追加・削除は自分の所属家族の範囲に限定される
 - **初期データ**: `cd.yml`の「Seed families table and backfill familySlug」ステップが、`examination-families`が空の場合のみ初期家族（`chofu-suzuki`＝調布の鈴木家）を投入し、`familySlug`属性が未設定の既存の許可メールアドレスへ同じslugをバックフィルする（冪等）
 - 一部の一度きりの移行スクリプト（`scripts/seed-interview-questions.js`・`scripts/seed-mock-interviews.js`）は、旧Markdownファイルに由来する調布の鈴木家固有のデータを移行するものであり、意図的に`chofu-suzuki`をハードコードしたまま残している（他家族の作成・運用には影響しない）
