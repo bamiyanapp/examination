@@ -72,7 +72,7 @@ exports.handler = async (event) => {
         history,
         existingQuestions,
       });
-      await saveMockInterviewSummary({ role, situation, schoolCharacteristics, channel: "voice", summary, createdBy: email });
+      await saveMockInterviewSummary({ familySlug, role, situation, schoolCharacteristics, channel: "voice", summary, createdBy: email });
       // 想定問答バンクへの反映は付随的な処理のため、失敗してもサマリー自体の
       // 保存成功・終了レスポンス（{ saved: true }）は変えない
       try {
