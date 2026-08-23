@@ -56,12 +56,8 @@ exports.handler = async (event) => {
     if (!hasMeaningfulContent(history)) {
       return jsonResponse(200, { saved: false });
     }
-    // サマリー生成もGemini呼び出しの1つとして上限にカウントする。ただし練習の
-    // 終了自体は他の失敗ケースと同様にブロックしない（examination#124）
-    if (!(await incrementAndCheckAiApiUsage(email))) {
-      console.warn("AI API daily limit exceeded (end)", email);
-      return jsonResponse(200, { saved: false });
-    }
+    // サマリー生成は会話のラリーそのものではないため、AI実行回数の1日あたり
+    // 上限（AI_API_DAILY_LIMIT、examination#124）の対象外とする（examination#235）
     try {
       // 対象者（role）に紐づく既存の想定問答を候補として渡し、この会話で出た
       // 質問・回答が既存のどの質問に対応するか、模範解答・面接官への印象を
@@ -89,8 +85,9 @@ exports.handler = async (event) => {
     }
   }
 
-  // AI API呼び出しの1日あたりの上限チェック（examination#124）。/_voice-token発行回数の
-  // 上限（examination#69）とは別に、実際のGemini呼び出し回数そのものを制限する
+  // 会話のラリー（1往復）単位でのAI実行回数の1日あたり上限チェック
+  // （examination#124）。/_voice-token発行回数の上限（examination#69）とは別。
+  // ラリー以外の呼び出しを対象外にする見直しはexamination#235
   if (!(await incrementAndCheckAiApiUsage(email))) {
     return jsonResponse(429, {
       error: `本日のAI応答生成の上限（${AI_API_DAILY_LIMIT}回）に達しました。日付が変わってからお試しください。`,
