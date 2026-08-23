@@ -85,6 +85,21 @@ resources:
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
+    # 複数家族対応（examination#44）の家族登録簿。PKはランダム短縮ID（日本語家族名の
+    # ローマ字化を避ける）。familyNameはAllowedEmailsTableのfamilySlug属性から
+    # 参照される。一意性チェック・新規作成APIはexamination#242で追加する
+    FamiliesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-families
+        AttributeDefinitions:
+          - AttributeName: slug
+            AttributeType: S
+        KeySchema:
+          - AttributeName: slug
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
     # LINE bot（examination#43、examination-bot-stack）とGoogleアカウントを紐付けるための
     # ワンタイムコード。checkAuth.jsが発行し、bot-stackのlineWebhook.jsがクロススタックで
     # 読み取り・削除する（examination#49）。TTLで自動失効させる

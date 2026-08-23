@@ -121,12 +121,15 @@ async function consumeLinkCode(code) {
 }
 
 // site-stackのexamination-allowed-emailsをクロススタックで参照する（examination#49）。
-// 連携済みでもallowlistから削除されていれば毎回ここでブロックされる
-async function isEmailAllowed(email) {
+// 連携済みでもallowlistから削除されていれば毎回ここでブロックされる。複数家族対応
+// （examination#44、#238）のfamilySlugも同じGetItem結果からあわせて返す
+// （追加のDB往復は発生しない）。許可されていない場合はnullを返す
+async function getAllowedEmailRecord(email) {
   const result = await ddb.send(
     new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } })
   );
-  return Boolean(result.Item);
+  if (!result.Item) return null;
+  return { familySlug: result.Item.familySlug?.S || "" };
 }
 
 function isYes(text) {
@@ -310,7 +313,7 @@ async function handleUnlinkedMessage(lineUserId, text) {
     if (!email) {
       return `コードが無効か期限切れです。こちらでもう一度発行してください。\n${LINE_LINK_PAGE_URL}`;
     }
-    if (!(await isEmailAllowed(email))) {
+    if (!(await getAllowedEmailRecord(email))) {
       return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
     }
     await linkLineAccount(lineUserId, email);
@@ -327,9 +330,11 @@ async function handleTextMessage(lineUserId, text) {
   if (!linkedEmail) {
     return handleUnlinkedMessage(lineUserId, text);
   }
-  if (!(await isEmailAllowed(linkedEmail))) {
+  const allowedRecord = await getAllowedEmailRecord(linkedEmail);
+  if (!allowedRecord) {
     return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
   }
+  // allowedRecord.familySlugを使った家族スコープ化はexamination#239〜#241で対応
 
   const session = await getSession(lineUserId);
 

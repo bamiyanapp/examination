@@ -19,20 +19,26 @@ async function verifyVoiceToken(token) {
   return result.Item.email.S;
 }
 
-async function isEmailAllowed(email) {
+// 許可済みメールアドレスかどうかに加え、複数家族対応（examination#44、#238）の
+// familySlugも同じGetItem結果からあわせて返す（追加のDB往復は発生しない）。
+// 許可されていない場合はnullを返す
+async function getAllowedEmailRecord(email) {
   const result = await ddb.send(new GetItemCommand({ TableName: ALLOWED_EMAILS_TABLE, Key: { email: { S: email } } }));
-  return Boolean(result.Item);
+  if (!result.Item) return null;
+  return { familySlug: result.Item.familySlug?.S || "" };
 }
 
-// Authorization: Bearer <token> ヘッダーを検証し、許可済みユーザーのメールアドレスを返す。
-// 認証できない場合はnullを返す（呼び出し側で403を返す）
+// Authorization: Bearer <token> ヘッダーを検証し、許可済みユーザーのメールアドレス・
+// 所属家族（familySlug）を返す。認証できない場合はnullを返す（呼び出し側で403を返す）
 async function verifyBearerEmail(event) {
   const authHeader = event.headers?.authorization || event.headers?.Authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
   if (!token) return null;
   const email = await verifyVoiceToken(token);
-  if (!email || !(await isEmailAllowed(email))) return null;
-  return email;
+  if (!email) return null;
+  const record = await getAllowedEmailRecord(email);
+  if (!record) return null;
+  return { email, familySlug: record.familySlug };
 }
 
 module.exports = { verifyBearerEmail };
