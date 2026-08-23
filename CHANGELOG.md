@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/bamiyanapp/examination/compare/v1.17.0...v1.18.0) (2026-08-23)
+
+
+### Features
+
+* **bot-stack:** プロフィール編集・参照をfamilySlugでスコープ化する ([#247](https://github.com/bamiyanapp/examination/issues/247)) ([049ec3e](https://github.com/bamiyanapp/examination/commit/049ec3e5061e6bbd398253f28cc9e016caeca1ed)), closes [#239](https://github.com/bamiyanapp/examination/issues/239)
+
 # [1.17.0](https://github.com/bamiyanapp/examination/compare/v1.16.2...v1.17.0) (2026-08-23)
 
 
