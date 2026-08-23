@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/bamiyanapp/examination/compare/v1.21.0...v1.22.0) (2026-08-23)
+
+
+### Features
+
+* **site-stack:** 閲覧許可メールアドレス管理を家族単位にスコープ化する ([#255](https://github.com/bamiyanapp/examination/issues/255)) ([ccc2be6](https://github.com/bamiyanapp/examination/commit/ccc2be67af0c8aec4f84e696ee00125fdc2b4034)), closes [#243](https://github.com/bamiyanapp/examination/issues/243)
+
 # [1.21.0](https://github.com/bamiyanapp/examination/compare/v1.20.0...v1.21.0) (2026-08-23)
 
 
