@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+
+// LINE公式アカウントのURL（examination#229）。変更した場合はここのみ更新すればよい
+const LINE_BOT_URL = "https://line.me/R/ti/p/@206epxcr";
 
 // LINE botで面接練習・想定問答の登録を行うためのGoogleアカウント連携ページ（examination#78）。
 // 旧: knowledge/settings/line-link.md に埋め込まれていた素の<script>実装をReactへ移植した。
@@ -50,6 +54,26 @@ export default function LineLink() {
       </p>
       <div className="card card-border mt-6 bg-base-100">
         <div className="card-body">
+          <h2 className="card-title text-base">1. LINE公式アカウントを友だち追加する</h2>
+          <p className="text-sm text-base-content/70">
+            まだ友だち追加していない場合は、下のリンクを開くかQRコードを読み取って追加してください。追加済みの場合はこの手順は不要です。
+          </p>
+          <a
+            href={LINE_BOT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-success btn-sm w-fit"
+          >
+            LINE公式アカウントを開く
+          </a>
+          <div className="my-2 flex justify-center">
+            <QRCodeSVG value={LINE_BOT_URL} size={160} />
+          </div>
+        </div>
+      </div>
+      <div className="card card-border mt-6 bg-base-100">
+        <div className="card-body">
+          <h2 className="card-title text-base">2. ワンタイムコードを発行してLINEへ送信する</h2>
           <ol className="flex list-inside list-decimal flex-col gap-1">
             <li>下のボタンでワンタイムコードを発行する</li>
             <li>発行されたコード（6桁の数字）を、LINE公式アカウントへそのままメッセージとして送信する</li>
