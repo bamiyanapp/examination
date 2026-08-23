@@ -22,6 +22,13 @@ const { getFamilyProfile } = require("./familyProfile");
 const { AI_API_DAILY_LIMIT, incrementAndCheckAiApiUsage } = require("./aiApiLimit");
 const { saveQuestion, queryQuestionsByTargetPerson, applyReconciliationResults } = require("./interviewQuestionsStore");
 
+// LINEはbotとのトーク画面のみで完結する体験を期待されやすく、案内メッセージに
+// 経路の名称（「設定 → LINE連携」）だけでなく実際にタップできるURLを含める
+// （examination#232）。LINE_LINK_PAGE_URLはapp/line-link（cd.yml、/settings/line-link/
+// へデプロイ）と対応させる
+const SITE_URL = "https://d3b80dryg4uis7.cloudfront.net";
+const LINE_LINK_PAGE_URL = `${SITE_URL}/settings/line-link/`;
+
 const BOT_SESSIONS_TABLE = "examination-bot-sessions";
 const LINE_LINKS_TABLE = "examination-line-links";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
@@ -306,7 +313,7 @@ async function handleUnlinkedMessage(lineUserId, text) {
   if (LINK_CODE_PATTERN.test(text.trim())) {
     const email = await consumeLinkCode(text.trim());
     if (!email) {
-      return "コードが無効か期限切れです。サイトの「設定 → LINE連携」でもう一度発行してください。";
+      return `コードが無効か期限切れです。こちらでもう一度発行してください。\n${LINE_LINK_PAGE_URL}`;
     }
     if (!(await isEmailAllowed(email))) {
       return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
@@ -315,8 +322,8 @@ async function handleUnlinkedMessage(lineUserId, text) {
     return "連携が完了しました。「面接練習」または「質問を登録」と送ってください。";
   }
   return (
-    "このLINEアカウントはまだ連携されていません。" +
-    "サイトの「設定 → LINE連携」でワンタイムコードを発行し、6桁の数字をこのトークに送ってください。"
+    "このLINEアカウントはまだ連携されていません。下記のページでワンタイムコードを発行し、" +
+    `6桁の数字をこのトークに送ってください。\n${LINE_LINK_PAGE_URL}`
   );
 }
 
