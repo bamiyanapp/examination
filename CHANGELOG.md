@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/bamiyanapp/examination/compare/v1.25.0...v1.25.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **top:** Service Workerが認証セッション依存APIをキャッシュしないようにする ([#279](https://github.com/bamiyanapp/examination/issues/279)) ([f0173df](https://github.com/bamiyanapp/examination/commit/f0173df9e0687eba1364b21121ca7a6c6a27795c)), closes [#285](https://github.com/bamiyanapp/examination/issues/285) [#277](https://github.com/bamiyanapp/examination/issues/277)
+
 # [1.25.0](https://github.com/bamiyanapp/examination/compare/v1.24.3...v1.25.0) (2026-08-23)
 
 
