@@ -1,3 +1,10 @@
+## [1.24.2](https://github.com/bamiyanapp/examination/compare/v1.24.1...v1.24.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **site-stack:** 家族作成直後の反映遅延によるUXの混乱を解消する ([#268](https://github.com/bamiyanapp/examination/issues/268)) ([483c449](https://github.com/bamiyanapp/examination/commit/483c4498e95b86f56c7944e7df865eaaec1ae96d)), closes [#267](https://github.com/bamiyanapp/examination/issues/267)
+
 ## [1.24.1](https://github.com/bamiyanapp/examination/compare/v1.24.0...v1.24.1) (2026-08-23)
 
 
