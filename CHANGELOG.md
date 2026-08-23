@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/bamiyanapp/examination/compare/v1.16.0...v1.16.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **bot-stack:** LINE bot未連携時の案内メッセージにサイトへの実リンクを追加する ([#233](https://github.com/bamiyanapp/examination/issues/233)) ([fcd5446](https://github.com/bamiyanapp/examination/commit/fcd5446619a8e1ee417061b317bee43d03ad0197)), closes [#232](https://github.com/bamiyanapp/examination/issues/232)
+
 # [1.16.0](https://github.com/bamiyanapp/examination/compare/v1.15.0...v1.16.0) (2026-08-23)
 
 
