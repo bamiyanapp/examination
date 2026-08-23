@@ -383,6 +383,17 @@ jobs:
           AWS_REGION: us-east-1
         run: node scripts/seed-mock-interviews.js
 
+      # 2026-08-23に外部（塾）で実施した面接特訓講座の記録を一度きり投入する
+      # （examination#274と同時に依頼された追加対応）。LINE bot・音声対話を
+      # 経由しない実際の面接特訓の記録のため、seed-mock-interviews.jsとは別の
+      # ファイルに分離した。familySlug・createdAt・roleから決定的なsessionIdを
+      # 生成するため、毎回実行しても同じ行を上書きするだけで重複は増えない
+      - name: Sync mock interview records from 2026-08-23 coaching session (one-time migration)
+        working-directory: infra/bot-stack
+        env:
+          AWS_REGION: us-east-1
+        run: node scripts/seed-mock-interview-2026-08-23.js
+
       # Lambda Function URLの匿名アクセスがこのAWSアカウントでは403 Forbiddenになる問題
       # （examination#52）のため、実績のあるAPI Gateway（HTTP API）経由に切り替えた
       - name: Show LINE bot webhook URL

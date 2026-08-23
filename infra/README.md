@@ -115,7 +115,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
   3. 作成成功時、`checkAuth.js`が`bot-stack`の内部API（`POST /internal/notify-family-created`、`functions/notifyFamilyCreated.js`）を呼び、サイト運営者（管理用Googleアカウント、`ADMIN_NOTIFY_EMAIL`）へLINEで通知する（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）。site-stackとbot-stackは別Serverless serviceのため、共有シークレット（`INTERNAL_API_SECRET`、`X-Internal-Secret`ヘッダー）で呼び出し元を検証する。管理用アカウントがLINE未連携の場合は通知をスキップするのみで、家族作成自体は失敗させない（ベストエフォート）
 - **メンバー管理**: 上記「閲覧許可メールアドレスの管理」の通り、一覧・追加・削除は自分の所属家族の範囲に限定される
 - **初期データ**: `cd.yml`の「Seed families table and backfill familySlug」ステップが、`examination-families`が空の場合のみ初期家族（`chofu-suzuki`＝調布の鈴木家）を投入し、`familySlug`属性が未設定の既存の許可メールアドレスへ同じslugをバックフィルする（冪等）
-- 一部の一度きりの移行スクリプト（`scripts/seed-interview-questions.js`・`scripts/seed-mock-interviews.js`）は、旧Markdownファイルに由来する調布の鈴木家固有のデータを移行するものであり、意図的に`chofu-suzuki`をハードコードしたまま残している（他家族の作成・運用には影響しない）
+- 一部の一度きりの移行スクリプト（`scripts/seed-interview-questions.js`・`scripts/seed-mock-interviews.js`・`scripts/seed-mock-interview-2026-08-23.js`）は、旧Markdownファイルまたは外部（塾）で実施した面接特訓講座に由来する調布の鈴木家固有のデータを移行するものであり、意図的に`chofu-suzuki`をハードコードしたまま残している（他家族の作成・運用には影響しない）
 
 ## LINE bot（`bot-stack/`）
 
