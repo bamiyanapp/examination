@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.4.0
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.4.1
     with:
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
