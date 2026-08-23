@@ -2,7 +2,6 @@
 
 const { DynamoDBClient, QueryCommand } = require("@aws-sdk/client-dynamodb");
 const { verifyBearerEmail } = require("./apiAuth");
-const { FAMILY_SLUG } = require("./familyConfig");
 const { createQuestion, updateQuestion } = require("./interviewQuestionsStore");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";
@@ -68,15 +67,14 @@ exports.handler = async (event) => {
   if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
-  // familySlugを使った家族スコープ化はexamination#240で対応
-  const { email } = auth;
+  const { email, familySlug } = auth;
 
   if (method === "GET") {
     const result = await ddb.send(
       new QueryCommand({
         TableName: INTERVIEW_QUESTIONS_TABLE,
         KeyConditionExpression: "familySlug = :slug",
-        ExpressionAttributeValues: { ":slug": { S: FAMILY_SLUG } },
+        ExpressionAttributeValues: { ":slug": { S: familySlug } },
       })
     );
     const questions = (result.Items || []).map(toQuestion);
@@ -98,7 +96,7 @@ exports.handler = async (event) => {
       }
       const { error, fields } = parseQuestionPayload(payload);
       if (error) return jsonResponse(400, { error });
-      const question = await updateQuestion({ questionId, ...fields });
+      const question = await updateQuestion({ questionId, familySlug, ...fields });
       if (!question) {
         return jsonResponse(404, { error: "指定された質問が見つかりません" });
       }
@@ -107,7 +105,7 @@ exports.handler = async (event) => {
 
     const { error, fields } = parseQuestionPayload(payload);
     if (error) return jsonResponse(400, { error });
-    const question = await createQuestion({ ...fields, createdBy: email });
+    const question = await createQuestion({ ...fields, familySlug, createdBy: email });
     return jsonResponse(200, { question });
   }
 
