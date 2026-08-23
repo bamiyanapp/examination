@@ -17,16 +17,10 @@ const config = require("./configuration.json");
 
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const FAMILIES_TABLE = "examination-families";
-// 招待制の家族新規作成（examination#44・#242）。「不特定多数向けの公開サービスは
-// 目指さない」という前提のため、Googleアカウントさえあれば誰でも家族を作成できる
-// 設計は採らない。事前にこのテーブルへ登録されたメールアドレス（＝Googleアカウントの
-// emailクレーム。招待メール送信のような別チャネルは使わず、既存メンバーが
-// /_admin/emails・app/allowed-emails/経由でスマートフォンから直接登録する）
-// のみが、まだどの家族にも所属していない場合に限り新規作成できる
-const FAMILY_INVITES_TABLE = "examination-family-invites";
 const FAMILY_NAME_MAX_LENGTH = 50;
-// 家族新規作成ページ（app/family-create/）のパス。isAllowedEmailの対象外として
-// 個別に許可する必要があるため定数化する（下記canBypassAllowlistForFamilyCreate参照）
+// 家族新規作成ページ（app/family-create/）のパス。ログイン済み（Googleアカウントの
+// emailクレームが検証できること）でありさえすればisAllowedEmailの対象外として
+// 個別に許可する必要があるため定数化する（examination#258、下記isFamilyCreatePath参照）
 const FAMILY_CREATE_PATH_PREFIX = "/family-create/";
 const LINE_LINK_CODES_TABLE = "examination-line-link-codes";
 const LINE_LINK_CODE_TTL_SECONDS = 60 * 10;
@@ -234,60 +228,12 @@ async function removeAllowedEmail(email) {
   invalidateAllowCache(key);
 }
 
+// 家族新規作成ページ（/family-create/）は、まだどの家族にも所属していない
+// ログイン済みユーザーがアクセスする入口のため、isAllowedEmailの対象外として
+// 個別に許可する（examination#258。以前は招待済みメールアドレスのみに限定して
+// いたが、公開サービスとして構わないとの判断により誰でも作成できるようにした）
 function isFamilyCreatePath(uri) {
   return uri === "/family-create" || uri.startsWith(FAMILY_CREATE_PATH_PREFIX);
-}
-
-// email（Googleアカウントのemailクレーム）が家族新規作成の招待済みかどうか
-async function isFamilyCreateInvited(email) {
-  const result = await ddb.send(
-    new GetItemCommand({ TableName: FAMILY_INVITES_TABLE, Key: { email: { S: email } } })
-  );
-  return Boolean(result.Item);
-}
-
-// isAllowedEmailと同じ理由（まだどの家族にも属さない招待済みユーザーの
-// ページアクセスを許可する）で、ページ表示時にも招待済みかどうかを再確認する。
-// /_familiesのPOST側での判定に加えた二重のガード
-async function canBypassAllowlistForFamilyCreate(email, uri) {
-  return isFamilyCreatePath(uri) && (await isFamilyCreateInvited(email));
-}
-
-async function consumeFamilyCreateInvite(email) {
-  await ddb.send(new DeleteItemCommand({ TableName: FAMILY_INVITES_TABLE, Key: { email: { S: email } } }));
-}
-
-async function listFamilyInvites() {
-  const result = await ddb.send(new ScanCommand({ TableName: FAMILY_INVITES_TABLE }));
-  return (result.Items || [])
-    .map((item) => ({
-      email: item.email && item.email.S,
-      invitedBy: (item.invitedBy && item.invitedBy.S) || "",
-      invitedAt: (item.invitedAt && item.invitedAt.S) || "",
-    }))
-    .sort((a, b) => a.email.localeCompare(b.email));
-}
-
-// 家族新規作成の招待を発行する（examination#242）。開発環境の制約（スマホオンリー）
-// のため、DynamoDBへのCLI直接操作を運用手段にはできない。既存の閲覧許可
-// メールアドレス管理画面（/_admin/emails、app/allowed-emails/、スマホブラウザから
-// 操作可能）に相乗りさせ、既に家族に所属しているメンバーが新しい家族の作成を
-// 招待できるようにする
-async function inviteFamilyCreator(email, invitedBy) {
-  await ddb.send(
-    new PutItemCommand({
-      TableName: FAMILY_INVITES_TABLE,
-      Item: {
-        email: { S: email },
-        invitedBy: { S: String(invitedBy || "") },
-        invitedAt: { S: new Date().toISOString() },
-      },
-    })
-  );
-}
-
-async function revokeFamilyCreateInvite(email) {
-  await consumeFamilyCreateInvite(email);
 }
 
 async function isFamilyNameTaken(name) {
@@ -302,15 +248,13 @@ function generateFamilySlug() {
   return crypto.randomBytes(6).toString("hex");
 }
 
-// 家族の新規作成（examination#44・#242）。招待済み・未所属・家族名がユニークな
-// 場合のみ、examination-familiesへ新規行を作成し、作成者自身を新しい家族の
-// 最初のメンバーとしてexamination-allowed-emailsへ追加する
+// 家族の新規作成（examination#44・#258）。未所属・家族名がユニークな場合のみ、
+// examination-familiesへ新規行を作成し、作成者自身を新しい家族の最初の
+// メンバーとしてexamination-allowed-emailsへ追加する。公開サービスとして
+// 構わないとの判断のため、招待の有無は問わずログイン済みであれば実行できる
 async function createFamily({ email, name }) {
   if (await isAllowedEmail(email)) {
     return { status: 400, error: "既に家族に所属しています" };
-  }
-  if (!(await isFamilyCreateInvited(email))) {
-    return { status: 403, error: "招待されていません。管理者に確認してください。" };
   }
   const trimmedName = String(name || "").trim().slice(0, FAMILY_NAME_MAX_LENGTH);
   if (!trimmedName) {
@@ -333,9 +277,6 @@ async function createFamily({ email, name }) {
     })
   );
   await addAllowedEmail(email, email, slug);
-  // 招待は一度きりの利用（consumeCsrfNonce・consumeLinkCodeと同じ方針）。
-  // 家族作成に成功した以上、同じ招待で再度作成される必要は無い
-  await consumeFamilyCreateInvite(email);
   return { slug, name: trimmedName };
 }
 
@@ -425,11 +366,10 @@ async function consumeCsrfNonce(nonce) {
   }
 }
 
-// 許可メールアドレスの一覧・追加・削除、および家族新規作成の招待・取り消しAPI。
-// 既に許可されているユーザーのみ利用でき、閲覧・追加・削除は自分の所属家族の
-// メンバーに限定する（examination#243）。招待の発行・一覧・取り消しは家族単位
-// ではなく全メンバー共通（新しい家族を作りたい相手を招待する操作のため、
-// 「自分の家族」という概念がそもそも当てはまらない）
+// 許可メールアドレスの一覧・追加・削除API。既に許可されているユーザーのみ利用でき、
+// 閲覧・追加・削除は自分の所属家族のメンバーに限定する（examination#243）。
+// 家族の新規作成は招待制ではなく公開登録制のため（examination#258）、この
+// APIに招待関連の操作は無い
 async function handleAdminEmailsApi(request) {
   const payload = await verifyIdTokenFromCookie(request);
   if (!payload) {
@@ -443,7 +383,7 @@ async function handleAdminEmailsApi(request) {
   const familySlug = requesterRecord.familySlug;
 
   if (request.method === "GET") {
-    return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
+    return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug) });
   }
 
   if (request.method === "POST") {
@@ -463,7 +403,7 @@ async function handleAdminEmailsApi(request) {
         return jsonResponse(400, "Bad Request", { error: "そのメールアドレスは既に何らかの家族に所属しています" });
       }
       await addAllowedEmail(targetEmail, requesterEmail, familySlug);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug) });
     }
 
     if (action === "remove") {
@@ -479,26 +419,10 @@ async function handleAdminEmailsApi(request) {
         return jsonResponse(404, "Not Found", { error: "そのメールアドレスは自分の家族に所属していません" });
       }
       await removeAllowedEmail(targetEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug) });
     }
 
-    // 家族の新規作成招待（examination#242）。招待先は既存の家族とは無関係の
-    // 新しい家族を作ろうとしている相手のため、既にどの家族にも所属していない
-    // ことをここでは確認しない（isAllowedEmailに含まれるかどうかはcreateFamily側で
-    // 再チェックする）。家族単位のスコープも適用しない（上記コメント参照）
-    if (action === "invite-family-creator") {
-      await inviteFamilyCreator(targetEmail, requesterEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
-    }
-
-    if (action === "revoke-invite") {
-      await revokeFamilyCreateInvite(targetEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
-    }
-
-    return jsonResponse(400, "Bad Request", {
-      error: "actionはadd・remove・invite-family-creator・revoke-inviteのいずれかを指定してください",
-    });
+    return jsonResponse(400, "Bad Request", { error: "actionはaddまたはremoveを指定してください" });
   }
 
   return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
@@ -533,10 +457,10 @@ async function handleLinkLineApi(request) {
   return jsonResponse(200, "OK", { code, expiresInSeconds: LINE_LINK_CODE_TTL_SECONDS });
 }
 
-// 家族の新規作成API（examination#242）。他の管理系APIと異なり、意図的に
+// 家族の新規作成API（examination#242・#258）。他の管理系APIと異なり、意図的に
 // isAllowedEmailのチェックを行わない（このAPIの対象者はまだ許可されていない
 // ユーザーそのものであるため）。ログイン済み（Googleアカウントのemailクレームが
-// 検証できること）のみを要求し、招待済みかどうかの判定はcreateFamily内で行う
+// 検証できること）でありさえすれば実行できる（公開登録制、招待は不要）
 async function handleFamiliesApi(request) {
   const payload = await verifyIdTokenFromCookie(request);
   if (!payload) {
@@ -678,7 +602,7 @@ exports.handler = async (event) => {
     return handleLinkLineApi(request);
   }
 
-  // 家族の新規作成API（招待制、examination#242）
+  // 家族の新規作成API（公開登録制、examination#242・#258）
   if (request.uri === "/_families") {
     return handleFamiliesApi(request);
   }
@@ -745,13 +669,10 @@ exports.handler = async (event) => {
       console.error("id_token verification failed at callback", error.message);
       return forbiddenResponse();
     }
-    // 招待済みの家族新規作成ユーザー（examination#242）は、ログイン直後の時点では
+    // 家族新規作成ユーザー（examination#242・#258）は、ログイン直後の時点では
     // まだisAllowedEmailを満たさないため、リダイレクト先（originalUri）が
     // 家族新規作成ページの場合のみ個別に許可する
-    if (
-      !(await isAllowedEmail(payload.email)) &&
-      !(await canBypassAllowlistForFamilyCreate(payload.email, originalUri))
-    ) {
+    if (!(await isAllowedEmail(payload.email)) && !isFamilyCreatePath(originalUri)) {
       console.warn("email not allowed", payload.email);
       return forbiddenResponse();
     }
@@ -772,10 +693,10 @@ exports.handler = async (event) => {
       request.uri = normalizeUri(request.uri);
       return request;
     }
-    // 家族新規作成ページ（examination#242）は、まだどの家族にも属さない
-    // 招待済みユーザーがログイン直後にアクセスする入口のため、isAllowedEmailの
+    // 家族新規作成ページ（examination#242・#258）は、まだどの家族にも属さない
+    // ユーザーがログイン直後にアクセスする入口のため、isAllowedEmailの
     // 対象外として個別に許可する
-    if (await canBypassAllowlistForFamilyCreate(payload.email, request.uri)) {
+    if (isFamilyCreatePath(request.uri)) {
       request.uri = normalizeUri(request.uri);
       return request;
     }
@@ -795,10 +716,7 @@ exports.handler = async (event) => {
         issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
         audience: config.clientId,
       });
-      if (
-        !(await isAllowedEmail(refreshedPayload.email)) &&
-        !(await canBypassAllowlistForFamilyCreate(refreshedPayload.email, request.uri))
-      ) {
+      if (!(await isAllowedEmail(refreshedPayload.email)) && !isFamilyCreatePath(request.uri)) {
         console.warn("email not allowed on refreshed token", refreshedPayload.email);
         return forbiddenResponse();
       }

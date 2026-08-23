@@ -28,11 +28,11 @@ describe("FamilyCreate", () => {
     expect(screen.getByRole("link", { name: "トップページへ進む" })).toHaveAttribute("href", "/");
   });
 
-  it("shows the server error message when creation is rejected (examination#242)", async () => {
+  it("shows the server error message when creation is rejected (examination#258)", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: false,
-      status: 403,
-      json: async () => ({ error: "招待されていません。管理者に確認してください。" }),
+      status: 400,
+      json: async () => ({ error: "既に家族に所属しています" }),
     });
 
     render(<FamilyCreate />);
@@ -40,7 +40,7 @@ describe("FamilyCreate", () => {
     fireEvent.click(screen.getByRole("button", { name: "作成する" }));
 
     await waitFor(() => {
-      expect(screen.getByText("招待されていません。管理者に確認してください。")).toBeInTheDocument();
+      expect(screen.getByText("既に家族に所属しています")).toBeInTheDocument();
     });
   });
 });
