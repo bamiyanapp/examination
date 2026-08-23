@@ -153,15 +153,18 @@ function invalidateAllowCache(email) {
   allowCache.delete(String(email).toLowerCase());
 }
 
-async function isAllowedEmail(email) {
-  if (!email) return false;
+// isAllowedEmailと同じキャッシュ・GetItemを使い、家族単位の管理API
+// （examination#243）が必要とするfamilySlugもあわせて返す
+async function getAllowedEmailRecord(email) {
+  if (!email) return null;
   const key = String(email).toLowerCase();
   const cached = allowCache.get(key);
   const now = Date.now();
   if (cached && cached.expiresAt > now) {
-    return cached.allowed;
+    return cached.allowed ? { familySlug: cached.familySlug || "" } : null;
   }
   let allowed = false;
+  let familySlug = "";
   try {
     const result = await ddb.send(
       new GetItemCommand({
@@ -170,16 +173,30 @@ async function isAllowedEmail(email) {
       })
     );
     allowed = Boolean(result.Item);
+    familySlug = (allowed && result.Item.familySlug && result.Item.familySlug.S) || "";
   } catch (error) {
     console.error("DynamoDB GetItem failed", error.message);
     allowed = false;
   }
-  allowCache.set(key, { allowed, expiresAt: now + ALLOW_CACHE_TTL_MS });
-  return allowed;
+  allowCache.set(key, { allowed, familySlug, expiresAt: now + ALLOW_CACHE_TTL_MS });
+  return allowed ? { familySlug } : null;
 }
 
-async function listAllowedEmails() {
-  const result = await ddb.send(new ScanCommand({ TableName: ALLOWED_EMAILS_TABLE }));
+async function isAllowedEmail(email) {
+  return Boolean(await getAllowedEmailRecord(email));
+}
+
+// 家族単位のメンバー管理（examination#243）。familySlugが一致する行のみを返す。
+// AllowedEmailsTableのPKはemailのためQueryは使えず、Scan＋FilterExpressionで
+// 絞り込む（家族の人数規模ではこれで十分、interviewQuestionsStore.js等と同じ方針）
+async function listAllowedEmails(familySlug) {
+  const result = await ddb.send(
+    new ScanCommand({
+      TableName: ALLOWED_EMAILS_TABLE,
+      FilterExpression: "familySlug = :slug",
+      ExpressionAttributeValues: { ":slug": { S: familySlug } },
+    })
+  );
   return (result.Items || [])
     .map((item) => ({
       email: item.email && item.email.S,
@@ -409,19 +426,24 @@ async function consumeCsrfNonce(nonce) {
 }
 
 // 許可メールアドレスの一覧・追加・削除、および家族新規作成の招待・取り消しAPI。
-// 既に許可されているユーザーのみ利用できる
+// 既に許可されているユーザーのみ利用でき、閲覧・追加・削除は自分の所属家族の
+// メンバーに限定する（examination#243）。招待の発行・一覧・取り消しは家族単位
+// ではなく全メンバー共通（新しい家族を作りたい相手を招待する操作のため、
+// 「自分の家族」という概念がそもそも当てはまらない）
 async function handleAdminEmailsApi(request) {
   const payload = await verifyIdTokenFromCookie(request);
   if (!payload) {
     return forbiddenResponse();
   }
   const requesterEmail = String(payload.email || "").toLowerCase();
-  if (!(await isAllowedEmail(requesterEmail))) {
+  const requesterRecord = await getAllowedEmailRecord(requesterEmail);
+  if (!requesterRecord) {
     return forbiddenResponse();
   }
+  const familySlug = requesterRecord.familySlug;
 
   if (request.method === "GET") {
-    return jsonResponse(200, "OK", { emails: await listAllowedEmails(), invites: await listFamilyInvites() });
+    return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
   }
 
   if (request.method === "POST") {
@@ -434,34 +456,44 @@ async function handleAdminEmailsApi(request) {
     }
 
     if (action === "add") {
-      await addAllowedEmail(targetEmail, requesterEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(), invites: await listFamilyInvites() });
+      // v1は1メール=1家族に限定する（examination#44）。既に別の家族（または自分の
+      // 家族）に所属しているメールアドレスをそのまま追加すると、familySlugが
+      // 上書きされ他家族から静かに引き抜く形になってしまうため拒否する
+      if (await isAllowedEmail(targetEmail)) {
+        return jsonResponse(400, "Bad Request", { error: "そのメールアドレスは既に何らかの家族に所属しています" });
+      }
+      await addAllowedEmail(targetEmail, requesterEmail, familySlug);
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
     }
 
     if (action === "remove") {
       if (targetEmail === requesterEmail) {
         return jsonResponse(400, "Bad Request", { error: "自分自身は削除できません" });
       }
-      const current = await listAllowedEmails();
-      if (current.length <= 1) {
-        return jsonResponse(400, "Bad Request", { error: "最後の1件は削除できません" });
+      // 自分の家族に実際に所属しているメールアドレスかどうかを確認する
+      // （examination#243、他家族のメンバーを誤って・意図的に削除できないようにする）。
+      // 自分自身の削除は上で既に拒否済みのため、ここへ到達する時点で自分の家族には
+      // 必ず自分以外の1件以上が残っており、「最後の1件」を心配する必要は無い
+      const current = await listAllowedEmails(familySlug);
+      if (!current.some((item) => item.email === targetEmail)) {
+        return jsonResponse(404, "Not Found", { error: "そのメールアドレスは自分の家族に所属していません" });
       }
       await removeAllowedEmail(targetEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(), invites: await listFamilyInvites() });
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
     }
 
     // 家族の新規作成招待（examination#242）。招待先は既存の家族とは無関係の
     // 新しい家族を作ろうとしている相手のため、既にどの家族にも所属していない
     // ことをここでは確認しない（isAllowedEmailに含まれるかどうかはcreateFamily側で
-    // 再チェックする）
+    // 再チェックする）。家族単位のスコープも適用しない（上記コメント参照）
     if (action === "invite-family-creator") {
       await inviteFamilyCreator(targetEmail, requesterEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(), invites: await listFamilyInvites() });
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
     }
 
     if (action === "revoke-invite") {
       await revokeFamilyCreateInvite(targetEmail);
-      return jsonResponse(200, "OK", { emails: await listAllowedEmails(), invites: await listFamilyInvites() });
+      return jsonResponse(200, "OK", { emails: await listAllowedEmails(familySlug), invites: await listFamilyInvites() });
     }
 
     return jsonResponse(400, "Bad Request", {

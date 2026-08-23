@@ -75,11 +75,15 @@ export default function AllowedEmails() {
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-bold">閲覧許可メールアドレスの管理</h1>
       <p className="mt-2 text-base-content/70">
-        このサイトを閲覧できるGoogleアカウントのメールアドレスを一覧・追加・削除できます。ログイン中のアカウントがこの一覧に含まれている場合のみ操作できます（含まれていない場合はこのページ自体が表示できません）。
+        このサイトを閲覧できるGoogleアカウントのメールアドレスを、自分の所属家族の範囲で一覧・追加・削除できます（
+        <a href="https://github.com/bamiyanapp/examination/issues/44" className="link">
+          複数家族対応
+        </a>
+        ）。ログイン中のアカウントがこの一覧に含まれている場合のみ操作できます（含まれていない場合はこのページ自体が表示できません）。
       </p>
       <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
-        <li>自分自身のメールアドレスは削除できません（誤って全員が閲覧できなくなることを防ぐため）</li>
-        <li>一覧に残り1件しかない場合、それは削除できません</li>
+        <li>自分自身のメールアドレスは削除できません（誤って自分の家族全員が閲覧できなくなることを防ぐため）</li>
+        <li>既に何らかの家族に所属しているメールアドレスは追加できません（1メールアドレスにつき所属できる家族は1つまで）</li>
         <li>追加・削除は最大60秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
       </ul>
       {isError && status && (

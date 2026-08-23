@@ -49,6 +49,28 @@ describe("AllowedEmails", () => {
     });
   });
 
+  it("shows the server error when adding an email already in another family (examination#243)", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ emails: [] }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: "そのメールアドレスは既に何らかの家族に所属しています" }),
+      });
+
+    render(<AllowedEmails />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByPlaceholderText("追加するメールアドレス"), {
+      target: { value: "other-family@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "追加" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("そのメールアドレスは既に何らかの家族に所属しています")).toBeInTheDocument();
+    });
+  });
+
   it("removes an email via the button", async () => {
     global.fetch
       .mockResolvedValueOnce({
