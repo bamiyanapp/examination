@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/bamiyanapp/examination/compare/v1.23.0...v1.24.0) (2026-08-23)
+
+
+### Features
+
+* **bot-stack,site-stack:** 新規家族登録時にLINEで通知する ([#262](https://github.com/bamiyanapp/examination/issues/262)) ([7d4f47a](https://github.com/bamiyanapp/examination/commit/7d4f47ad15830cc591db9a865323b4310146fe5b)), closes [#259](https://github.com/bamiyanapp/examination/issues/259)
+
 # [1.23.0](https://github.com/bamiyanapp/examination/compare/v1.22.0...v1.23.0) (2026-08-23)
 
 
