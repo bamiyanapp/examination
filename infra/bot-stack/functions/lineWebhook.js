@@ -166,12 +166,12 @@ async function handlePracticeAskRole(lineUserId) {
 // 追加で自由入力させていたが、練習の度に入力し直すものではないため撤去した。
 // voiceChat.js（音声対話ページ）とも同じ単一の情報源を参照することで両チャネルの
 // 一貫性を保つ。ロール（本人/父/母）は練習のたびに変わり得るため引き続きここで選ぶ
-async function handlePracticeRoleSelected(lineUserId, text, email) {
+async function handlePracticeRoleSelected(lineUserId, text, email, familySlug) {
   const role = ROLE_ALIASES[text.trim()];
   if (!role) {
     return "「本人」「父」「母」のいずれかを送ってください。";
   }
-  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile();
+  const { situation, schoolCharacteristics, otherContext } = await getFamilyProfile(familySlug);
   // 対象者の事前登録済み想定問答を練習開始時に一度だけ取得し、練習中は
   // このスナップショットをsystem promptへ組み込む（examination#207）
   const existingQuestions = await queryQuestionsByTargetPerson(role);
@@ -334,7 +334,7 @@ async function handleTextMessage(lineUserId, text) {
   if (!allowedRecord) {
     return "このアカウントはサイトの閲覧許可がありません。管理者に確認してください。";
   }
-  // allowedRecord.familySlugを使った家族スコープ化はexamination#239〜#241で対応
+  // 想定問答・模擬面接記録の家族スコープ化はexamination#240〜#241で対応
 
   const session = await getSession(lineUserId);
 
@@ -345,7 +345,7 @@ async function handleTextMessage(lineUserId, text) {
     return handleRegisterStart(lineUserId);
   }
   if (session.mode === "practice_select_role") {
-    return handlePracticeRoleSelected(lineUserId, text, linkedEmail);
+    return handlePracticeRoleSelected(lineUserId, text, linkedEmail, allowedRecord.familySlug);
   }
   if (session.mode === "practice") {
     return handlePracticeTurn(lineUserId, session, text, linkedEmail);

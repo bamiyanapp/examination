@@ -21,11 +21,10 @@ exports.handler = async (event) => {
   if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
-  // familySlugを使った家族スコープ化はexamination#239で対応
-  const { email } = auth;
+  const { email, familySlug } = auth;
 
   if (method === "GET") {
-    return jsonResponse(200, await getFamilyProfile());
+    return jsonResponse(200, await getFamilyProfile(familySlug));
   }
 
   if (method === "POST") {
@@ -38,7 +37,7 @@ exports.handler = async (event) => {
     const situation = sanitizeField(payload.situation) || DEFAULT_SITUATION;
     const schoolCharacteristics = sanitizeField(payload.schoolCharacteristics);
     const otherContext = sanitizeField(payload.otherContext);
-    await saveFamilyProfile({ situation, schoolCharacteristics, otherContext, updatedBy: email });
+    await saveFamilyProfile({ familySlug, situation, schoolCharacteristics, otherContext, updatedBy: email });
     return jsonResponse(200, { situation, schoolCharacteristics, otherContext });
   }
 
