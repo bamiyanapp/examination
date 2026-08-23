@@ -63,7 +63,10 @@ resources:
         CallbackURLs:
           - https://${param:cloudFrontDomain, 'TBD.cloudfront.net'}/_callback
         LogoutURLs:
-          - https://${param:cloudFrontDomain, 'TBD.cloudfront.net'}/
+          # checkAuth.jsの/_logoutは、CognitoのHosted UIログアウトがGoogleセッションまでは
+          # 終了させないため（examination#271）、トップページへ直接ではなくGoogleセッションも
+          # 終了させる中継ページ（/_logout-complete）へ遷移させる
+          - https://${param:cloudFrontDomain, 'TBD.cloudfront.net'}/_logout-complete
         ExplicitAuthFlows:
           - ALLOW_USER_SRP_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
