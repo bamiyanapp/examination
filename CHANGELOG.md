@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/bamiyanapp/examination/compare/v1.15.0...v1.16.0) (2026-08-23)
+
+
+### Features
+
+* **app:** LINE連携ページにLINE公式アカウントのURL・QRコードを追加する ([#230](https://github.com/bamiyanapp/examination/issues/230)) ([8c5f91e](https://github.com/bamiyanapp/examination/commit/8c5f91e1124031d84a89a9fa79ef934d5ed881a2)), closes [#229](https://github.com/bamiyanapp/examination/issues/229)
+
 # [1.15.0](https://github.com/bamiyanapp/examination/compare/v1.14.0...v1.15.0) (2026-08-17)
 
 
