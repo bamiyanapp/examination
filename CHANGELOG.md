@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/bamiyanapp/examination/compare/v1.20.0...v1.21.0) (2026-08-23)
+
+
+### Features
+
+* **site-stack,bot-stack:** 家族の新規作成を招待制APIとUIで実装する ([#253](https://github.com/bamiyanapp/examination/issues/253)) ([aac5985](https://github.com/bamiyanapp/examination/commit/aac59859f5ed0375240e44b348d601ff032c43e5)), closes [#242](https://github.com/bamiyanapp/examination/issues/242)
+
 # [1.20.0](https://github.com/bamiyanapp/examination/compare/v1.19.0...v1.20.0) (2026-08-23)
 
 
