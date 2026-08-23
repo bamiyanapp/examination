@@ -20,7 +20,7 @@ exports.handler = async (event) => {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
 
-  // familySlugを使った家族スコープ化はexamination#241で対応
-  const summaries = await listMockInterviewSummaries();
+  const { familySlug } = auth;
+  const summaries = await listMockInterviewSummaries(familySlug);
   return jsonResponse(200, { summaries });
 };
