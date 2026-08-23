@@ -22,6 +22,8 @@ provider:
             - dynamodb:Scan
           Resource:
             - !GetAtt AllowedEmailsTable.Arn
+            - !GetAtt FamiliesTable.Arn
+            - !GetAtt FamilyInvitesTable.Arn
             - !GetAtt LineLinkCodesTable.Arn
             - !GetAtt VoiceTokensTable.Arn
             - !GetAtt CsrfNoncesTable.Arn
@@ -36,7 +38,7 @@ functions:
     handler: functions/checkAuth.handler
     memorySize: 128
     timeout: 5
-    # /_callback・/_logout・/_admin/emails・/_link-line・/_voice-tokenは
+    # /_callback・/_logout・/_admin/emails・/_link-line・/_families・/_voice-tokenは
     # リクエストのたびに結果が変わる動的エンドポイントのため、DefaultCacheBehavior
     # （静的コンテンツ向け）とは別に、これらのPathPatternに対応するCacheBehaviors
     # （下記resources参照、CachingDisabled）へもこの関数を関連付ける必要がある
@@ -66,6 +68,10 @@ functions:
         includeBody: true
       - distribution: "SiteDistribution"
         eventType: "viewer-request"
+        pathPattern: "_families"
+        includeBody: true
+      - distribution: "SiteDistribution"
+        eventType: "viewer-request"
         pathPattern: "_voice-token"
         includeBody: true
 
@@ -86,8 +92,8 @@ resources:
         BillingMode: PAY_PER_REQUEST
 
     # 複数家族対応（examination#44）の家族登録簿。PKはランダム短縮ID（日本語家族名の
-    # ローマ字化を避ける）。familyNameはAllowedEmailsTableのfamilySlug属性から
-    # 参照される。一意性チェック・新規作成APIはexamination#242で追加する
+    # ローマ字化を避ける）。nameは表示名で一意性をcheckAuth.js側でチェックする
+    # （examination#242）。familySlugはAllowedEmailsTableの属性として参照される
     FamiliesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -97,6 +103,24 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: slug
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    # 家族の新規作成を許可する招待済みメールアドレス（＝Googleアカウントのemailクレーム）
+    # の一覧（examination#242）。「不特定多数向けの公開サービスは目指さない」という
+    # 前提のため、Googleアカウントさえあれば誰でも家族を作成できる設計は採らず、
+    # サイト管理者が事前にこのテーブルへ直接登録した（招待メール送信等は行わない）
+    # メールアドレスのみが家族を新規作成できる。作成成功時にcheckAuth.jsが該当行を
+    # 削除する（一度きりの招待）
+    FamilyInvitesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: examination-family-invites
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
@@ -225,7 +249,7 @@ resources:
               - POST
               - PATCH
               - DELETE
-          # /_callback・/_logout・/_admin/emails・/_link-line・/_voice-tokenは
+          # /_callback・/_logout・/_admin/emails・/_link-line・/_families・/_voice-tokenは
           # checkAuth.jsが毎回異なる結果（認可コード交換、ログイン状態に応じたJSON等）を
           # 返す動的エンドポイントだが、DefaultCacheBehaviorのManaged-CachingOptimizedは
           # クエリ文字列・Cookieをキャッシュキーに含めずURLパスのみでキャッシュするため、
@@ -251,6 +275,11 @@ resources:
               CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
               AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
             - PathPattern: "_link-line"
+              TargetOriginId: s3origin
+              ViewerProtocolPolicy: redirect-to-https
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            - PathPattern: "_families"
               TargetOriginId: s3origin
               ViewerProtocolPolicy: redirect-to-https
               CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad

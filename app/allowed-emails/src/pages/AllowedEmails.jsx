@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 // 呼び出し先API（/_admin/emails）自体は変更しない
 export default function AllowedEmails() {
   const [emails, setEmails] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [status, setStatus] = useState("読み込み中...");
   const [isError, setIsError] = useState(false);
   const [newEmail, setNewEmail] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const load = useCallback(async () => {
     setIsError(false);
@@ -19,6 +21,7 @@ export default function AllowedEmails() {
       }
       const data = await res.json();
       setEmails(data.emails || []);
+      setInvites(data.invites || []);
       setStatus("");
     } catch (error) {
       setIsError(true);
@@ -44,6 +47,7 @@ export default function AllowedEmails() {
         throw new Error(data.error || `処理に失敗しました（${res.status}）`);
       }
       setEmails(data.emails || []);
+      setInvites(data.invites || []);
       setStatus("");
     } catch (error) {
       setIsError(true);
@@ -57,6 +61,14 @@ export default function AllowedEmails() {
     if (!email) return;
     mutate("add", email);
     setNewEmail("");
+  }
+
+  function handleInviteSubmit(event) {
+    event.preventDefault();
+    const email = inviteEmail.trim();
+    if (!email) return;
+    mutate("invite-family-creator", email);
+    setInviteEmail("");
   }
 
   return (
@@ -104,6 +116,44 @@ export default function AllowedEmails() {
         />
         <button type="submit" className="btn btn-primary join-item">
           追加
+        </button>
+      </form>
+
+      <h2 className="mt-10 text-xl font-bold">家族の新規作成を招待</h2>
+      <p className="mt-2 text-base-content/70">
+        新しい家族（自分の家族とは別のデータ空間）を作りたい相手のメールアドレスを招待できます（
+        <a href="https://github.com/bamiyanapp/examination/issues/44" className="link">
+          複数家族対応
+        </a>
+        ）。招待されたメールアドレスでログインすると、「/family-create/」で家族名を指定して新規作成できます。招待は一度作成に使われると自動的に消費されます。
+      </p>
+      <ul className="list mt-4 rounded-box bg-base-100 shadow-sm">
+        {invites.map((item) => (
+          <li key={item.email} className="list-row items-center">
+            <div className="flex-1">
+              {item.email}（招待者: {item.invitedBy || "-"}）
+            </div>
+            <button
+              type="button"
+              onClick={() => mutate("revoke-invite", item.email)}
+              className="btn btn-sm btn-outline btn-error"
+            >
+              取り消す
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleInviteSubmit} className="join mt-4 w-full">
+        <input
+          type="email"
+          placeholder="招待するメールアドレス"
+          required
+          value={inviteEmail}
+          onChange={(event) => setInviteEmail(event.target.value)}
+          className="input join-item flex-1"
+        />
+        <button type="submit" className="btn btn-primary join-item">
+          招待する
         </button>
       </form>
     </main>
