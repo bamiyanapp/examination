@@ -18,6 +18,10 @@ const config = require("./configuration.json");
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const FAMILIES_TABLE = "examination-families";
 const FAMILY_NAME_MAX_LENGTH = 50;
+// bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
+// 変わった場合は各ページのsrc/pages/*.jsx（app/profile-edit/等）とあわせて
+// ここも更新する
+const BOT_API_HOSTNAME = "0yqos9utye.execute-api.us-east-1.amazonaws.com";
 // 家族新規作成ページ（app/family-create/）のパス。ログイン済み（Googleアカウントの
 // emailクレームが検証できること）でありさえすればisAllowedEmailの対象外として
 // 個別に許可する必要があるため定数化する（examination#258、下記isFamilyCreatePath参照）
@@ -248,10 +252,46 @@ function generateFamilySlug() {
   return crypto.randomBytes(6).toString("hex");
 }
 
+// 新しい家族が作成されたことをbot-stackの内部API（新規家族登録の通知、
+// examination#259）へ知らせる。site-stackとbot-stackは別Serverless serviceの
+// ため、共有シークレット（X-Internal-Secretヘッダー）で認証する。ベスト
+// エフォートの通知であり、失敗しても家族作成自体は成功として扱う（呼び出し元は
+// awaitするだけでよく、例外は投げない）。Lambda@Edgeの実行時間予算を圧迫しない
+// よう3秒でタイムアウトする
+function notifyFamilyCreated(email, familyName) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ email, familyName });
+    const req = https.request(
+      {
+        hostname: BOT_API_HOSTNAME,
+        path: "/internal/notify-family-created",
+        method: "POST",
+        timeout: 3000,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          "X-Internal-Secret": config.internalApiSecret,
+        },
+      },
+      (res) => {
+        res.resume(); // ボディを読み捨ててソケットを解放する（内容は使わない）
+        resolve();
+      }
+    );
+    req.on("timeout", () => req.destroy());
+    req.on("error", (error) => {
+      console.warn("Family-created notification failed", error.message);
+      resolve();
+    });
+    req.end(body);
+  });
+}
+
 // 家族の新規作成（examination#44・#258）。未所属・家族名がユニークな場合のみ、
 // examination-familiesへ新規行を作成し、作成者自身を新しい家族の最初の
 // メンバーとしてexamination-allowed-emailsへ追加する。公開サービスとして
-// 構わないとの判断のため、招待の有無は問わずログイン済みであれば実行できる
+// 構わないとの判断のため、招待の有無は問わずログイン済みであれば実行できる。
+// 成功時はbot-stackへ通知し、サイト運営者へのLINE通知につなげる（examination#259）
 async function createFamily({ email, name }) {
   if (await isAllowedEmail(email)) {
     return { status: 400, error: "既に家族に所属しています" };
@@ -277,6 +317,7 @@ async function createFamily({ email, name }) {
     })
   );
   await addAllowedEmail(email, email, slug);
+  await notifyFamilyCreated(email, trimmedName);
   return { slug, name: trimmedName };
 }
 

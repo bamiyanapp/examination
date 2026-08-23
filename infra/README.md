@@ -112,6 +112,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
 - **家族の新規作成（公開登録制）**:
   1. 未登録のメールアドレスでGoogleログインすると、`checkAuth.js`は（`examination-allowed-emails`にまだ存在しないため）通常は403にする代わりに、アクセス先が`/family-create/`であることを確認した上で例外的に通す（ログイン直後の`/_callback`・通常リクエスト・`refresh_token`再発行の3箇所すべてで同じ判定をする）
   2. `/family-create/`（Reactアプリ`app/family-create/`。他アプリと異なりPWA化・`UserMenu`等の共通コンポーネントは持たない。理由は`src/App.jsx`のコメント参照）で家族名を入力すると、`POST /_families`（`checkAuth.js`の`createFamily`）が未所属・家族名ユニークを確認した上で`examination-families`へ新規行を作成し、作成者自身を`examination-allowed-emails`へ追加する
+  3. 作成成功時、`checkAuth.js`が`bot-stack`の内部API（`POST /internal/notify-family-created`、`functions/notifyFamilyCreated.js`）を呼び、サイト運営者（管理用Googleアカウント、`ADMIN_NOTIFY_EMAIL`）へLINEで通知する（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）。site-stackとbot-stackは別Serverless serviceのため、共有シークレット（`INTERNAL_API_SECRET`、`X-Internal-Secret`ヘッダー）で呼び出し元を検証する。管理用アカウントがLINE未連携の場合は通知をスキップするのみで、家族作成自体は失敗させない（ベストエフォート）
 - **メンバー管理**: 上記「閲覧許可メールアドレスの管理」の通り、一覧・追加・削除は自分の所属家族の範囲に限定される
 - **初期データ**: `cd.yml`の「Seed families table and backfill familySlug」ステップが、`examination-families`が空の場合のみ初期家族（`chofu-suzuki`＝調布の鈴木家）を投入し、`familySlug`属性が未設定の既存の許可メールアドレスへ同じslugをバックフィルする（冪等）
 - 一部の一度きりの移行スクリプト（`scripts/seed-interview-questions.js`・`scripts/seed-mock-interviews.js`）は、旧Markdownファイルに由来する調布の鈴木家固有のデータを移行するものであり、意図的に`chofu-suzuki`をハードコードしたまま残している（他家族の作成・運用には影響しない）
@@ -195,6 +196,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | `LINE_CHANNEL_SECRET` | LINE Developers ConsoleでMessaging APIチャネルを作成して取得するChannel Secret |
 | `LINE_CHANNEL_ACCESS_TOKEN` | 同チャネルのChannel Access Token（長期） |
 | `GEMINI_API_KEY` | Google AI Studioで発行するGemini APIキー（LINE bot・音声対話機能の両方で使用） |
+| `INTERNAL_API_SECRET` | site-stackとbot-stack間の内部API呼び出し（新規家族登録の通知、[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を検証する共有シークレット。任意の推測困難な文字列を設定する（両スタックの`configuration.json`へ同じ値が注入される） |
 
 ### Variables（任意、既定値あり）
 
@@ -202,6 +204,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | --- | --- | --- |
 | `SITE_BUCKET_NAME` | `bamiyanapp-examination-knowledge` | サイト配信用S3バケット名（**全AWSアカウント間でグローバルに一意**である必要がある。既定値が既に使われている場合はここで別名を指定する） |
 | `COGNITO_DOMAIN_PREFIX` | `bamiyanapp-examination` | Cognito Hosted UIのドメインprefix（**リージョン内でグローバルに一意**である必要がある） |
+| `ADMIN_NOTIFY_EMAIL` | `s.ekusoy@gmail.com` | 新規家族登録の通知（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を受け取る管理用Googleアカウントのメールアドレス。LINE連携（`/settings/line-link/`）済みである必要がある（未連携の場合は通知がスキップされるのみで、家族作成自体は失敗しない） |
 
 ## 初回デプロイ時によくある失敗
 

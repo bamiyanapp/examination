@@ -237,6 +237,9 @@ jobs:
           COGNITO_CLIENT_ID: ${{ steps.auth-outputs.outputs.client_id }}
           COGNITO_CLIENT_SECRET: ${{ steps.auth-outputs.outputs.client_secret }}
           COGNITO_DOMAIN: ${{ steps.auth-outputs.outputs.cognito_domain }}
+          # bot-stackの内部API呼び出し（新規家族登録の通知、examination#259）を
+          # 検証させる共有シークレット。bot-stack側にも同じ値を注入する
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
         run: node scripts/generate-config.js
 
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
@@ -333,6 +336,11 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           # LINE bot・音声対話機能（examination#62）の両方でこのGemini APIキーを使う
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # site-stackからの内部API呼び出し（新規家族登録の通知、examination#259）を
+          # 検証する共有シークレット。site-stack側にも同じ値を注入する
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          # 新規家族登録の通知（examination#259）を受け取る管理用Googleアカウントのメール
+          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL || 's.ekusoy@gmail.com' }}
         run: node scripts/generate-config.js
 
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
