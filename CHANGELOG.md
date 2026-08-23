@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/bamiyanapp/examination/compare/v1.22.0...v1.23.0) (2026-08-23)
+
+
+### Features
+
+* **site-stack:** 家族の新規作成を招待制から公開登録制に変更する ([#260](https://github.com/bamiyanapp/examination/issues/260)) ([959e05a](https://github.com/bamiyanapp/examination/commit/959e05a99ad357cc716e783afc7285168fe6245c)), closes [#258](https://github.com/bamiyanapp/examination/issues/258)
+
 # [1.22.0](https://github.com/bamiyanapp/examination/compare/v1.21.0...v1.22.0) (2026-08-23)
 
 
