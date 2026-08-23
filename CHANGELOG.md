@@ -1,3 +1,10 @@
+## [1.24.1](https://github.com/bamiyanapp/examination/compare/v1.24.0...v1.24.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **site-stack:** 未登録ユーザーを家族作成ページへ誘導し403の文字化けを解消する ([#265](https://github.com/bamiyanapp/examination/issues/265)) ([6663895](https://github.com/bamiyanapp/examination/commit/666389560bccdf39802b9bb15cb3814beb2325f0)), closes [#264](https://github.com/bamiyanapp/examination/issues/264)
+
 # [1.24.0](https://github.com/bamiyanapp/examination/compare/v1.23.0...v1.24.0) (2026-08-23)
 
 
