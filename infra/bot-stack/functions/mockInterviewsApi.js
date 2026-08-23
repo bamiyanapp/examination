@@ -15,11 +15,12 @@ exports.handler = async (event) => {
     return jsonResponse(405, { error: "method not allowed" });
   }
 
-  const email = await verifyBearerEmail(event);
-  if (!email) {
+  const auth = await verifyBearerEmail(event);
+  if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
 
+  // familySlugを使った家族スコープ化はexamination#241で対応
   const summaries = await listMockInterviewSummaries();
   return jsonResponse(200, { summaries });
 };

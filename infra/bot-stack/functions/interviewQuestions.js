@@ -64,10 +64,12 @@ function parseQuestionPayload(payload) {
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
 
-  const email = await verifyBearerEmail(event);
-  if (!email) {
+  const auth = await verifyBearerEmail(event);
+  if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
+  // familySlugを使った家族スコープ化はexamination#240で対応
+  const { email } = auth;
 
   if (method === "GET") {
     const result = await ddb.send(

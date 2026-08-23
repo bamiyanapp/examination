@@ -17,10 +17,12 @@ function sanitizeField(value) {
 // （/_voice-token）で認証する
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
-  const email = await verifyBearerEmail(event);
-  if (!email) {
+  const auth = await verifyBearerEmail(event);
+  if (!auth) {
     return jsonResponse(403, { error: "アクセスが許可されていません" });
   }
+  // familySlugを使った家族スコープ化はexamination#239で対応
+  const { email } = auth;
 
   if (method === "GET") {
     return jsonResponse(200, await getFamilyProfile());

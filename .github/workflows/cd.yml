@@ -256,6 +256,35 @@ jobs:
             echo "Table already has $COUNT item(s), skipping seed"
           fi
 
+      # 複数家族対応（examination#44、#238）。examination-familiesが空の場合のみ初期家族
+      # （調布の鈴木家）を投入し、familySlug属性が未設定の既存の許可メールアドレスへ
+      # 同じslugをバックフィルする（新規デプロイのたびに実行しても、既にfamilySlugが
+      # 設定済みの行には影響しない冪等な処理）
+      - name: Seed families table and backfill familySlug (multi-family support)
+        run: |
+          FAMILIES_COUNT=$(aws dynamodb scan --region us-east-1 --table-name examination-families \
+            --select COUNT --query "Count" --output text)
+          if [ "$FAMILIES_COUNT" = "0" ]; then
+            echo "Seeding initial family (chofu-suzuki)"
+            aws dynamodb put-item --region us-east-1 --table-name examination-families \
+              --item "{\"slug\": {\"S\": \"chofu-suzuki\"}, \"name\": {\"S\": \"調布の鈴木家\"}, \"createdBy\": {\"S\": \"seed\"}, \"createdAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+          else
+            echo "examination-families already has $FAMILIES_COUNT item(s), skipping seed"
+          fi
+
+          echo "Backfilling familySlug=chofu-suzuki for allowed emails without it"
+          aws dynamodb scan --region us-east-1 --table-name examination-allowed-emails \
+            --filter-expression "attribute_not_exists(familySlug)" \
+            --query "Items[].email.S" --output text | tr '\t' '\n' | while read -r EMAIL; do
+            if [ -n "$EMAIL" ]; then
+              echo "Backfilling $EMAIL"
+              aws dynamodb update-item --region us-east-1 --table-name examination-allowed-emails \
+                --key "{\"email\": {\"S\": \"$EMAIL\"}}" \
+                --update-expression "SET familySlug = :slug" \
+                --expression-attribute-values "{\":slug\": {\"S\": \"chofu-suzuki\"}}"
+            fi
+          done
+
       - name: Get real CloudFront domain
         id: real-domain
         run: |
