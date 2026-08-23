@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/bamiyanapp/examination/compare/v1.16.1...v1.16.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **bot-stack:** AI実行回数上限を会話のラリー単位に見直す ([#236](https://github.com/bamiyanapp/examination/issues/236)) ([651c32d](https://github.com/bamiyanapp/examination/commit/651c32d2f4131dc1cd2e51f03e12e23a368b2b6b)), closes [#235](https://github.com/bamiyanapp/examination/issues/235)
+
 ## [1.16.1](https://github.com/bamiyanapp/examination/compare/v1.16.0...v1.16.1) (2026-08-23)
 
 
