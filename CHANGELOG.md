@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/bamiyanapp/examination/compare/v1.16.2...v1.17.0) (2026-08-23)
+
+
+### Features
+
+* **infra:** 複数家族対応の基盤（データモデル・家族解決ロジック）を追加する ([#245](https://github.com/bamiyanapp/examination/issues/245)) ([62418f7](https://github.com/bamiyanapp/examination/commit/62418f7d75696c4bfebe168853eb89d27e5fe299)), closes [#44](https://github.com/bamiyanapp/examination/issues/44) [#238](https://github.com/bamiyanapp/examination/issues/238)
+
 ## [1.16.2](https://github.com/bamiyanapp/examination/compare/v1.16.1...v1.16.2) (2026-08-23)
 
 
