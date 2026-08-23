@@ -97,7 +97,7 @@ CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め
   - `POST {"action":"add","email":"..."}`: 自分の家族へ追加する（既に何らかの家族に所属しているメールアドレスは追加不可。1メール=1家族のv1制約）
   - `POST {"action":"remove","email":"..."}`: 自分の家族から削除する（自分自身、および自分の家族に所属していないメールアドレスは削除不可）
 - 初期値: `cd.yml`の「Seed initial allowed emails」ステップが、テーブルが空の場合のみ投入する（既存ユーザーが削除した後の再デプロイで復活することはない。全件削除された場合のみ、締め出し防止のため次回デプロイで初期値に戻る）
-- 反映タイミング: `checkAuth.js`はLambda@Edgeの実行環境（エッジロケーションごとに独立）内で許可判定を60秒キャッシュするため、追加・削除は最大60秒程度で全世界に反映される（即時ではない）
+- 反映タイミング: `checkAuth.js`はLambda@Edgeの実行環境（エッジロケーションごとに独立）内で許可判定を15秒キャッシュするため、追加・削除は最大15秒程度で全世界に反映される（即時ではない。[Issue #267](https://github.com/bamiyanapp/examination/issues/267)で60秒から短縮した）
 
 ## 複数家族対応（[Issue #44](https://github.com/bamiyanapp/examination/issues/44)）
 

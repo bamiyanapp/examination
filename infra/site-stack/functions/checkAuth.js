@@ -146,10 +146,13 @@ function forbiddenResponse() {
   };
 }
 
-// emailごとの許可判定を短時間キャッシュする。Lambda@Edgeの実行環境はエッジロケーション
-// ごとに独立したコンテナのため、/_admin/emailsでの追加・削除はこのTTL(60秒)を上限に
-// 各エッジへ順次反映される（即時グローバル反映はしない設計）
-const ALLOW_CACHE_TTL_MS = 60_000;
+// emailごとの許可判定を短時間キャッシュする。Lambda@Edgeの実行環境はエッジロケーション・
+// CacheBehaviorの関連付けごとに独立したコンテナのため、/_admin/emailsでの追加・削除や
+// 家族の新規作成（POST /_families）はこのTTLを上限に各エッジへ順次反映される
+// （即時グローバル反映はしない設計）。家族作成直後に他ページへ遷移すると別コンテナへ
+// ルーティングされ、作成した本人がまだ許可されていないと判定されることがあった
+// （examination#267）ため、60秒から15秒へ短縮し体感の待ち時間を減らした
+const ALLOW_CACHE_TTL_MS = 15_000;
 const allowCache = new Map();
 
 function invalidateAllowCache(email) {

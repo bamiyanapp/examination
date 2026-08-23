@@ -1,5 +1,10 @@
 import { useState } from "react";
 
+// checkAuth.jsのcreateFamilyが返す文言と一致させる。既に所属済みという応答は、
+// 失敗ではなく「反映待ちで表示だけがこのページのまま」という状態を示すサインとして
+// 特別扱いする（examination#267）
+const ALREADY_IN_FAMILY_MESSAGE = "既に家族に所属しています";
+
 async function createFamily(name) {
   const res = await fetch("/_families", {
     method: "POST",
@@ -22,16 +27,26 @@ export default function FamilyCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [createdFamily, setCreatedFamily] = useState(null);
+  const [alreadyInFamily, setAlreadyInFamily] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
+    setAlreadyInFamily(false);
     try {
       const family = await createFamily(name);
       setCreatedFamily(family);
     } catch (error) {
-      setErrorMessage(error.message);
+      // 許可判定はLambda@Edgeの実行環境ごとに最大15秒キャッシュされるため
+      // （examination#267）、作成直後に他ページへ遷移してこのページへ戻された
+      // 場合、既に成功しているにもかかわらずこのエラーになることがある。
+      // 失敗と誤解させないよう、待機を促す案内として別枠で表示する
+      if (error.message === ALREADY_IN_FAMILY_MESSAGE) {
+        setAlreadyInFamily(true);
+      } else {
+        setErrorMessage(error.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -48,6 +63,14 @@ export default function FamilyCreate() {
         <div role="alert" className="alert alert-success mt-6">
           <span>
             「{createdFamily.name}」を作成しました。<a href="/" className="link">トップページへ進む</a>
+          </span>
+        </div>
+      ) : alreadyInFamily ? (
+        <div role="alert" className="alert alert-info mt-6">
+          <span>
+            このアカウントは既に家族に参加済みです。反映まで少し時間がかかることがあるため、15秒ほど待ってから
+            <a href="/" className="link">トップページへ進む</a>
+            を試してください。
           </span>
         </div>
       ) : (
