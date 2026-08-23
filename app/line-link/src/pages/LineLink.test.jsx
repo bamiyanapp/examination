@@ -7,6 +7,16 @@ describe("LineLink", () => {
     global.fetch = vi.fn();
   });
 
+  it("shows a link and QR code to add the LINE official account as a friend (examination#229)", () => {
+    render(<LineLink />);
+
+    const link = screen.getByRole("link", { name: "LINE公式アカウントを開く" });
+    expect(link).toHaveAttribute("href", "https://line.me/R/ti/p/@206epxcr");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(document.querySelector("svg")).not.toBeNull();
+  });
+
   it("issues a code and shows it as a copyable snippet on success (examination#155)", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
