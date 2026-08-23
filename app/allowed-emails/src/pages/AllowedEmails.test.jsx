@@ -81,4 +81,53 @@ describe("AllowedEmails", () => {
       expect(screen.getByText("読み込みに失敗しました（403）")).toBeInTheDocument();
     });
   });
+
+  it("invites a family creator via the form (examination#242)", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ emails: [], invites: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ emails: [], invites: [{ email: "invitee@example.com", invitedBy: "me@example.com" }] }),
+      });
+
+    render(<AllowedEmails />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByPlaceholderText("招待するメールアドレス"), {
+      target: { value: "invitee@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "招待する" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/invitee@example.com/)).toBeInTheDocument();
+    });
+    expect(global.fetch).toHaveBeenLastCalledWith("/_admin/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "invite-family-creator", email: "invitee@example.com" }),
+    });
+  });
+
+  it("revokes a pending invite via the button (examination#242)", async () => {
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ emails: [], invites: [{ email: "invitee@example.com", invitedBy: "me@example.com" }] }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ emails: [], invites: [] }) });
+
+    render(<AllowedEmails />);
+    await waitFor(() => screen.getByText(/invitee@example.com/));
+
+    fireEvent.click(screen.getByRole("button", { name: "取り消す" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/invitee@example.com/)).not.toBeInTheDocument();
+    });
+    expect(global.fetch).toHaveBeenLastCalledWith("/_admin/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "revoke-invite", email: "invitee@example.com" }),
+    });
+  });
 });

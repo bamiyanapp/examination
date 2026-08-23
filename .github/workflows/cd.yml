@@ -66,6 +66,7 @@ jobs:
             app/education-overview/package-lock.json
             app/mock-interviews/package-lock.json
             app/profile-edit/package-lock.json
+            app/family-create/package-lock.json
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -144,6 +145,19 @@ jobs:
           rm -rf ../../site/settings/profile-edit
           mkdir -p ../../site/settings/profile-edit
           cp -r dist/. ../../site/settings/profile-edit/
+
+      # 家族の新規作成ページ（招待制、examination#44・#242）。招待されたメール
+      # アドレスでログイン直後にアクセスする一度きりの入口であり、他の設定ページとは
+      # 異なり通常のサイトナビゲーションから到達させる対象ではないため、mkdocsの
+      # nav・knowledge/配下には追加せず、このディレクトリを直接作成するのみにする
+      - name: Build and embed the React app (家族の新規作成)
+        working-directory: app/family-create
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../../site/family-create
+          mkdir -p ../../site/family-create
+          cp -r dist/. ../../site/family-create/
 
       # 教育セクションの概要ページ（examination#92）。鈴木家固有の情報（家族名入りの
       # チェックリスト等）を排除し、汎用的な方法論のみを残した。site/education/配下には
