@@ -76,7 +76,7 @@ export default function AllowedEmails() {
       <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
         <li>自分自身のメールアドレスは削除できません（誤って自分の家族全員が閲覧できなくなることを防ぐため）</li>
         <li>既に何らかの家族に所属しているメールアドレスは追加できません（1メールアドレスにつき所属できる家族は1つまで）</li>
-        <li>追加・削除は最大60秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
+        <li>追加・削除は最大15秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
       </ul>
       {isError && status && (
         <div role="alert" className="alert alert-error mt-4">

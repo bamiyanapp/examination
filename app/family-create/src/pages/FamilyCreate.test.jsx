@@ -28,7 +28,7 @@ describe("FamilyCreate", () => {
     expect(screen.getByRole("link", { name: "トップページへ進む" })).toHaveAttribute("href", "/");
   });
 
-  it("shows the server error message when creation is rejected (examination#258)", async () => {
+  it("shows a reassuring info message (not an error) when already registered, with a link home (examination#267)", async () => {
     global.fetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
@@ -40,7 +40,25 @@ describe("FamilyCreate", () => {
     fireEvent.click(screen.getByRole("button", { name: "作成する" }));
 
     await waitFor(() => {
-      expect(screen.getByText("既に家族に所属しています")).toBeInTheDocument();
+      expect(screen.getByText(/既に家族に参加済みです/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText("既に家族に所属しています")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "トップページへ進む" })).toHaveAttribute("href", "/");
+  });
+
+  it("shows the server error message for other rejections such as a duplicate family name", async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: "その家族名は既に使われています" }),
+    });
+
+    render(<FamilyCreate />);
+    fireEvent.change(screen.getByPlaceholderText("例: 調布の鈴木家"), { target: { value: "調布の鈴木家" } });
+    fireEvent.click(screen.getByRole("button", { name: "作成する" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("その家族名は既に使われています")).toBeInTheDocument();
     });
   });
 });
