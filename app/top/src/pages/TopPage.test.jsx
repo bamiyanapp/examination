@@ -1,6 +1,12 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import TopPage from "./TopPage.jsx";
+
+beforeEach(() => {
+  // /_meが家族名を返さない既定の応答にしておく（examination#285）。個別のテストで
+  // 上書きしない限り、他の既存テストは見出しへの影響を気にせず書けるようにする
+  global.fetch = vi.fn().mockResolvedValue({ ok: false });
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -76,5 +82,31 @@ describe("TopPage", () => {
     vi.stubEnv("VITE_BUILD_TIME", "");
     render(<TopPage />);
     expect(screen.getByText("バージョン: 開発版")).toBeInTheDocument();
+  });
+
+  it("shows a heading of {家族名}の試験対策 when /_me returns a family name (examination#285)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ familyName: "調布の鈴木家" }) });
+    render(<TopPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("調布の鈴木家の試験対策");
+    });
+    expect(document.title).toBe("調布の鈴木家の試験対策");
+  });
+
+  it("falls back to the default heading when /_me has no family name (examination#285)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ familyName: "" }) });
+    render(<TopPage />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_me"));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験対策");
+  });
+
+  it("falls back to the default heading when /_me fails (examination#285)", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
+    render(<TopPage />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_me"));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験対策");
   });
 });
