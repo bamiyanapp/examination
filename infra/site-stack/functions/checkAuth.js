@@ -295,6 +295,47 @@ function notifyFamilyCreated(email, familyName) {
   });
 }
 
+// 家族の退会（最後の1人が自分自身を削除する操作）に伴うデータ全削除を
+// bot-stackの内部API（examination#284）へ依頼する。notifyFamilyCreatedと
+// 異なりこちらは破壊的操作の一部であり、失敗時は呼び出し元が家族の削除自体を
+// 中断できるよう成否をboolean で返す（例外は投げない）。QueryとDeleteItemを
+// 複数回繰り返すため、通知（3秒）より長めの8秒でタイムアウトする
+function deleteFamilyDataRemote(familySlug, email) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ familySlug, email });
+    const req = https.request(
+      {
+        hostname: BOT_API_HOSTNAME,
+        path: "/internal/delete-family-data",
+        method: "POST",
+        timeout: 8000,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          "X-Internal-Secret": config.internalApiSecret,
+        },
+      },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode >= 200 && res.statusCode < 300);
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.on("error", (error) => {
+      console.error("Family data deletion failed", error.message);
+      resolve(false);
+    });
+    req.end(body);
+  });
+}
+
+async function deleteFamily(slug) {
+  await ddb.send(new DeleteItemCommand({ TableName: FAMILIES_TABLE, Key: { slug: { S: slug } } }));
+}
+
 // 家族の新規作成（examination#44・#258）。未所属・家族名がユニークな場合のみ、
 // examination-familiesへ新規行を作成し、作成者自身を新しい家族の最初の
 // メンバーとしてexamination-allowed-emailsへ追加する。公開サービスとして
@@ -457,12 +498,28 @@ async function handleAdminEmailsApi(request) {
 
     if (action === "remove") {
       if (targetEmail === requesterEmail) {
-        return jsonResponse(400, "Bad Request", { error: "自分自身は削除できません" });
+        // 自分自身の削除は、家族の最後の1人である場合のみ許可し、退会と同時に
+        // 家族の全データ（想定問答・模擬面接記録・プロフィール・LINE連携・家族
+        // レコード自体）を削除する（examination#284）。他のメンバーが残っている
+        // 状態で許可すると、その人たちのデータを本人の同意なく消してしまうため拒否する
+        const current = await listAllowedEmails(familySlug);
+        if (current.length > 1) {
+          return jsonResponse(400, "Bad Request", {
+            error: "他のメンバーが残っているため、自分を削除できません。先に他のメンバーを削除してください",
+          });
+        }
+        const deleted = await deleteFamilyDataRemote(familySlug, requesterEmail);
+        if (!deleted) {
+          return jsonResponse(502, "Bad Gateway", {
+            error: "家族データの削除に失敗しました。しばらくしてから再度お試しください",
+          });
+        }
+        await removeAllowedEmail(requesterEmail);
+        await deleteFamily(familySlug);
+        return jsonResponse(200, "OK", { emails: [], familyDeleted: true });
       }
       // 自分の家族に実際に所属しているメールアドレスかどうかを確認する
       // （examination#243、他家族のメンバーを誤って・意図的に削除できないようにする）。
-      // 自分自身の削除は上で既に拒否済みのため、ここへ到達する時点で自分の家族には
-      // 必ず自分以外の1件以上が残っており、「最後の1件」を心配する必要は無い
       const current = await listAllowedEmails(familySlug);
       if (!current.some((item) => item.email === targetEmail)) {
         return jsonResponse(404, "Not Found", { error: "そのメールアドレスは自分の家族に所属していません" });
