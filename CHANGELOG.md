@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/bamiyanapp/examination/compare/v1.26.0...v1.27.0) (2026-08-24)
+
+
+### Features
+
+* **site-stack,bot-stack,allowed-emails:** 家族の最後の1人が自分を削除すると家族データを初期化する ([#290](https://github.com/bamiyanapp/examination/issues/290)) ([eef764c](https://github.com/bamiyanapp/examination/commit/eef764c97f8bb5ba727ff736c6c547bdc1634b47)), closes [#284](https://github.com/bamiyanapp/examination/issues/284)
+
 # [1.26.0](https://github.com/bamiyanapp/examination/compare/v1.25.1...v1.26.0) (2026-08-24)
 
 
