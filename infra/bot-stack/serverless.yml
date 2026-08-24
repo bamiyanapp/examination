@@ -149,6 +149,20 @@ functions:
           path: /internal/notify-family-created
           method: POST
 
+  # 家族の退会に伴うデータ全削除（examination#284）。site-stack（checkAuth.jsの
+  # handleAdminEmailsApi）が、家族の最後の1人が自分自身を削除する操作の一環として
+  # サーバー間で呼ぶ内部API。認証はBearerトークンではなく共有シークレット
+  # （X-Internal-Secretヘッダー）で行う。必要なIAM権限（Query/DeleteItem/Scan）は
+  # 冒頭のIAM文で既に付与済みのため追加不要
+  deleteFamilyData:
+    handler: functions/deleteFamilyData.handler
+    memorySize: 128
+    timeout: 25
+    events:
+      - httpApi:
+          path: /internal/delete-family-data
+          method: POST
+
 resources:
   Resources:
     # 面接想定問答（ユーザー登録データ）。familySlugは複数家族対応(examination#44)を
