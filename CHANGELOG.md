@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/bamiyanapp/examination/compare/v1.25.1...v1.26.0) (2026-08-24)
+
+
+### Features
+
+* **top,site-stack:** トップページの見出しを{家族名}の試験対策にする ([#286](https://github.com/bamiyanapp/examination/issues/286)) ([695cce4](https://github.com/bamiyanapp/examination/commit/695cce48aaded1412854c20778b72229a6892e50)), closes [#285](https://github.com/bamiyanapp/examination/issues/285)
+
 ## [1.25.1](https://github.com/bamiyanapp/examination/compare/v1.25.0...v1.25.1) (2026-08-23)
 
 
