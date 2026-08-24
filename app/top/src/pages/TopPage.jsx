@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 // 新トップページ（examination#82）。画面遷移の再設計として、MkDocs Materialの
 // サイドバーナビゲーションに代わる、カテゴリ別のリンク一覧をReactで提供する。
 // 段階移行中のため、既存ページ（React化済み・MkDocs双方）へのリンクをそのまま束ねる形とし、
@@ -51,12 +53,38 @@ function formatBuildInfo() {
   return `${version}（${sha}, ${formattedTime}更新）`;
 }
 
+const DEFAULT_TITLE = "小学校受験対策";
+
 export default function TopPage() {
+  const [title, setTitle] = useState(DEFAULT_TITLE);
+
+  // ログイン中ユーザーが所属する家族名を使って見出しを「{家族名}の試験対策」に
+  // する（examination#285）。取得できない場合（読み込み中・失敗時）は既定の
+  // 見出しのまま表示する（UserMenu.jsxと同じく、失敗を握りつぶす方針）
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/_me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.familyName) {
+          const familyTitle = `${data.familyName}の試験対策`;
+          setTitle(familyTitle);
+          document.title = familyTitle;
+        }
+      })
+      .catch(() => {
+        // 取得失敗時は既定の見出しのまま表示する（致命的ではないため無視する）
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <div className="mb-8 text-center">
         <img src="/favicon.png" alt="" className="mx-auto w-40" />
-        <h1 className="text-3xl font-bold">小学校受験対策</h1>
+        <h1 className="text-3xl font-bold">{title}</h1>
         <p className="mt-2 text-base-content/70">家族向けナレッジベースです。カテゴリからページを選んでください。</p>
       </div>
       <div className="flex flex-col gap-8">

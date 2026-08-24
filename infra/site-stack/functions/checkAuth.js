@@ -544,6 +544,13 @@ async function incrementAndCheckVoiceTokenIssuance(email) {
 // name・pictureはGoogleログイン時にauth-stackのAttributeMappingでCognitoの
 // ユーザー属性へ反映されたものがid_tokenのクレームとして返る。未設定の場合は
 // 空文字（アイコン表示側でイニシャル等へフォールバックする）
+// familySlugに対応する家族名を取得する（examination#285、トップページの見出し表示用）
+async function getFamilyName(familySlug) {
+  if (!familySlug) return "";
+  const result = await ddb.send(new GetItemCommand({ TableName: FAMILIES_TABLE, Key: { slug: { S: familySlug } } }));
+  return (result.Item && result.Item.name && result.Item.name.S) || "";
+}
+
 async function handleMeApi(request) {
   if (request.method !== "GET") {
     return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
@@ -552,13 +559,15 @@ async function handleMeApi(request) {
   if (!payload) {
     return forbiddenResponse();
   }
-  if (!(await isAllowedEmail(payload.email))) {
+  const record = await getAllowedEmailRecord(payload.email);
+  if (!record) {
     return forbiddenResponse();
   }
   return jsonResponse(200, "OK", {
     email: payload.email,
     name: payload.name || "",
     picture: payload.picture || "",
+    familyName: await getFamilyName(record.familySlug),
   });
 }
 
