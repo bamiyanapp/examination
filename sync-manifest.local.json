@@ -41,38 +41,6 @@
       "target": "app/allowed-emails/src/components/ServiceWorkerRegistration.jsx"
     },
     {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/top/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/mock-interviews/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/education-overview/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/interview-questions/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/profile-edit/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/voice-practice/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/line-link/src/components/UpdateNotifier.jsx"
-    },
-    {
-      "source": "shared/pwa/UpdateNotifier.jsx",
-      "target": "app/allowed-emails/src/components/UpdateNotifier.jsx"
-    },
-    {
       "source": "shared/ui/NavigationOverlay.jsx",
       "target": "app/top/src/components/NavigationOverlay.jsx"
     },
