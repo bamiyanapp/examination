@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/bamiyanapp/examination/compare/v1.28.0...v1.29.0) (2026-08-29)
+
+
+### Features
+
+* **family-create:** CSSフレームワークをdaisyUIからBootstrap 5.3へ移行 ([#319](https://github.com/bamiyanapp/examination/issues/319)) ([8185819](https://github.com/bamiyanapp/examination/commit/8185819c85987c78be19ecbbf46d47252f8f201b))
+
 # [1.28.0](https://github.com/bamiyanapp/examination/compare/v1.27.0...v1.28.0) (2026-08-29)
 
 
