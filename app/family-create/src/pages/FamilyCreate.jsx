@@ -58,50 +58,46 @@ export default function FamilyCreate() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">家族の新規作成</h1>
-      <p className="mt-2 text-base-content/70">
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">家族の新規作成</h1>
+      <p className="mt-2 text-muted">
         Googleアカウントでログイン済みで、まだどの家族にも所属していない方なら、シチュエーション（例:
         「小学校受験の面接」）を指定して新しい家族を作成できます。作成したメールアドレスがその家族の最初のメンバーになります。入力したシチュエーションは、後から「設定
         → プロフィール編集」でいつでも変更できます。
       </p>
 
       {createdFamily ? (
-        <div role="alert" className="alert alert-success mt-6">
-          <span>
-            「{createdFamily.situation}」を作成しました。<a href="/" className="link">トップページへ進む</a>
-          </span>
+        <div role="alert" className="alert alert-success mt-4">
+          「{createdFamily.situation}」を作成しました。<a href="/" className="alert-link">トップページへ進む</a>
         </div>
       ) : alreadyInFamily ? (
-        <div role="alert" className="alert alert-info mt-6">
-          <span>
-            このアカウントは既に家族に参加済みです。反映まで少し時間がかかることがあるため、15秒ほど待ってから
-            <a href="/" className="link">トップページへ進む</a>
-            を試してください。
-          </span>
+        <div role="alert" className="alert alert-info mt-4">
+          このアカウントは既に家族に参加済みです。反映まで少し時間がかかることがあるため、15秒ほど待ってから
+          <a href="/" className="alert-link">トップページへ進む</a>
+          を試してください。
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="card card-border mt-6 bg-base-100">
-          <div className="card-body gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">シチュエーション:</span>
+        <form onSubmit={handleSubmit} className="card mt-4">
+          <div className="card-body d-flex flex-column gap-3">
+            <div>
+              <label className="form-label fw-medium">シチュエーション:</label>
               <input
                 type="text"
                 value={situation}
                 onChange={(event) => setSituation(event.target.value)}
                 placeholder="例: 小学校受験の面接"
                 required
-                className="input w-full"
+                className="form-control"
               />
-            </label>
-            <div className="card-actions">
+            </div>
+            <div>
               <button type="submit" disabled={isSubmitting || !situation.trim()} className="btn btn-primary">
                 {isSubmitting ? "作成中..." : "作成する"}
               </button>
             </div>
             {errorMessage && (
-              <div role="alert" className="alert alert-error">
-                <span>{errorMessage}</span>
+              <div role="alert" className="alert alert-danger mb-0">
+                {errorMessage}
               </div>
             )}
           </div>

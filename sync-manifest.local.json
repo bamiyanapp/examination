@@ -239,6 +239,10 @@
     {
       "source": "shared/ui/common-theme.css",
       "target": "app/allowed-emails/src/common-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/family-create/src/bootstrap-theme.css"
     }
   ]
 }
