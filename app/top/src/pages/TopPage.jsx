@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
 
+// bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
+// 変わった場合は他のページ（app/profile-edit/等）とあわせてここも更新する
+const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile";
+
+async function issueVoiceToken() {
+  const res = await fetch("/_voice-token", { method: "POST" });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.token;
+}
+
 // 新トップページ（examination#82）。画面遷移の再設計として、MkDocs Materialの
 // サイドバーナビゲーションに代わる、カテゴリ別のリンク一覧をReactで提供する。
 // 段階移行中のため、既存ページ（React化済み・MkDocs双方）へのリンクをそのまま束ねる形とし、
@@ -58,23 +69,29 @@ const DEFAULT_TITLE = "小学校受験対策";
 export default function TopPage() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
 
-  // ログイン中ユーザーが所属する家族名を使って見出しを「{家族名}の試験対策」に
-  // する（examination#285）。取得できない場合（読み込み中・失敗時）は既定の
-  // 見出しのまま表示する（UserMenu.jsxと同じく、失敗を握りつぶす方針）
+  // ログイン中の家族が設定しているシチュエーション（examination#125・#135、
+  // /settings/profile-edit/で編集）を使って見出しを「{シチュエーション}の対策」に
+  // する（examination#305、以前の家族名とシチュエーションを統合した）。取得
+  // できない場合（読み込み中・失敗時）は既定の見出しのまま表示する
+  // （UserMenu.jsxと同じく、失敗を握りつぶす方針）
   useEffect(() => {
     let cancelled = false;
-    fetch("/_me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.familyName) {
-          const familyTitle = `${data.familyName}の試験対策`;
-          setTitle(familyTitle);
-          document.title = familyTitle;
+    (async () => {
+      try {
+        const token = await issueVoiceToken();
+        if (!token) return;
+        const res = await fetch(FAMILY_PROFILE_API_URL, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.situation) {
+          const situationTitle = `${data.situation}の対策`;
+          setTitle(situationTitle);
+          document.title = situationTitle;
         }
-      })
-      .catch(() => {
+      } catch {
         // 取得失敗時は既定の見出しのまま表示する（致命的ではないため無視する）
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };

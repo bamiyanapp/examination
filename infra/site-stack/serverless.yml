@@ -90,10 +90,12 @@ resources:
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
-    # 複数家族対応（examination#44）の家族登録簿。PKはランダム短縮ID（日本語家族名の
-    # ローマ字化を避ける）。nameは表示名で一意性をcheckAuth.js側でチェックする
-    # （examination#242）。familySlugはAllowedEmailsTableの属性として参照される。
-    # 公開登録制のため（examination#258）、誰でもGoogleログインの上で新規作成できる
+    # 複数家族対応（examination#44）の家族登録簿。PKはランダム短縮ID（examination#242）。
+    # 家族の表示名・シチュエーションはこのテーブルには持たせず、正本を
+    # examination-family-profile（bot-stack）に一本化している（examination#305、
+    # 家族名とシチュエーションの統合）。familySlugはAllowedEmailsTableの属性として
+    # 参照される。公開登録制のため（examination#258）、誰でもGoogleログインの上で
+    # 新規作成できる
     FamiliesTable:
       Type: AWS::DynamoDB::Table
       Properties:

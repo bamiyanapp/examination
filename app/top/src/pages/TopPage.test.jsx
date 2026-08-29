@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import TopPage from "./TopPage.jsx";
 
 beforeEach(() => {
-  // /_meが家族名を返さない既定の応答にしておく（examination#285）。個別のテストで
+  // /_voice-tokenが失敗する既定の応答にしておく（examination#305）。個別のテストで
   // 上書きしない限り、他の既存テストは見出しへの影響を気にせず書けるようにする
   global.fetch = vi.fn().mockResolvedValue({ ok: false });
 });
@@ -84,29 +84,44 @@ describe("TopPage", () => {
     expect(screen.getByText("バージョン: 開発版")).toBeInTheDocument();
   });
 
-  it("shows a heading of {家族名}の試験対策 when /_me returns a family name (examination#285)", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ familyName: "調布の鈴木家" }) });
+  it("shows a heading of {シチュエーション}の対策 when the family profile returns a situation (examination#305)", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ situation: "小学校受験の面接" }) });
     render(<TopPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("調布の鈴木家の試験対策");
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験の面接の対策");
     });
-    expect(document.title).toBe("調布の鈴木家の試験対策");
+    expect(document.title).toBe("小学校受験の面接の対策");
+    expect(global.fetch).toHaveBeenCalledWith("/_voice-token", { method: "POST" });
   });
 
-  it("falls back to the default heading when /_me has no family name (examination#285)", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ familyName: "" }) });
+  it("falls back to the default heading when the family profile has no situation (examination#305)", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ situation: "" }) });
     render(<TopPage />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_me"));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験対策");
   });
 
-  it("falls back to the default heading when /_me fails (examination#285)", async () => {
+  it("falls back to the default heading when issuing the voice token fails (examination#305)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false });
+    render(<TopPage />);
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_voice-token", { method: "POST" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験対策");
+  });
+
+  it("falls back to the default heading when the network request fails (examination#305)", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
     render(<TopPage />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_me"));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/_voice-token", { method: "POST" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("小学校受験対策");
   });
 });

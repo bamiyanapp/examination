@@ -17,7 +17,7 @@ const config = require("./configuration.json");
 
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const FAMILIES_TABLE = "examination-families";
-const FAMILY_NAME_MAX_LENGTH = 50;
+const SITUATION_MAX_LENGTH = 50;
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合は各ページのsrc/pages/*.jsx（app/profile-edit/等）とあわせて
 // ここも更新する
@@ -248,27 +248,22 @@ function isFamilyCreatePath(uri) {
   return uri === "/family-create" || uri.startsWith(FAMILY_CREATE_PATH_PREFIX);
 }
 
-async function isFamilyNameTaken(name) {
-  const result = await ddb.send(new ScanCommand({ TableName: FAMILIES_TABLE }));
-  return (result.Items || []).some((item) => (item.name && item.name.S) === name);
-}
-
-// 家族名は日本語家族名のローマ字化を避けるため、slug（PK）とは別の表示名として
-// 一意性のみアプリ側でチェックする（serverless.yml FamiliesTableのコメント参照）。
-// slug自体はランダムな短縮IDとし、家族名から機械的に導出しない
+// slug自体はランダムな短縮IDとし、入力内容から機械的に導出しない
 function generateFamilySlug() {
   return crypto.randomBytes(6).toString("hex");
 }
 
 // 新しい家族が作成されたことをbot-stackの内部API（新規家族登録の通知、
-// examination#259）へ知らせる。site-stackとbot-stackは別Serverless serviceの
-// ため、共有シークレット（X-Internal-Secretヘッダー）で認証する。ベスト
-// エフォートの通知であり、失敗しても家族作成自体は成功として扱う（呼び出し元は
-// awaitするだけでよく、例外は投げない）。Lambda@Edgeの実行時間予算を圧迫しない
-// よう3秒でタイムアウトする
-function notifyFamilyCreated(email, familyName) {
+// examination#259）へ知らせる。同じ呼び出しで、入力されたシチュエーションを
+// examination-family-profileへ種として保存する（examination#305、家族名と
+// シチュエーションの統合。以降は/settings/profile-edit/で編集できる）。
+// site-stackとbot-stackは別Serverless serviceのため、共有シークレット
+// （X-Internal-Secretヘッダー）で認証する。ベストエフォートであり、失敗しても
+// 家族作成自体は成功として扱う（呼び出し元はawaitするだけでよく、例外は投げない）。
+// Lambda@Edgeの実行時間予算を圧迫しないよう3秒でタイムアウトする
+function notifyFamilyCreated(email, situation, familySlug) {
   return new Promise((resolve) => {
-    const body = JSON.stringify({ email, familyName });
+    const body = JSON.stringify({ email, situation, familySlug });
     const req = https.request(
       {
         hostname: BOT_API_HOSTNAME,
@@ -336,21 +331,27 @@ async function deleteFamily(slug) {
   await ddb.send(new DeleteItemCommand({ TableName: FAMILIES_TABLE, Key: { slug: { S: slug } } }));
 }
 
-// 家族の新規作成（examination#44・#258）。未所属・家族名がユニークな場合のみ、
-// examination-familiesへ新規行を作成し、作成者自身を新しい家族の最初の
-// メンバーとしてexamination-allowed-emailsへ追加する。公開サービスとして
-// 構わないとの判断のため、招待の有無は問わずログイン済みであれば実行できる。
-// 成功時はbot-stackへ通知し、サイト運営者へのLINE通知につなげる（examination#259）
-async function createFamily({ email, name }) {
+// 家族の新規作成（examination#44・#258）。未所属であれば、examination-families
+// へ新規行を作成し、作成者自身を新しい家族の最初のメンバーとして
+// examination-allowed-emailsへ追加する。公開サービスとして構わないとの判断の
+// ため、招待の有無は問わずログイン済みであれば実行できる。
+//
+// 入力するのは「家族名」ではなく「シチュエーション」（例:
+// 「小学校受験の面接」）とする（examination#305、家族名とシチュエーションの
+// 統合）。以前は家族名の一意性をここでチェックしていたが、シチュエーションは
+// 複数家族で重複しても問題ない自由記述のため一意性チェックは行わない。
+// examination-familiesにはシチュエーション自体を保存せず（重複した状態を
+// 持たせないため）、slug・作成者情報のみを保持する。シチュエーションの正本は
+// examination-family-profile（bot-stack）で、成功時に呼ぶbot-stackの内部API
+// （notifyFamilyCreated、サイト運営者へのLINE通知も兼ねる、examination#259）が
+// 種として保存する
+async function createFamily({ email, situation }) {
   if (await isAllowedEmail(email)) {
     return { status: 400, error: "既に家族に所属しています" };
   }
-  const trimmedName = String(name || "").trim().slice(0, FAMILY_NAME_MAX_LENGTH);
-  if (!trimmedName) {
-    return { status: 400, error: "家族名を入力してください" };
-  }
-  if (await isFamilyNameTaken(trimmedName)) {
-    return { status: 409, error: "その家族名は既に使われています" };
+  const trimmedSituation = String(situation || "").trim().slice(0, SITUATION_MAX_LENGTH);
+  if (!trimmedSituation) {
+    return { status: 400, error: "シチュエーションを入力してください" };
   }
   const slug = generateFamilySlug();
   await ddb.send(
@@ -358,7 +359,6 @@ async function createFamily({ email, name }) {
       TableName: FAMILIES_TABLE,
       Item: {
         slug: { S: slug },
-        name: { S: trimmedName },
         createdBy: { S: email },
         createdAt: { S: new Date().toISOString() },
       },
@@ -366,8 +366,8 @@ async function createFamily({ email, name }) {
     })
   );
   await addAllowedEmail(email, email, slug);
-  await notifyFamilyCreated(email, trimmedName);
-  return { slug, name: trimmedName };
+  await notifyFamilyCreated(email, trimmedSituation, slug);
+  return { slug, situation: trimmedSituation };
 }
 
 // CloudFrontのオリジンはS3のREST API経由（Origin Access Control）であり、S3静的
@@ -577,13 +577,13 @@ async function handleFamiliesApi(request) {
   }
   const requesterEmail = String(payload.email || "").toLowerCase();
   const body = parseJsonBody(request);
-  const name = body && typeof body.name === "string" ? body.name : "";
-  const result = await createFamily({ email: requesterEmail, name });
+  const situation = body && typeof body.situation === "string" ? body.situation : "";
+  const result = await createFamily({ email: requesterEmail, situation });
   if (result.error) {
-    const statusDescription = result.status === 403 ? "Forbidden" : result.status === 409 ? "Conflict" : "Bad Request";
+    const statusDescription = result.status === 403 ? "Forbidden" : "Bad Request";
     return jsonResponse(result.status, statusDescription, { error: result.error });
   }
-  return jsonResponse(200, "OK", { slug: result.slug, name: result.name });
+  return jsonResponse(200, "OK", { slug: result.slug, situation: result.situation });
 }
 
 async function incrementAndCheckVoiceTokenIssuance(email) {
@@ -602,12 +602,6 @@ async function incrementAndCheckVoiceTokenIssuance(email) {
 // ユーザー属性へ反映されたものがid_tokenのクレームとして返る。未設定の場合は
 // 空文字（アイコン表示側でイニシャル等へフォールバックする）
 // familySlugに対応する家族名を取得する（examination#285、トップページの見出し表示用）
-async function getFamilyName(familySlug) {
-  if (!familySlug) return "";
-  const result = await ddb.send(new GetItemCommand({ TableName: FAMILIES_TABLE, Key: { slug: { S: familySlug } } }));
-  return (result.Item && result.Item.name && result.Item.name.S) || "";
-}
-
 async function handleMeApi(request) {
   if (request.method !== "GET") {
     return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
@@ -616,15 +610,13 @@ async function handleMeApi(request) {
   if (!payload) {
     return forbiddenResponse();
   }
-  const record = await getAllowedEmailRecord(payload.email);
-  if (!record) {
+  if (!(await isAllowedEmail(payload.email))) {
     return forbiddenResponse();
   }
   return jsonResponse(200, "OK", {
     email: payload.email,
     name: payload.name || "",
     picture: payload.picture || "",
-    familyName: await getFamilyName(record.familySlug),
   });
 }
 
