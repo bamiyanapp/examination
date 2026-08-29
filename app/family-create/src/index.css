@@ -1,5 +1,2 @@
-@import "tailwindcss";
 @import "./common-theme.css";
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
-}
+@import "./bootstrap-theme.css";
