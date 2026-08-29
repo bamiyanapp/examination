@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/bamiyanapp/examination/compare/v1.27.0...v1.28.0) (2026-08-29)
+
+
+### Features
+
+* **family-create,top,site-stack,bot-stack:** 家族名とシチュエーションを統合する ([#306](https://github.com/bamiyanapp/examination/issues/306)) ([bf5eab2](https://github.com/bamiyanapp/examination/commit/bf5eab2ab84a582662d86df305a341037ea6900f)), closes [#305](https://github.com/bamiyanapp/examination/issues/305)
+
 # [1.27.0](https://github.com/bamiyanapp/examination/compare/v1.26.0...v1.27.0) (2026-08-24)
 
 
