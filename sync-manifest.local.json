@@ -42,10 +42,6 @@
     },
     {
       "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/top/src/components/NavigationOverlay.jsx"
-    },
-    {
-      "source": "shared/ui/NavigationOverlay.jsx",
       "target": "app/voice-practice/src/components/NavigationOverlay.jsx"
     },
     {
@@ -111,10 +107,6 @@
     {
       "source": "shared/pwa/BackendCacheWarmer.jsx",
       "target": "app/allowed-emails/src/components/BackendCacheWarmer.jsx"
-    },
-    {
-      "source": "shared/ui/ShareButton.jsx",
-      "target": "app/top/src/components/ShareButton.jsx"
     },
     {
       "source": "shared/ui/ShareButton.jsx",
@@ -195,6 +187,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/profile-edit/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/top/src/bootstrap-theme.css"
     }
   ]
 }
