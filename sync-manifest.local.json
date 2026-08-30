@@ -46,10 +46,6 @@
     },
     {
       "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/mock-interviews/src/components/NavigationOverlay.jsx"
-    },
-    {
-      "source": "shared/ui/NavigationOverlay.jsx",
       "target": "app/profile-edit/src/components/NavigationOverlay.jsx"
     },
     {
@@ -130,10 +126,6 @@
     },
     {
       "source": "shared/ui/ShareButton.jsx",
-      "target": "app/mock-interviews/src/components/ShareButton.jsx"
-    },
-    {
-      "source": "shared/ui/ShareButton.jsx",
       "target": "app/profile-edit/src/components/ShareButton.jsx"
     },
     {
@@ -143,10 +135,6 @@
     {
       "source": "shared/ui/ShareButton.jsx",
       "target": "app/line-link/src/components/ShareButton.jsx"
-    },
-    {
-      "source": "shared/ui/BackToTop.jsx",
-      "target": "app/mock-interviews/src/components/BackToTop.jsx"
     },
     {
       "source": "shared/ui/BackToTop.jsx",
@@ -219,6 +207,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/education-overview/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/mock-interviews/src/bootstrap-theme.css"
     }
   ]
 }
