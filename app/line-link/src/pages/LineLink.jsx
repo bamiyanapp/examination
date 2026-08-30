@@ -46,61 +46,64 @@ export default function LineLink() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">LINE連携</h1>
-      <p className="mt-2 text-base-content/70">
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">LINE連携</h1>
+      <p className="mt-2 text-muted">
         LINE
         botで面接練習・想定問答の登録を行うには、あなたのGoogleアカウントとLINEアカウントを連携する必要があります。
       </p>
-      <div className="card card-border mt-6 bg-base-100">
+      <div className="card mt-4">
         <div className="card-body">
-          <h2 className="card-title text-base">1. LINE公式アカウントを友だち追加する</h2>
-          <p className="text-sm text-base-content/70">
+          <h2 className="card-title h6">1. LINE公式アカウントを友だち追加する</h2>
+          <p className="small text-muted">
             まだ友だち追加していない場合は、下のリンクを開くかQRコードを読み取って追加してください。追加済みの場合はこの手順は不要です。
           </p>
           <a
             href={LINE_BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-success btn-sm w-fit"
+            className="btn btn-success btn-sm"
+            style={{ width: "fit-content" }}
           >
             LINE公式アカウントを開く
           </a>
-          <div className="my-2 flex justify-center">
+          <div className="my-2 d-flex justify-content-center">
             <QRCodeSVG value={LINE_BOT_URL} size={160} />
           </div>
         </div>
       </div>
-      <div className="card card-border mt-6 bg-base-100">
+      <div className="card mt-4">
         <div className="card-body">
-          <h2 className="card-title text-base">2. ワンタイムコードを発行してLINEへ送信する</h2>
-          <ol className="flex list-inside list-decimal flex-col gap-1">
+          <h2 className="card-title h6">2. ワンタイムコードを発行してLINEへ送信する</h2>
+          <ol className="d-flex flex-column gap-1">
             <li>下のボタンでワンタイムコードを発行する</li>
             <li>発行されたコード（6桁の数字）を、LINE公式アカウントへそのままメッセージとして送信する</li>
             <li>連携完了のメッセージが届けば準備完了です</li>
           </ol>
-          <p className="text-sm text-base-content/70">
+          <p className="small text-muted">
             コードの有効期限は10分です。期限が切れた場合は、もう一度ボタンを押して発行し直してください。
           </p>
-          <div className="card-actions">
+          <div>
             <button type="button" onClick={issueCode} disabled={isIssuing} className="btn btn-primary">
               コードを発行
             </button>
           </div>
           {code && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <code className="rounded-box bg-base-200 px-4 py-2 font-mono text-2xl tracking-widest">{code}</code>
-                <button type="button" onClick={handleCopy} className="btn btn-sm">
+            <div className="d-flex flex-column gap-2 mt-3">
+              <div className="d-flex align-items-center gap-2">
+                <code className="rounded bg-body-secondary px-3 py-2 fs-3" style={{ letterSpacing: "0.2em" }}>
+                  {code}
+                </code>
+                <button type="button" onClick={handleCopy} className="btn btn-sm btn-secondary">
                   {copied ? "コピーしました" : "コピー"}
                 </button>
               </div>
-              <p className="text-sm text-base-content/70">このコードをLINE botへ送信してください。10分間有効です。</p>
+              <p className="small text-muted mb-0">このコードをLINE botへ送信してください。10分間有効です。</p>
             </div>
           )}
           {status && (
-            <div role="alert" className={`alert ${isError ? "alert-error" : "alert-info"}`}>
-              <span>{status}</span>
+            <div role="alert" className={`alert mt-3 mb-0 ${isError ? "alert-danger" : "alert-info"}`}>
+              {status}
             </div>
           )}
         </div>
