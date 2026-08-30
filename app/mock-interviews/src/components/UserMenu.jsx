@@ -12,6 +12,11 @@ import ShareButton from "./ShareButton.jsx";
 // 右上ユーティリティメニューへ載せる方が、新規の重複コンポーネントを増やすより
 // シンプルなため。QRコード共有部分自体はプロダクト固有の値を持たないため、
 // 共有コンポーネント（ShareButton.jsx、dev-standards#163）に切り出している
+//
+// Bootstrap本体のJS（data-bs-toggleによるドロップダウン開閉）は導入していないため、
+// 元のdaisyUI実装と同じくCSSの:focus-within（.user-menu:focus-within .user-menu-dropdown、
+// index.css参照）だけで開閉を表現する。メニュー内容は常にDOMへ存在し、表示・非表示は
+// CSSのみが担う（examination#310・#314）
 export default function UserMenu() {
   const [user, setUser] = useState(null);
 
@@ -35,27 +40,38 @@ export default function UserMenu() {
   const displayName = user.name || user.email;
 
   return (
-    <div className="dropdown dropdown-end fixed top-2 right-2 z-40">
-      <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
+    <div className="user-menu position-fixed top-0 end-0 mt-2 me-2" style={{ zIndex: 1040 }}>
+      <button
+        type="button"
+        className="btn btn-light btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center border"
+        style={{ width: "2.5rem", height: "2.5rem" }}
+      >
         {user.picture ? (
-          <div className="w-8 rounded-full">
-            <img src={user.picture} alt={displayName} referrerPolicy="no-referrer" />
-          </div>
+          <img
+            src={user.picture}
+            alt={displayName}
+            referrerPolicy="no-referrer"
+            className="rounded-circle"
+            style={{ width: "2rem", height: "2rem", objectFit: "cover" }}
+          />
         ) : (
-          <div className="bg-neutral text-neutral-content flex w-8 items-center justify-center rounded-full text-sm">
+          <span
+            className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+            style={{ width: "2rem", height: "2rem" }}
+          >
             {displayName.slice(0, 1).toUpperCase()}
-          </div>
+          </span>
         )}
-      </div>
-      <ul className="menu dropdown-content menu-sm z-40 mt-3 w-52 rounded-box bg-base-100 p-2 shadow">
-        <li className="menu-title">
-          <span>{displayName}</span>
+      </button>
+      <ul className="user-menu-dropdown list-unstyled position-absolute end-0 mt-2 bg-body rounded shadow p-2" style={{ minWidth: "13rem" }}>
+        <li className="px-2 py-1 fw-bold small text-truncate">{displayName}</li>
+        <li>
+          <ShareButton className="btn btn-sm btn-light w-100 text-start" />
         </li>
         <li>
-          <ShareButton />
-        </li>
-        <li>
-          <a href="/_logout">ログアウト</a>
+          <a href="/_logout" className="d-block px-2 py-1 text-decoration-none">
+            ログアウト
+          </a>
         </li>
       </ul>
     </div>

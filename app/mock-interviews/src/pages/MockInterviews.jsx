@@ -98,58 +98,58 @@ export default function MockInterviews() {
   }, [cachedSummaries]);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">模擬面接記録</h1>
-      <p className="mt-2 text-base-content/70">面接練習セッションを終えるたびに、AIが振り返りをサマリーして記録します。</p>
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">模擬面接記録</h1>
+      <p className="mt-2 text-muted">面接練習セッションを終えるたびに、AIが振り返りをサマリーして記録します。</p>
 
       {status === "loading" && (
-        <div className="mt-6 flex items-center gap-2 text-base-content/70">
-          <span className="loading loading-spinner loading-sm" />
+        <div className="mt-4 d-flex align-items-center gap-2 text-muted">
+          <span className="spinner-border spinner-border-sm" role="status" />
           読み込み中...
         </div>
       )}
       {status === "error" && (
-        <div role="alert" className="alert alert-error mt-6">
-          <span>{errorMessage}</span>
+        <div role="alert" className="alert alert-danger mt-4">
+          {errorMessage}
         </div>
       )}
 
       {(status === "stale" || status === "loaded") && (
         <>
           {status === "stale" && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-base-content/60">
-              <span className="loading loading-spinner loading-xs" />
+            <div className="mt-3 d-flex align-items-center gap-2 small text-muted">
+              <span className="spinner-border spinner-border-sm" role="status" />
               最新の情報を確認しています...
             </div>
           )}
           {refreshError && (
-            <div role="alert" className="alert alert-warning mt-4">
-              <span>最新の情報を取得できませんでした: {refreshError}</span>
+            <div role="alert" className="alert alert-warning mt-3">
+              最新の情報を取得できませんでした: {refreshError}
             </div>
           )}
-          <div className={status === "stale" ? "opacity-50 transition-opacity" : "transition-opacity"}>
+          <div className={status === "stale" ? "opacity-50" : ""} style={{ transition: "opacity 0.2s" }}>
             {summaries.length === 0 && (
-              <p className="mt-6 text-base-content/70">まだ記録がありません。面接練習を行うと、ここに記録が追加されます。</p>
+              <p className="mt-4 text-muted">まだ記録がありません。面接練習を行うと、ここに記録が追加されます。</p>
             )}
 
             {summaries.length > 0 && (
-              <div className="mt-6 flex flex-col gap-4">
+              <div className="mt-4 d-flex flex-column gap-3">
                 {summaries.map((s) => (
-                  <article className="card card-border bg-base-100" key={s.sessionId}>
+                  <article className="card" key={s.sessionId}>
                     <div className="card-body">
-                      <span className="badge badge-neutral self-start">{s.role}</span>
-                      <h2 className="card-title text-base">{s.situation}</h2>
-                      <dl className="flex flex-col gap-1">
+                      <span className="badge text-bg-secondary align-self-start">{s.role}</span>
+                      <h2 className="card-title h6 mt-2">{s.situation}</h2>
+                      <dl className="d-flex flex-column gap-1 mb-0">
                         {s.schoolCharacteristics && (
                           <>
-                            <dt className="text-xs font-semibold text-base-content/60">志望先の特色</dt>
+                            <dt className="small fw-semibold text-muted">志望先の特色</dt>
                             <dd>{s.schoolCharacteristics}</dd>
                           </>
                         )}
-                        <dt className="mt-2 text-xs font-semibold text-base-content/60">記録日時</dt>
+                        <dt className="mt-2 small fw-semibold text-muted">記録日時</dt>
                         <dd>{formatCreatedAt(s.createdAt)}</dd>
                       </dl>
-                      <p className="mt-2 whitespace-pre-wrap">{s.summary}</p>
+                      <p className="mt-2 mb-0" style={{ whiteSpace: "pre-wrap" }}>{s.summary}</p>
                     </div>
                   </article>
                 ))}
