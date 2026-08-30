@@ -176,86 +176,86 @@ export default function InterviewQuestions() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">想定問答</h1>
-      <p className="mt-2 text-base-content/70">本人・父・母の想定問答をまとめて掲載しています。対象者で絞り込むこともできます。</p>
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">想定問答</h1>
+      <p className="mt-2 text-muted">本人・父・母の想定問答をまとめて掲載しています。対象者で絞り込むこともできます。</p>
 
       {status === "loading" && (
-        <div className="mt-6 flex items-center gap-2 text-base-content/70">
-          <span className="loading loading-spinner loading-sm" />
+        <div className="mt-4 d-flex align-items-center gap-2 text-muted">
+          <span className="spinner-border spinner-border-sm" role="status" />
           読み込み中...
         </div>
       )}
       {status === "error" && (
-        <div role="alert" className="alert alert-error mt-6">
-          <span>{errorMessage}</span>
+        <div role="alert" className="alert alert-danger mt-4">
+          {errorMessage}
         </div>
       )}
 
       {(status === "stale" || status === "loaded") && (
         <>
           {status === "stale" && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-base-content/60">
-              <span className="loading loading-spinner loading-xs" />
+            <div className="mt-3 d-flex align-items-center gap-2 small text-muted">
+              <span className="spinner-border spinner-border-sm" role="status" />
               最新の情報を確認しています...
             </div>
           )}
           {refreshError && (
-            <div role="alert" className="alert alert-warning mt-4">
-              <span>最新の情報を取得できませんでした: {refreshError}</span>
+            <div role="alert" className="alert alert-warning mt-3">
+              最新の情報を取得できませんでした: {refreshError}
             </div>
           )}
-          <div className={status === "stale" ? "opacity-50 transition-opacity" : "transition-opacity"}>
-            <div className="join mt-6 flex-wrap" role="group" aria-label="対象者で絞り込む">
+          <div className={status === "stale" ? "opacity-50" : ""} style={{ transition: "opacity 0.2s" }}>
+            <div className="btn-group mt-4 flex-wrap" role="group" aria-label="対象者で絞り込む">
               {["すべて", ...TARGET_PERSONS].map((person) => (
                 <button
                   key={person}
                   type="button"
                   aria-pressed={filter === person}
                   onClick={() => setFilter(person)}
-                  className={`btn join-item ${filter === person ? "btn-primary" : "btn-outline"}`}
+                  className={`btn ${filter === person ? "btn-primary" : "btn-outline-primary"}`}
                 >
                   {person}
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-base-content/70">{visibleQuestions.length}件</p>
+            <div className="mt-3 d-flex align-items-center justify-content-between">
+              <p className="small text-muted mb-0">{visibleQuestions.length}件</p>
               <button type="button" onClick={openAddForm} className="btn btn-sm btn-primary">
                 質問を追加
               </button>
             </div>
 
-            <div className="mt-2 flex flex-col gap-4">
+            <div className="mt-2 d-flex flex-column gap-3">
               {visibleQuestions.map((q) => (
-                <article className="card card-border bg-base-100" key={q.questionId}>
+                <article className="card" key={q.questionId}>
                   <div className="card-body">
-                    <div className="flex items-center justify-between">
-                      <span className="badge badge-neutral">{q.targetPerson || "対象者未設定"}</span>
-                      <button type="button" onClick={() => openEditForm(q)} className="btn btn-xs">
+                    <div className="d-flex align-items-center justify-content-between">
+                      <span className="badge text-bg-secondary">{q.targetPerson || "対象者未設定"}</span>
+                      <button type="button" onClick={() => openEditForm(q)} className="btn btn-sm">
                         編集
                       </button>
                     </div>
-                    <h2 className="card-title text-base">{q.question}</h2>
-                    <dl className="flex flex-col gap-1">
-                      <dt className="text-xs font-semibold text-base-content/60">回答の要点</dt>
+                    <h2 className="card-title h6 mt-2">{q.question}</h2>
+                    <dl className="d-flex flex-column gap-1 mb-0">
+                      <dt className="small fw-semibold text-muted">回答の要点</dt>
                       <dd>{q.answer}</dd>
                       {q.example && (
                         <>
-                          <dt className="mt-2 text-xs font-semibold text-base-content/60">盛り込む具体例</dt>
+                          <dt className="mt-2 small fw-semibold text-muted">盛り込む具体例</dt>
                           <dd>{q.example}</dd>
                         </>
                       )}
                       {q.impression && (
                         <>
-                          <dt className="mt-2 text-xs font-semibold text-base-content/60">面接官への印象</dt>
+                          <dt className="mt-2 small fw-semibold text-muted">面接官への印象</dt>
                           <dd>{q.impression}</dd>
                         </>
                       )}
                       {q.modelAnswer && (
                         <>
-                          <dt className="mt-2 text-xs font-semibold text-base-content/60">模範解答</dt>
+                          <dt className="mt-2 small fw-semibold text-muted">模範解答</dt>
                           <dd>{q.modelAnswer}</dd>
                         </>
                       )}
@@ -269,93 +269,107 @@ export default function InterviewQuestions() {
       )}
 
       {formOpen && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="text-lg font-bold">{formMode === "edit" ? "質問を編集" : "質問を追加"}</h3>
-            <form onSubmit={handleFormSubmit} className="mt-4 flex flex-col gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">対象者:</span>
-                <select
-                  value={formValues.targetPerson}
-                  onChange={(event) => updateFormField("targetPerson", event.target.value)}
-                  className="select"
-                >
-                  {TARGET_PERSONS.map((person) => (
-                    <option key={person} value={person}>
-                      {person}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">質問:</span>
-                <textarea
-                  required
-                  value={formValues.question}
-                  onChange={(event) => updateFormField("question", event.target.value)}
-                  onInput={(event) => resizeToFitContent(event.target)}
-                  ref={resizeToFitContent}
-                  className="textarea resize-none overflow-hidden"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">回答の要点:</span>
-                <textarea
-                  required
-                  value={formValues.answer}
-                  onChange={(event) => updateFormField("answer", event.target.value)}
-                  onInput={(event) => resizeToFitContent(event.target)}
-                  ref={resizeToFitContent}
-                  className="textarea resize-none overflow-hidden"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">盛り込む具体例（任意）:</span>
-                <textarea
-                  value={formValues.example}
-                  onChange={(event) => updateFormField("example", event.target.value)}
-                  onInput={(event) => resizeToFitContent(event.target)}
-                  ref={resizeToFitContent}
-                  className="textarea resize-none overflow-hidden"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">面接官への印象（任意）:</span>
-                <textarea
-                  value={formValues.impression}
-                  onChange={(event) => updateFormField("impression", event.target.value)}
-                  onInput={(event) => resizeToFitContent(event.target)}
-                  ref={resizeToFitContent}
-                  className="textarea resize-none overflow-hidden"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">模範解答（任意）:</span>
-                <textarea
-                  value={formValues.modelAnswer}
-                  onChange={(event) => updateFormField("modelAnswer", event.target.value)}
-                  onInput={(event) => resizeToFitContent(event.target)}
-                  ref={resizeToFitContent}
-                  className="textarea resize-none overflow-hidden"
-                />
-              </label>
-              {formStatus && (
-                <div role="alert" className={`alert ${formIsError ? "alert-error" : "alert-info"}`}>
-                  <span>{formStatus}</span>
+        <>
+          <div className="modal d-block show" tabIndex="-1" role="dialog">
+            <div className="modal-dialog modal-dialog-scrollable">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h3 className="modal-title h5">{formMode === "edit" ? "質問を編集" : "質問を追加"}</h3>
+                  <button type="button" className="btn-close" aria-label="閉じる" onClick={() => setFormOpen(false)} />
                 </div>
-              )}
-              <div className="modal-action">
-                <button type="button" onClick={() => setFormOpen(false)} disabled={formIsSaving} className="btn btn-sm">
-                  キャンセル
-                </button>
-                <button type="submit" disabled={formIsSaving} className="btn btn-sm btn-primary">
-                  保存
-                </button>
+                <form onSubmit={handleFormSubmit}>
+                  <div className="modal-body d-flex flex-column gap-3">
+                    <label className="d-block">
+                      <span className="form-label d-block">対象者:</span>
+                      <select
+                        value={formValues.targetPerson}
+                        onChange={(event) => updateFormField("targetPerson", event.target.value)}
+                        className="form-select"
+                      >
+                        {TARGET_PERSONS.map((person) => (
+                          <option key={person} value={person}>
+                            {person}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="d-block">
+                      <span className="form-label d-block">質問:</span>
+                      <textarea
+                        required
+                        value={formValues.question}
+                        onChange={(event) => updateFormField("question", event.target.value)}
+                        onInput={(event) => resizeToFitContent(event.target)}
+                        ref={resizeToFitContent}
+                        className="form-control"
+                        style={{ resize: "none", overflow: "hidden" }}
+                      />
+                    </label>
+                    <label className="d-block">
+                      <span className="form-label d-block">回答の要点:</span>
+                      <textarea
+                        required
+                        value={formValues.answer}
+                        onChange={(event) => updateFormField("answer", event.target.value)}
+                        onInput={(event) => resizeToFitContent(event.target)}
+                        ref={resizeToFitContent}
+                        className="form-control"
+                        style={{ resize: "none", overflow: "hidden" }}
+                      />
+                    </label>
+                    <label className="d-block">
+                      <span className="form-label d-block">盛り込む具体例（任意）:</span>
+                      <textarea
+                        value={formValues.example}
+                        onChange={(event) => updateFormField("example", event.target.value)}
+                        onInput={(event) => resizeToFitContent(event.target)}
+                        ref={resizeToFitContent}
+                        className="form-control"
+                        style={{ resize: "none", overflow: "hidden" }}
+                      />
+                    </label>
+                    <label className="d-block">
+                      <span className="form-label d-block">面接官への印象（任意）:</span>
+                      <textarea
+                        value={formValues.impression}
+                        onChange={(event) => updateFormField("impression", event.target.value)}
+                        onInput={(event) => resizeToFitContent(event.target)}
+                        ref={resizeToFitContent}
+                        className="form-control"
+                        style={{ resize: "none", overflow: "hidden" }}
+                      />
+                    </label>
+                    <label className="d-block">
+                      <span className="form-label d-block">模範解答（任意）:</span>
+                      <textarea
+                        value={formValues.modelAnswer}
+                        onChange={(event) => updateFormField("modelAnswer", event.target.value)}
+                        onInput={(event) => resizeToFitContent(event.target)}
+                        ref={resizeToFitContent}
+                        className="form-control"
+                        style={{ resize: "none", overflow: "hidden" }}
+                      />
+                    </label>
+                    {formStatus && (
+                      <div role="alert" className={`alert mb-0 ${formIsError ? "alert-danger" : "alert-info"}`}>
+                        {formStatus}
+                      </div>
+                    )}
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" onClick={() => setFormOpen(false)} disabled={formIsSaving} className="btn btn-sm btn-secondary">
+                      キャンセル
+                    </button>
+                    <button type="submit" disabled={formIsSaving} className="btn btn-sm btn-primary">
+                      保存
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            </div>
           </div>
-          <button type="button" className="modal-backdrop" aria-label="閉じる" onClick={() => setFormOpen(false)} />
-        </div>
+          <div className="modal-backdrop show" onClick={() => setFormOpen(false)} />
+        </>
       )}
     </main>
   );
