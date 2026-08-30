@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/bamiyanapp/examination/compare/v1.29.0...v1.30.0) (2026-08-30)
+
+
+### Features
+
+* **allowed-emails:** CSSフレームワークをdaisyUIからBootstrap 5.3へ移行 ([#323](https://github.com/bamiyanapp/examination/issues/323)) ([d0bd05a](https://github.com/bamiyanapp/examination/commit/d0bd05a41dc0109ec4c20e624fbf7f562a5227e1))
+
 # [1.29.0](https://github.com/bamiyanapp/examination/compare/v1.28.0...v1.29.0) (2026-08-29)
 
 
