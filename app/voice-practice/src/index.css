@@ -1,11 +1,24 @@
-@import "tailwindcss";
 @import "./common-theme.css";
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+@import "./bootstrap-theme.css";
+
+/* examination#100・#316: JSがclickイベントでvisibleクラスを付け外しするため、
+   Bootstrapのユーティリティだけでは表現できない状態遷移をここで担う */
+.nav-overlay {
+  display: none;
+  z-index: 1050;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
-/* examination#100: JSがclickイベントでvisibleクラスを付け外しするため、
-   Tailwindのユーティリティだけでは表現できない状態遷移をここで担う */
 .nav-overlay.visible {
   display: flex;
+}
+
+/* examination#316: UserMenu.jsxの開閉。Bootstrap本体のJSを導入していないため、
+   :focus-withinのみで開閉を表現する（クリックでボタンにフォーカスが移り開く） */
+.user-menu-dropdown {
+  display: none;
+}
+
+.user-menu:focus-within .user-menu-dropdown {
+  display: block;
 }
