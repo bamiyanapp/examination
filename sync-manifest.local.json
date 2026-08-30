@@ -61,10 +61,6 @@
       "target": "app/voice-practice/src/components/NavigationOverlay.jsx"
     },
     {
-      "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/line-link/src/components/NavigationOverlay.jsx"
-    },
-    {
       "source": "shared/ui/SpeculationRules.jsx",
       "target": "app/top/src/components/SpeculationRules.jsx"
     },
@@ -149,10 +145,6 @@
       "target": "app/voice-practice/src/components/ShareButton.jsx"
     },
     {
-      "source": "shared/ui/ShareButton.jsx",
-      "target": "app/line-link/src/components/ShareButton.jsx"
-    },
-    {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/mock-interviews/src/components/BackToTop.jsx"
     },
@@ -167,10 +159,6 @@
     {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/voice-practice/src/components/BackToTop.jsx"
-    },
-    {
-      "source": "shared/ui/BackToTop.jsx",
-      "target": "app/line-link/src/components/BackToTop.jsx"
     },
     {
       "source": "shared/pwa/sw.js",
@@ -227,6 +215,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/education-overview/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/line-link/src/bootstrap-theme.css"
     }
   ]
 }
