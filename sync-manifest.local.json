@@ -49,10 +49,6 @@
       "target": "app/profile-edit/src/components/NavigationOverlay.jsx"
     },
     {
-      "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/voice-practice/src/components/NavigationOverlay.jsx"
-    },
-    {
       "source": "shared/ui/SpeculationRules.jsx",
       "target": "app/top/src/components/SpeculationRules.jsx"
     },
@@ -125,16 +121,8 @@
       "target": "app/profile-edit/src/components/ShareButton.jsx"
     },
     {
-      "source": "shared/ui/ShareButton.jsx",
-      "target": "app/voice-practice/src/components/ShareButton.jsx"
-    },
-    {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/profile-edit/src/components/BackToTop.jsx"
-    },
-    {
-      "source": "shared/ui/BackToTop.jsx",
-      "target": "app/voice-practice/src/components/BackToTop.jsx"
     },
     {
       "source": "shared/pwa/sw.js",
@@ -203,6 +191,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/line-link/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/voice-practice/src/bootstrap-theme.css"
     }
   ]
 }

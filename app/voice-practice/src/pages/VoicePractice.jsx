@@ -240,51 +240,49 @@ export default function VoicePractice() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">{situation}</h1>
-      <p className="mt-2 text-base-content/70">
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">{situation}</h1>
+      <p className="mt-2 text-muted">
         ブラウザの音声認識・音声合成機能を使って、声に出しながら面接練習ができます。マイクとスピーカーが使えるスマートフォン・PCのブラウザで利用してください。
       </p>
-      <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
+      <ul className="mt-2 small text-muted">
         <li>音声認識・音声合成はブラウザ標準機能を使うため追加費用はかかりません</li>
         <li>対応ブラウザ: Google Chrome、Microsoft Edge等（Safari・Firefoxは音声認識に対応していない場合があります）</li>
         <li>LINE botの面接練習とは別の、ブラウザだけで完結する会話形式の練習です</li>
       </ul>
 
       {!started ? (
-        <div className="card card-border mt-6 bg-base-100">
-          <div className="card-body gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">ロール:</span>
-              <select value={role} onChange={(event) => setRole(event.target.value)} className="select">
+        <div className="card mt-4">
+          <div className="card-body d-flex flex-column gap-3">
+            <div>
+              <label className="form-label fw-medium">ロール:</label>
+              <select value={role} onChange={(event) => setRole(event.target.value)} className="form-select">
                 <option value="本人">本人</option>
                 <option value="父">父</option>
                 <option value="母">母</option>
               </select>
-            </label>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">シチュエーション・志望先の特色・その他前提情報:</span>
+            </div>
+            <div className="d-flex flex-column gap-1">
+              <span className="fw-medium">シチュエーション・志望先の特色・その他前提情報:</span>
               {profileStatus === "loading" && (
-                <span className="flex items-center gap-2 text-sm text-base-content/60">
-                  <span className="loading loading-spinner loading-xs" />
+                <span className="d-flex align-items-center gap-2 small text-muted">
+                  <span className="spinner-border spinner-border-sm" role="status" />
                   読み込み中...
                 </span>
               )}
               {profileStatus === "loaded" && (
-                <div className="rounded-box bg-base-200 p-3 text-sm text-base-content/80">
+                <div className="rounded bg-body-secondary p-3 small">
                   <p>シチュエーション: {situation}</p>
                   <p>志望先の特色: {schoolCharacteristics || "（未設定）"}</p>
-                  <p>その他前提情報: {otherContext || "（未設定）"}</p>
+                  <p className="mb-0">その他前提情報: {otherContext || "（未設定）"}</p>
                 </div>
               )}
-              {profileStatus === "error" && (
-                <span className="text-sm text-base-content/60">プロフィールの読み込みに失敗しました。</span>
-              )}
-              <a href="/settings/profile-edit/" className="link link-primary self-start text-sm">
+              {profileStatus === "error" && <span className="small text-muted">プロフィールの読み込みに失敗しました。</span>}
+              <a href="/settings/profile-edit/" className="align-self-start small">
                 プロフィール編集で変更する →
               </a>
             </div>
-            <div className="card-actions">
+            <div>
               <button type="button" onClick={handleStart} disabled={isBusy} className="btn btn-primary">
                 会話を始める
               </button>
@@ -292,16 +290,24 @@ export default function VoicePractice() {
           </div>
         </div>
       ) : (
-        <div className="mt-6">
-          <div className="flex flex-col gap-2">
+        <div className="mt-4">
+          <div className="d-flex flex-column gap-2">
             {messages.map((message, index) => (
-              <div key={index} className={`chat ${message.speaker === "あなた" ? "chat-end" : "chat-start"}`}>
-                <div className="chat-header text-xs text-base-content/60">{message.speaker}</div>
-                <div className="chat-bubble">{message.text}</div>
+              <div
+                key={index}
+                className={`d-flex flex-column ${message.speaker === "あなた" ? "align-items-end" : "align-items-start"}`}
+              >
+                <div className="small text-muted">{message.speaker}</div>
+                <div
+                  className={`p-2 px-3 rounded-3 ${message.speaker === "あなた" ? "bg-primary text-white" : "bg-body-secondary"}`}
+                  style={{ maxWidth: "80%" }}
+                >
+                  {message.text}
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-3 d-flex gap-2">
             <button
               type="button"
               onClick={handleSpeak}
@@ -310,7 +316,7 @@ export default function VoicePractice() {
             >
               話す
             </button>
-            <button type="button" onClick={handleEnd} disabled={isListening || isBusy} className="btn btn-outline">
+            <button type="button" onClick={handleEnd} disabled={isListening || isBusy} className="btn btn-outline-secondary">
               練習を終える
             </button>
           </div>
@@ -318,8 +324,8 @@ export default function VoicePractice() {
       )}
 
       {status && (
-        <div role="alert" className={`alert mt-4 ${isError ? "alert-error" : "alert-info"}`}>
-          <span>{status}</span>
+        <div role="alert" className={`alert mt-3 mb-0 ${isError ? "alert-danger" : "alert-info"}`}>
+          {status}
         </div>
       )}
     </main>
