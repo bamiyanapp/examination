@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/bamiyanapp/examination/compare/v1.35.0...v1.36.0) (2026-08-30)
+
+
+### Features
+
+* **voice-practice:** CSSフレームワークをdaisyUIからBootstrap 5.3へ移行 ([#336](https://github.com/bamiyanapp/examination/issues/336)) ([59a760a](https://github.com/bamiyanapp/examination/commit/59a760aba9906c647e7b8e32617ad93a7962a45a))
+
 # [1.35.0](https://github.com/bamiyanapp/examination/compare/v1.34.0...v1.35.0) (2026-08-30)
 
 
