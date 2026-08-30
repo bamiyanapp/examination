@@ -98,26 +98,23 @@ export default function TopPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <div className="mb-8 text-center">
-        <img src="/favicon.png" alt="" className="mx-auto w-40" />
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="mt-2 text-base-content/70">家族向けナレッジベースです。カテゴリからページを選んでください。</p>
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <div className="mb-5 text-center">
+        <img src="/favicon.png" alt="" className="mx-auto d-block" style={{ width: "10rem" }} />
+        <h1 className="fw-bold">{title}</h1>
+        <p className="mt-2 text-muted">家族向けナレッジベースです。カテゴリからページを選んでください。</p>
       </div>
-      <div className="flex flex-col gap-8">
+      <div className="d-flex flex-column gap-4">
         {SECTIONS.map((section) => (
           <section key={section.title}>
-            <h2 className="mb-3 text-lg font-semibold">{section.title}</h2>
-            <ul className="flex flex-col gap-2">
+            <h2 className="h5 fw-semibold mb-3">{section.title}</h2>
+            <ul className="list-unstyled d-flex flex-column gap-2">
               {section.links.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="card card-border bg-base-100 transition-colors hover:border-primary"
-                  >
-                    <div className="card-body flex-row items-center justify-between px-4 py-3">
+                  <a href={link.href} className="card text-decoration-none text-body">
+                    <div className="card-body d-flex flex-row align-items-center justify-content-between px-3 py-2">
                       <span>{link.label}</span>
-                      <span className="text-base-content/40">→</span>
+                      <span className="text-muted">→</span>
                     </div>
                   </a>
                 </li>
@@ -126,7 +123,7 @@ export default function TopPage() {
           </section>
         ))}
       </div>
-      <p className="mt-10 text-center text-xs text-base-content/50">バージョン: {formatBuildInfo()}</p>
+      <p className="mt-5 text-center small text-muted">バージョン: {formatBuildInfo()}</p>
     </main>
   );
 }

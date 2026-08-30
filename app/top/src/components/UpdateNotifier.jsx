@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
 // dev-standardsのshared/pwa/UpdateNotifier.jsxからの個別コピー（bamiyanapp/dev-standards#289、
-// examination#298）。dev-standards側は標準構成（Bootstrap 5.3）向けにクラス名を書き換える計画のため、
-// Tailwind CSS v4 + daisyUI 5構成のexaminationはsymlink共有をやめてこのファイルを個別管理する
-// （dev-standardsのdocs/service-worker-update-pattern.mdに記載の「調整が必要な場合はsymlink化を
-// 見送り、コピーして個別管理する」方針）。ロジック自体はdev-standards側と同一。
+// examination#298・#308・#317）。examination自体がBootstrap 5.3へ移行中（examination#308）で、
+// 全9アプリの移行完了までは各アプリ個別にクラスを追従させる必要があるため、symlink共有を
+// やめてこのファイルを個別管理する。全アプリの移行完了後、examination#318でdev-standardsの
+// symlinkへ戻す。ロジック自体はdev-standards側と同一。
 //
 // Service Worker導入後、PWAとしてホーム画面に追加した状態では新しいバージョンに
 // 切り替わったことに気づきにくく、キャッシュされた古い画面が表示され続けている
@@ -35,8 +35,8 @@ export default function UpdateNotifier() {
   if (!updateAvailable) return null;
 
   return (
-    <div className="toast toast-bottom toast-center z-50">
-      <div className="alert alert-info">
+    <div className="position-fixed bottom-0 start-50 translate-middle-x mb-3" style={{ zIndex: 1050 }}>
+      <div className="alert alert-info d-flex align-items-center gap-2 shadow mb-0">
         <span>新しいバージョンがあります</span>
         <button type="button" className="btn btn-sm btn-primary" onClick={() => window.location.reload()}>
           更新する
