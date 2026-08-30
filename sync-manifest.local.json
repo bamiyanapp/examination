@@ -50,10 +50,6 @@
     },
     {
       "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/education-overview/src/components/NavigationOverlay.jsx"
-    },
-    {
-      "source": "shared/ui/NavigationOverlay.jsx",
       "target": "app/interview-questions/src/components/NavigationOverlay.jsx"
     },
     {
@@ -142,10 +138,6 @@
     },
     {
       "source": "shared/ui/ShareButton.jsx",
-      "target": "app/education-overview/src/components/ShareButton.jsx"
-    },
-    {
-      "source": "shared/ui/ShareButton.jsx",
       "target": "app/interview-questions/src/components/ShareButton.jsx"
     },
     {
@@ -163,10 +155,6 @@
     {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/mock-interviews/src/components/BackToTop.jsx"
-    },
-    {
-      "source": "shared/ui/BackToTop.jsx",
-      "target": "app/education-overview/src/components/BackToTop.jsx"
     },
     {
       "source": "shared/ui/BackToTop.jsx",
@@ -235,6 +223,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/allowed-emails/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/education-overview/src/bootstrap-theme.css"
     }
   ]
 }
