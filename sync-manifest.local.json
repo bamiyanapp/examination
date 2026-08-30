@@ -69,10 +69,6 @@
       "target": "app/line-link/src/components/NavigationOverlay.jsx"
     },
     {
-      "source": "shared/ui/NavigationOverlay.jsx",
-      "target": "app/allowed-emails/src/components/NavigationOverlay.jsx"
-    },
-    {
       "source": "shared/ui/SpeculationRules.jsx",
       "target": "app/top/src/components/SpeculationRules.jsx"
     },
@@ -165,10 +161,6 @@
       "target": "app/line-link/src/components/ShareButton.jsx"
     },
     {
-      "source": "shared/ui/ShareButton.jsx",
-      "target": "app/allowed-emails/src/components/ShareButton.jsx"
-    },
-    {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/mock-interviews/src/components/BackToTop.jsx"
     },
@@ -191,10 +183,6 @@
     {
       "source": "shared/ui/BackToTop.jsx",
       "target": "app/line-link/src/components/BackToTop.jsx"
-    },
-    {
-      "source": "shared/ui/BackToTop.jsx",
-      "target": "app/allowed-emails/src/components/BackToTop.jsx"
     },
     {
       "source": "shared/pwa/sw.js",
@@ -243,6 +231,10 @@
     {
       "source": "shared/ui/bootstrap-theme.css",
       "target": "app/family-create/src/bootstrap-theme.css"
+    },
+    {
+      "source": "shared/ui/bootstrap-theme.css",
+      "target": "app/allowed-emails/src/bootstrap-theme.css"
     }
   ]
 }

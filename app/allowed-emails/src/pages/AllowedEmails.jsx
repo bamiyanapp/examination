@@ -95,43 +95,39 @@ export default function AllowedEmails() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">閲覧許可メールアドレスの管理</h1>
-      <p className="mt-2 text-base-content/70">
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">閲覧許可メールアドレスの管理</h1>
+      <p className="mt-2 text-muted">
         このサイトを閲覧できるGoogleアカウントのメールアドレスを、自分の所属家族の範囲で一覧・追加・削除できます（
-        <a href="https://github.com/bamiyanapp/examination/issues/44" className="link">
-          複数家族対応
-        </a>
+        <a href="https://github.com/bamiyanapp/examination/issues/44">複数家族対応</a>
         ）。ログイン中のアカウントがこの一覧に含まれている場合のみ操作できます（含まれていない場合はこのページ自体が表示できません）。新しい家族を作りたい相手は、招待不要で
-        <a href="/family-create/" className="link">
-          家族の新規作成ページ
-        </a>
+        <a href="/family-create/">家族の新規作成ページ</a>
         から直接作成できます。
       </p>
-      <ul className="mt-2 list-inside list-disc text-sm text-base-content/70">
+      <ul className="mt-2 small text-muted">
         <li>自分自身のメールアドレスは、他のメンバーが残っている間は削除できません（誤って他のメンバーの閲覧を止めてしまうことを防ぐため）</li>
         <li>自分が家族の最後の1人の場合のみ、自分自身を削除（退会）できます。退会すると想定問答・模擬面接記録等を含む家族の全データが完全に削除され、元に戻せません</li>
         <li>既に何らかの家族に所属しているメールアドレスは追加できません（1メールアドレスにつき所属できる家族は1つまで）</li>
         <li>追加・削除は最大15秒ほどで全世界のアクセス地点に反映されます（すぐに反映されないことがあります）</li>
       </ul>
       {isError && status && (
-        <div role="alert" className="alert alert-error mt-4">
-          <span>{status}</span>
-        </div>
-      )}
-      {!isError && status && (
-        <div className="mt-4 flex items-center gap-2 text-base-content/70">
-          <span className="loading loading-spinner loading-sm" />
+        <div role="alert" className="alert alert-danger mt-4">
           {status}
         </div>
       )}
-      <ul className="list mt-4 rounded-box bg-base-100 shadow-sm">
+      {!isError && status && (
+        <div className="mt-4 d-flex align-items-center gap-2 text-muted">
+          <span className="spinner-border spinner-border-sm" role="status" />
+          {status}
+        </div>
+      )}
+      <ul className="list-group mt-4">
         {emails.map((item) => {
           const isMe = item.email === myEmail;
           const isLastMember = emails.length === 1;
           return (
-            <li key={item.email} className="list-row items-center">
-              <div className="flex-1">
+            <li key={item.email} className="list-group-item d-flex align-items-center gap-2">
+              <div className="flex-grow-1">
                 {item.email}（追加者: {item.addedBy || "-"}）{isMe && "（自分）"}
               </div>
               {isMe ? (
@@ -140,7 +136,7 @@ export default function AllowedEmails() {
                   onClick={() => handleSelfDelete(item.email)}
                   disabled={!isLastMember}
                   title={isLastMember ? "" : "先に他のメンバーを削除してください"}
-                  className="btn btn-sm btn-error"
+                  className="btn btn-sm btn-danger"
                 >
                   退会して家族データを削除する
                 </button>
@@ -148,7 +144,7 @@ export default function AllowedEmails() {
                 <button
                   type="button"
                   onClick={() => mutate("remove", item.email)}
-                  className="btn btn-sm btn-outline btn-error"
+                  className="btn btn-sm btn-outline-danger"
                 >
                   削除
                 </button>
@@ -157,16 +153,16 @@ export default function AllowedEmails() {
           );
         })}
       </ul>
-      <form onSubmit={handleSubmit} className="join mt-6 w-full">
+      <form onSubmit={handleSubmit} className="input-group mt-4">
         <input
           type="email"
           placeholder="追加するメールアドレス"
           required
           value={newEmail}
           onChange={(event) => setNewEmail(event.target.value)}
-          className="input join-item flex-1"
+          className="form-control"
         />
-        <button type="submit" className="btn btn-primary join-item">
+        <button type="submit" className="btn btn-primary">
           追加
         </button>
       </form>
