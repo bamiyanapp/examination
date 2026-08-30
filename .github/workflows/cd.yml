@@ -27,7 +27,7 @@ jobs:
   # （プロダクト固有）Deploy jobs）に合わせ、下記deployジョブをこのジョブに
   # 依存させることで、デプロイ時点で確定済みのバージョンを読み取れるようにする
   release:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-cd.yml@v2.7.2
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-cd.yml@v2.7.3
     with:
       enable_shared_release_config: true
     secrets:
@@ -203,7 +203,7 @@ jobs:
           echo "domain=${DOMAIN:-TBD.cloudfront.net}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy auth-stack (Cognito)
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.2
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.3
         with:
           working-directory: infra/auth-stack
           node-version: "24"
@@ -246,7 +246,7 @@ jobs:
       # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
       # OAuthシークレットのローテーション等がLambda@Edgeへ反映されないことがある（examination#51）
       - name: Deploy site-stack (S3 + CloudFront + Lambda@Edge)
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.2
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.3
         with:
           working-directory: infra/site-stack
           node-version: "24"
@@ -314,7 +314,7 @@ jobs:
       # 確定させるためもう一度deployする（2回目以降の通常デプロイでは差分が無いためスキップされる）
       - name: Re-deploy auth-stack with the real CloudFront domain (first-time bootstrap only)
         if: steps.current-domain.outputs.domain != steps.real-domain.outputs.domain
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.2
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.3
         with:
           working-directory: infra/auth-stack
           node-version: "24"
@@ -347,7 +347,7 @@ jobs:
       # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
       # LINE_CHANNEL_SECRET等の更新がLambdaへ反映されないことがある（examination#51で実際に発生）
       - name: Deploy bot-stack (LINE bot)
-        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.2
+        uses: bamiyanapp/dev-standards/.github/actions/deploy-serverless@v2.7.3
         with:
           working-directory: infra/bot-stack
           node-version: "24"
