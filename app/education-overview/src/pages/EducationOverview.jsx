@@ -25,32 +25,29 @@ const MOCK_INTERVIEW_STEPS = [
 // 方法論のみを残した。未完了だった具体的な内容更新タスクはexamination#95へ移した
 export default function EducationOverview() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-2xl font-bold">教育: 受験の面接対策</h1>
-      <p className="mt-2 text-base-content/70">
+    <main className="container py-5" style={{ maxWidth: "42rem" }}>
+      <h1 className="h3 fw-bold">教育: 受験の面接対策</h1>
+      <p className="mt-2 text-muted">
         小学校受験の面接対策を中心に、想定問答・模擬面接記録を管理しています。音声対話・LINE
         botでは、小学校受験に限らずシチュエーションを自由入力できる汎用的な面接練習にも対応しています。主に以下の2つを管理します。
       </p>
-      <ul className="mt-2 list-inside list-disc text-base-content/70">
+      <ul className="mt-2 text-muted">
         <li>面接で聞かれうる想定問題とその回答案</li>
         <li>模擬面接を実施した記録と、そこから得られた気づきによる想定問題のアップデート</li>
       </ul>
-      <p className="mt-2 text-base-content/70">
+      <p className="mt-2 text-muted">
         想定問題は一度作って終わりではなく、模擬面接を重ねるたびに内容を見直し、改善していくことを前提としています。
       </p>
 
-      <div className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold">ページ一覧</h2>
-        <ul className="flex flex-col gap-2">
+      <div className="mt-5">
+        <h2 className="h5 fw-semibold mb-3">ページ一覧</h2>
+        <ul className="list-unstyled d-flex flex-column gap-2">
           {PAGE_LINKS.map((link) => (
             <li key={link.href}>
-              <a
-                href={link.href}
-                className="card card-border bg-base-100 transition-colors hover:border-primary"
-              >
-                <div className="card-body flex-row items-center justify-between px-4 py-3">
+              <a href={link.href} className="card text-decoration-none text-body">
+                <div className="card-body d-flex flex-row align-items-center justify-content-between px-3 py-2">
                   <span>{link.label}</span>
-                  <span className="text-base-content/40">→</span>
+                  <span className="text-muted">→</span>
                 </div>
               </a>
             </li>
@@ -58,10 +55,10 @@ export default function EducationOverview() {
         </ul>
       </div>
 
-      <div className="card card-border mt-8 bg-base-100">
+      <div className="card mt-5">
         <div className="card-body">
-          <h2 className="card-title text-base">運用フロー</h2>
-          <ol className="list-inside list-decimal">
+          <h2 className="card-title h6">運用フロー</h2>
+          <ol>
             {WORKFLOW_STEPS.map((step) => (
               <li key={step}>{step}</li>
             ))}
@@ -69,10 +66,10 @@ export default function EducationOverview() {
         </div>
       </div>
 
-      <div className="card card-border mt-6 bg-base-100">
+      <div className="card mt-4">
         <div className="card-body">
-          <h2 className="card-title text-base">模擬面接の進め方（Claude Codeとの実施時）</h2>
-          <ul className="list-inside list-disc">
+          <h2 className="card-title h6">模擬面接の進め方（Claude Codeとの実施時）</h2>
+          <ul>
             {MOCK_INTERVIEW_STEPS.map((step) => (
               <li key={step}>{step}</li>
             ))}
