@@ -1,3 +1,10 @@
+## [1.37.1](https://github.com/bamiyanapp/examination/compare/v1.37.0...v1.37.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **user-menu:** iOS Safariでアカウントアイコンタップ時にメニューが開かない不具合を修正 ([#350](https://github.com/bamiyanapp/examination/issues/350)) ([50468af](https://github.com/bamiyanapp/examination/commit/50468af7d414c3bcecf3625f7ee665f9bb5a46ed)), closes [#349](https://github.com/bamiyanapp/examination/issues/349)
+
 # [1.37.0](https://github.com/bamiyanapp/examination/compare/v1.36.0...v1.37.0) (2026-08-30)
 
 
