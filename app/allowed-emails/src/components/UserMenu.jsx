@@ -17,6 +17,11 @@ import ShareButton from "./ShareButton.jsx";
 // 元のdaisyUI実装と同じくCSSの:focus-within（.user-menu:focus-within .user-menu-dropdown、
 // index.css参照）だけで開閉を表現する。メニュー内容は常にDOMへ存在し、表示・非表示は
 // CSSのみが担う（examination#310）
+//
+// iOS Safariはネイティブの<button>をタップしただけではフォーカスしない（キーボード操作時
+// のみフォーカスする既知の挙動）ため、上記:focus-withinが発火せずメニューが開かなかった。
+// onClickでevent.currentTarget.focus()を明示的に呼び、タップ時にも確実にフォーカスさせる
+// （examination#349）
 export default function UserMenu() {
   const [user, setUser] = useState(null);
 
@@ -45,6 +50,7 @@ export default function UserMenu() {
         type="button"
         className="btn btn-light btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center border"
         style={{ width: "2.5rem", height: "2.5rem" }}
+        onClick={(event) => event.currentTarget.focus()}
       >
         {user.picture ? (
           <img
