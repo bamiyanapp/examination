@@ -35,6 +35,9 @@ commit_msg*.txt
 # MkDocsビルド出力
 site/
 
+# TypeScriptのincrementalビルド情報（app/*/node_modules/.tmp/配下、examination#365）
+*.tsbuildinfo
+
 # Serverless Framework
 .serverless/
 # deploy時にscripts/generate-config.jsが生成する（Cognitoクライアントシークレットを含むため）

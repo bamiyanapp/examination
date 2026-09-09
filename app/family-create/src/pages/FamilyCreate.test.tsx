@@ -1,14 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import FamilyCreate from "./FamilyCreate.jsx";
+import FamilyCreate from "./FamilyCreate.tsx";
+
+let fetchMock: Mock;
 
 beforeEach(() => {
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 
 describe("FamilyCreate", () => {
   it("submits the entered situation and shows a success message with a link home", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ slug: "abc123", situation: "小学校受験の面接" }),
     });
@@ -20,7 +23,7 @@ describe("FamilyCreate", () => {
     await waitFor(() => {
       expect(screen.getByText(/小学校受験の面接」を作成しました/)).toBeInTheDocument();
     });
-    expect(global.fetch).toHaveBeenCalledWith("/_families", {
+    expect(fetchMock).toHaveBeenCalledWith("/_families", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ situation: "小学校受験の面接" }),
@@ -29,7 +32,7 @@ describe("FamilyCreate", () => {
   });
 
   it("shows a reassuring info message (not an error) when already registered, with a link home (examination#267)", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 400,
       json: async () => ({ error: "既に家族に所属しています" }),
@@ -47,7 +50,7 @@ describe("FamilyCreate", () => {
   });
 
   it("shows the server error message for other rejections", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
       json: async () => ({ error: "サーバーエラーが発生しました" }),
