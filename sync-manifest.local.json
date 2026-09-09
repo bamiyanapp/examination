@@ -279,6 +279,34 @@
     {
       "source": "shared/pwa/UpdateNotifier.jsx",
       "target": "app/allowed-emails/src/components/UpdateNotifier.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/mock-interviews/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/education-overview/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/interview-questions/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/profile-edit/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/voice-practice/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/line-link/src/components/BackToTop.jsx"
+    },
+    {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/allowed-emails/src/components/BackToTop.jsx"
     }
   ]
 }
