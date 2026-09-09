@@ -1,4 +1,4 @@
-import FamilyCreate from './pages/FamilyCreate.jsx'
+import FamilyCreate from './pages/FamilyCreate.tsx'
 
 // このページの訪問者は、他のページ（LINE連携・想定問答等）が前提とする
 // isAllowedEmail（examination-allowed-emailsへの登録済み）をまだ満たしていない

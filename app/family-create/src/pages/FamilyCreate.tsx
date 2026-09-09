@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 // checkAuth.jsのcreateFamilyが返す文言と一致させる。既に所属済みという応答は、
 // 失敗ではなく「反映待ちで表示だけがこのページのまま」という状態を示すサインとして
 // 特別扱いする（examination#267）
 const ALREADY_IN_FAMILY_MESSAGE = "既に家族に所属しています";
 
-async function createFamily(situation) {
+interface CreatedFamily {
+  slug: string;
+  situation: string;
+}
+
+async function createFamily(situation: string): Promise<CreatedFamily> {
   const res = await fetch("/_families", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -31,10 +36,10 @@ export default function FamilyCreate() {
   const [situation, setSituation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [createdFamily, setCreatedFamily] = useState(null);
+  const [createdFamily, setCreatedFamily] = useState<CreatedFamily | null>(null);
   const [alreadyInFamily, setAlreadyInFamily] = useState(false);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
@@ -47,10 +52,11 @@ export default function FamilyCreate() {
       // （examination#267）、作成直後に他ページへ遷移してこのページへ戻された
       // 場合、既に成功しているにもかかわらずこのエラーになることがある。
       // 失敗と誤解させないよう、待機を促す案内として別枠で表示する
-      if (error.message === ALREADY_IN_FAMILY_MESSAGE) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === ALREADY_IN_FAMILY_MESSAGE) {
         setAlreadyInFamily(true);
       } else {
-        setErrorMessage(error.message);
+        setErrorMessage(message);
       }
     } finally {
       setIsSubmitting(false);
