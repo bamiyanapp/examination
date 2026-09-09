@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/bamiyanapp/examination/compare/v1.37.1...v1.38.0) (2026-09-09)
+
+
+### Features
+
+* **family-create:** TypeScriptへ移行する ([#375](https://github.com/bamiyanapp/examination/issues/375)) ([5ac00dc](https://github.com/bamiyanapp/examination/commit/5ac00dc6b5e5edf5306c066e27213b17f61bcc8d)), closes [#366](https://github.com/bamiyanapp/examination/issues/366)
+
 ## [1.37.1](https://github.com/bamiyanapp/examination/compare/v1.37.0...v1.37.1) (2026-09-03)
 
 
