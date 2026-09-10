@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/bamiyanapp/examination/compare/v1.45.0...v1.46.0) (2026-09-10)
+
+
+### Features
+
+* **voice-practice:** TypeScriptへ移行する ([#393](https://github.com/bamiyanapp/examination/issues/393)) ([d1b1340](https://github.com/bamiyanapp/examination/commit/d1b1340176e0ee27cb5ba3722aa7dc1d00e1a582)), closes [#374](https://github.com/bamiyanapp/examination/issues/374)
+
 # [1.45.0](https://github.com/bamiyanapp/examination/compare/v1.44.0...v1.45.0) (2026-09-10)
 
 
