@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import ShareButton from "./ShareButton.jsx";
 
+interface User {
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
 // ログイン中のユーザー名・アイコン（Googleアカウントのプロフィール画像）を表示し、
 // ログアウトへの導線を提供する（examination#150）。id_tokenクッキーはHttpOnlyで
 // JSから読めないため、同一オリジンの/_meAPI（checkAuth.js）経由でユーザー情報を取得する。
@@ -23,7 +29,7 @@ import ShareButton from "./ShareButton.jsx";
 // onClickでevent.currentTarget.focus()を明示的に呼び、タップ時にも確実にフォーカスさせる
 // （examination#349）
 export default function UserMenu() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     let cancelled = false;

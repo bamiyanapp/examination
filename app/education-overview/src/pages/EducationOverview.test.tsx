@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import EducationOverview from "./EducationOverview.jsx";
+import EducationOverview from "./EducationOverview.tsx";
 
 describe("EducationOverview", () => {
   it("renders links to the education section pages", () => {
