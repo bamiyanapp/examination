@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/bamiyanapp/examination/compare/v1.38.0...v1.39.0) (2026-09-10)
+
+
+### Features
+
+* **allowed-emails:** TypeScriptへ移行する ([#377](https://github.com/bamiyanapp/examination/issues/377)) ([8fa76fb](https://github.com/bamiyanapp/examination/commit/8fa76fbd79e9d1f78523f5da5d7c55f4590e5e44)), closes [#367](https://github.com/bamiyanapp/examination/issues/367)
+
 # [1.38.0](https://github.com/bamiyanapp/examination/compare/v1.37.1...v1.38.0) (2026-09-09)
 
 
