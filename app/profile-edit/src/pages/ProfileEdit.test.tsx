@@ -1,13 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import ProfileEdit from "./ProfileEdit.jsx";
+import ProfileEdit from "./ProfileEdit.tsx";
+
+let fetchMock: Mock;
 
 beforeEach(() => {
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 
-function mockTokenAndProfile(profile) {
-  global.fetch
+function mockTokenAndProfile(profile: unknown) {
+  fetchMock
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
     .mockResolvedValueOnce({ ok: true, json: async () => profile });
 }
@@ -24,8 +27,8 @@ describe("ProfileEdit", () => {
     expect(screen.getByDisplayValue("自由な校風")).toBeInTheDocument();
     expect(screen.getByDisplayValue("共働き家庭")).toBeInTheDocument();
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
-    const secondCall = global.fetch.mock.calls[1];
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
+    const secondCall = fetchMock.mock.calls[1] as unknown as [string, { headers: { Authorization: string } }];
     expect(secondCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile");
     expect(secondCall[1].headers.Authorization).toBe("Bearer voice-token");
   });
@@ -35,7 +38,7 @@ describe("ProfileEdit", () => {
     render(<ProfileEdit />);
     await waitFor(() => screen.getByRole("button", { name: "保存する" }));
 
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ situation: "就職の面接", schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" }),
     });
@@ -53,7 +56,7 @@ describe("ProfileEdit", () => {
 
     await waitFor(() => expect(screen.getByText("保存しました。")).toBeInTheDocument());
 
-    const saveCall = global.fetch.mock.calls[2];
+    const saveCall = fetchMock.mock.calls[2] as unknown as [string, { method: string; body: string }];
     expect(saveCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile");
     expect(saveCall[1].method).toBe("POST");
     expect(JSON.parse(saveCall[1].body)).toEqual({
@@ -64,7 +67,7 @@ describe("ProfileEdit", () => {
   });
 
   it("shows an error message when token issuance fails", async () => {
-    global.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
 
     render(<ProfileEdit />);
 
@@ -74,7 +77,7 @@ describe("ProfileEdit", () => {
   });
 
   it("shows an error message when fetching the profile fails", async () => {
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
 

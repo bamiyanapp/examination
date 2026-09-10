@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import resizeToFitContent from "../components/resizeTextareaToFitContent.js"; // symlink先: dev-standards#164
+
+interface Profile {
+  situation?: string;
+  schoolCharacteristics?: string;
+  otherContext?: string;
+}
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/voice-practice/src/pages/VoicePractice.jsxと同じAPI）
 const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile";
 
-async function issueVoiceToken() {
+async function issueVoiceToken(): Promise<string> {
   const res = await fetch("/_voice-token", { method: "POST" });
   const data = await res.json();
   if (!res.ok) {
@@ -14,7 +20,7 @@ async function issueVoiceToken() {
   return data.token;
 }
 
-async function fetchProfile(token) {
+async function fetchProfile(token: string): Promise<Profile> {
   const res = await fetch(FAMILY_PROFILE_API_URL, { headers: { Authorization: `Bearer ${token}` } });
   const data = await res.json();
   if (!res.ok) {
@@ -23,7 +29,7 @@ async function fetchProfile(token) {
   return data;
 }
 
-async function saveProfile(token, profile) {
+async function saveProfile(token: string, profile: Profile): Promise<Profile> {
   const res = await fetch(FAMILY_PROFILE_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -48,7 +54,7 @@ export default function ProfileEdit() {
   const [otherContext, setOtherContext] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
-  const tokenRef = useRef(null);
+  const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +71,7 @@ export default function ProfileEdit() {
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message);
+          setErrorMessage(error instanceof Error ? error.message : String(error));
           setStatus("error");
         }
       }
@@ -76,7 +82,7 @@ export default function ProfileEdit() {
     };
   }, []);
 
-  async function handleSave(event) {
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
     setSavedMessage("");
@@ -87,7 +93,7 @@ export default function ProfileEdit() {
       await saveProfile(token, { situation, schoolCharacteristics, otherContext });
       setSavedMessage("保存しました。");
     } catch (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
     }
