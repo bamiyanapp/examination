@@ -3,15 +3,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import UpdateNotifier from "./UpdateNotifier.jsx";
 
-function setServiceWorker(controller) {
-  const listeners = {};
+function setServiceWorker(controller: object | null) {
+  const listeners: Record<string, (() => void) | undefined> = {};
   Object.defineProperty(navigator, "serviceWorker", {
     value: {
       controller,
-      addEventListener: (type, handler) => {
+      addEventListener: (type: string, handler: () => void) => {
         listeners[type] = handler;
       },
-      removeEventListener: (type) => {
+      removeEventListener: (type: string) => {
         delete listeners[type];
       },
     },
@@ -61,7 +61,7 @@ describe("UpdateNotifier", () => {
 
   it("非対応ブラウザでは何もしない", () => {
     setServiceWorker({});
-    delete navigator.serviceWorker;
+    delete (navigator as unknown as { serviceWorker?: unknown }).serviceWorker;
 
     expect(() => render(<UpdateNotifier />)).not.toThrow();
   });

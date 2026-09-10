@@ -13,12 +13,16 @@ const PREFETCH_URLS = [
   "/settings/line-link/",
 ];
 
-function setSupports(value) {
-  window.HTMLScriptElement = window.HTMLScriptElement || function () {};
-  window.HTMLScriptElement.supports = value === undefined ? undefined : vi.fn(() => value);
+// HTMLScriptElement.supports・navigator.connectionはいずれも実験的なWeb API
+// （Speculation Rules API・Network Information API）で標準のDOM型定義に
+// 無いため、テスト内でのfeature detectionのシムはanyで扱う
+function setSupports(value: boolean | undefined) {
+  const win = window as unknown as { HTMLScriptElement: { supports?: (type: string) => boolean } };
+  win.HTMLScriptElement = win.HTMLScriptElement || (function () {} as never);
+  win.HTMLScriptElement.supports = value === undefined ? undefined : vi.fn(() => value);
 }
 
-function setConnection(connection) {
+function setConnection(connection: unknown) {
   Object.defineProperty(navigator, "connection", { value: connection, configurable: true });
 }
 
@@ -43,7 +47,7 @@ describe("SpeculationRules", () => {
     render(<SpeculationRules urls={PREFETCH_URLS} />);
     const script = document.querySelector('script[type="speculationrules"]');
     expect(script).not.toBeNull();
-    const rules = JSON.parse(script.textContent);
+    const rules = JSON.parse(script!.textContent!);
     expect(rules.prefetch[0].source).toBe("list");
     expect(rules.prefetch[0].urls).not.toContain("/education/voice-practice/");
   });
@@ -52,7 +56,7 @@ describe("SpeculationRules", () => {
     window.history.pushState({}, "", "/");
     render(<SpeculationRules urls={PREFETCH_URLS} />);
     const script = document.querySelector('script[type="speculationrules"]');
-    const rules = JSON.parse(script.textContent);
+    const rules = JSON.parse(script!.textContent!);
     expect(rules.prefetch[0].urls).not.toContain("/");
   });
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 // 変わった場合は他のページ（app/profile-edit/等）とあわせてここも更新する
 const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile";
 
-async function issueVoiceToken() {
+async function issueVoiceToken(): Promise<string | null> {
   const res = await fetch("/_voice-token", { method: "POST" });
   if (!res.ok) return null;
   const data = await res.json();
