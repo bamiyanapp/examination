@@ -1,3 +1,10 @@
+# [1.40.0](https://github.com/bamiyanapp/examination/compare/v1.39.0...v1.40.0) (2026-09-10)
+
+
+### Features
+
+* **education-overview:** TypeScriptへ移行する ([#380](https://github.com/bamiyanapp/examination/issues/380)) ([c26f56b](https://github.com/bamiyanapp/examination/commit/c26f56b8c0a93357aff1d81f01f1fd8fce270b39)), closes [#368](https://github.com/bamiyanapp/examination/issues/368)
+
 # [1.39.0](https://github.com/bamiyanapp/examination/compare/v1.38.0...v1.39.0) (2026-09-10)
 
 
