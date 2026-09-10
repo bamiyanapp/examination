@@ -1,10 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import LineLink from "./LineLink.jsx";
+import LineLink from "./LineLink.tsx";
+
+let fetchMock: Mock;
 
 describe("LineLink", () => {
   beforeEach(() => {
-    global.fetch = vi.fn();
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   it("shows a link and QR code to add the LINE official account as a friend (examination#229)", () => {
@@ -18,7 +21,7 @@ describe("LineLink", () => {
   });
 
   it("issues a code and shows it as a copyable snippet on success (examination#155)", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ code: "123456" }),
     });
@@ -30,13 +33,13 @@ describe("LineLink", () => {
       expect(screen.getByText("123456")).toBeInTheDocument();
     });
     expect(screen.getByText("このコードをLINE botへ送信してください。10分間有効です。")).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith("/_link-line", { method: "POST" });
+    expect(fetchMock).toHaveBeenCalledWith("/_link-line", { method: "POST" });
   });
 
   it("copies the code to the clipboard and shows feedback (examination#155)", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ code: "123456" }),
     });
@@ -52,7 +55,7 @@ describe("LineLink", () => {
   });
 
   it("shows an error message on failure", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 403,
       json: async () => ({ error: "アクセスが許可されていません" }),
