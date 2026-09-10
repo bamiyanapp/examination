@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/bamiyanapp/examination/compare/v1.41.0...v1.42.0) (2026-09-10)
+
+
+### Features
+
+* **line-link:** TypeScriptへ移行する ([#384](https://github.com/bamiyanapp/examination/issues/384)) ([bfd53ac](https://github.com/bamiyanapp/examination/commit/bfd53ac94109fdca19c7fee1fe0f00056bf36806)), closes [#370](https://github.com/bamiyanapp/examination/issues/370)
+
 # [1.41.0](https://github.com/bamiyanapp/examination/compare/v1.40.0...v1.41.0) (2026-09-10)
 
 
