@@ -7,22 +7,50 @@ const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazona
 
 const DEFAULT_SITUATION = "小学校受験の面接";
 
-function getSpeechRecognitionCtor() {
+interface Message {
+  speaker: string;
+  text: string;
+}
+
+// SpeechRecognition（音声認識）はSpeechSynthesisと異なり標準のDOM型定義に
+// 含まれていない（Chrome系ブラウザ独自実装が事実上の標準として広く使われている
+// のみ）ため、実際に使用するプロパティ・メソッドのみの最小限の型を独自定義する
+interface SpeechRecognitionEventLike {
+  results: { 0: { transcript: string } }[];
+}
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+}
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+}
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | undefined {
   if (typeof window === "undefined") return undefined;
-  return window.SpeechRecognition || window.webkitSpeechRecognition;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return w.SpeechRecognition || w.webkitSpeechRecognition;
 }
 
 // 利用可能な音声（SpeechSynthesis.getVoices()）の中から日本語音声のうち
 // 最も品質が高いと期待できるものを選ぶ（examination#158）。localService: false
 // （ブラウザが自動選択する端末内蔵音声ではなく、Google等が提供するネットワーク
 // 経由の音声）は一般に端末内蔵の音声より自然で聞き取りやすいため優先する
-function pickJapaneseVoice(voices) {
+function pickJapaneseVoice(voices: SpeechSynthesisVoice[] | undefined): SpeechSynthesisVoice | null {
   const jaVoices = (voices || []).filter((voice) => voice.lang && voice.lang.toLowerCase().startsWith("ja"));
   if (jaVoices.length === 0) return null;
   return jaVoices.find((voice) => voice.localService === false) || jaVoices[0];
 }
 
-function speak(text, voices) {
+function speak(text: string, voices: SpeechSynthesisVoice[] | undefined) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   const utterance = new window.SpeechSynthesisUtterance(text);
   utterance.lang = "ja-JP";
@@ -52,15 +80,15 @@ export default function VoicePractice() {
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
   const [otherContext, setOtherContext] = useState("");
   const [started, setStarted] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
-  const voiceTokenRef = useRef(null);
-  const historyRef = useRef([]);
-  const voicesRef = useRef([]);
+  const voiceTokenRef = useRef<string | null>(null);
+  const historyRef = useRef<unknown[]>([]);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const SpeechRecognitionCtor = getSpeechRecognitionCtor();
 
   useEffect(() => {
@@ -122,7 +150,7 @@ export default function VoicePractice() {
     voiceTokenRef.current = data.token;
   }
 
-  async function sendToVoiceChat(message) {
+  async function sendToVoiceChat(message: string | null) {
     const res = await fetch(VOICE_CHAT_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${voiceTokenRef.current}` },
@@ -160,7 +188,7 @@ export default function VoicePractice() {
       }
     } catch (error) {
       setIsError(true);
-      setStatus(error.message);
+      setStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setIsBusy(false);
     }
@@ -190,7 +218,7 @@ export default function VoicePractice() {
         setStatus("");
       } catch (error) {
         setIsError(true);
-        setStatus(error.message);
+        setStatus(error instanceof Error ? error.message : String(error));
       } finally {
         setIsListening(false);
       }

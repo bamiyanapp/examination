@@ -1,8 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import VoicePractice from "./VoicePractice.jsx";
+import VoicePractice from "./VoicePractice.tsx";
 
 class FakeSpeechRecognition {
+  static instances: FakeSpeechRecognition[] = [];
+  started = false;
+  lang = "";
+  interimResults = false;
+  onresult: ((event: { results: { 0: { transcript: string } }[] }) => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
+  onend: (() => void) | null = null;
   constructor() {
     FakeSpeechRecognition.instances.push(this);
   }
@@ -10,36 +17,56 @@ class FakeSpeechRecognition {
     this.started = true;
   }
 }
-FakeSpeechRecognition.instances = [];
+
+let fetchMock: Mock;
+let speechSynthesisMock: {
+  speak: Mock;
+  getVoices: Mock;
+  addEventListener: Mock;
+  removeEventListener: Mock;
+};
 
 beforeEach(() => {
   FakeSpeechRecognition.instances = [];
-  window.SpeechRecognition = FakeSpeechRecognition;
-  window.speechSynthesis = {
+  (window as unknown as { SpeechRecognition: typeof FakeSpeechRecognition }).SpeechRecognition = FakeSpeechRecognition;
+  speechSynthesisMock = {
     speak: vi.fn(),
     getVoices: vi.fn().mockReturnValue([]),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   };
-  window.SpeechSynthesisUtterance = class {
-    constructor(text) {
+  (window as unknown as { speechSynthesis: typeof speechSynthesisMock }).speechSynthesis = speechSynthesisMock;
+  (
+    window as unknown as { SpeechSynthesisUtterance: new (text: string) => { text: string; lang?: string; voice?: unknown } }
+  ).SpeechSynthesisUtterance = class {
+    text: string;
+    lang?: string;
+    voice?: unknown;
+    constructor(text: string) {
       this.text = text;
     }
   };
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
+
+interface Profile {
+  situation: string;
+  schoolCharacteristics: string;
+  otherContext: string;
+}
 
 // マウント時にプロフィール参照表示用のトークン発行(1)・プロフィール取得(2)が
 // 先に走る（examination#125、シチュエーションはexamination#135）ため、
 // これをまとめてモックしてから会話開始のテストへ進む
-function mockProfileLoad(profile = { situation: "小学校受験の面接", schoolCharacteristics: "", otherContext: "" }) {
-  global.fetch
+function mockProfileLoad(profile: Profile = { situation: "小学校受験の面接", schoolCharacteristics: "", otherContext: "" }) {
+  fetchMock
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "profile-token" }) })
     .mockResolvedValueOnce({ ok: true, json: async () => profile });
 }
 
-function mockTokenAndOpening(openingReply) {
-  global.fetch
+function mockTokenAndOpening(openingReply: string) {
+  fetchMock
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
     .mockResolvedValueOnce({
       ok: true,
@@ -67,7 +94,7 @@ describe("VoicePractice", () => {
   it("speaks with a Japanese network voice over a local voice when both are available (examination#158)", async () => {
     const localJaVoice = { lang: "ja-JP", localService: true, name: "端末内蔵" };
     const networkJaVoice = { lang: "ja-JP", localService: false, name: "Google 日本語" };
-    window.speechSynthesis.getVoices.mockReturnValue([{ lang: "en-US", localService: false }, localJaVoice, networkJaVoice]);
+    speechSynthesisMock.getVoices.mockReturnValue([{ lang: "en-US", localService: false }, localJaVoice, networkJaVoice]);
 
     mockProfileLoad();
     render(<VoicePractice />);
@@ -76,14 +103,14 @@ describe("VoicePractice", () => {
     mockTokenAndOpening("好きな遊びは何ですか？");
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
 
-    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
-    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    await waitFor(() => expect(speechSynthesisMock.speak).toHaveBeenCalled());
+    const utterance = speechSynthesisMock.speak.mock.calls[0][0] as { voice: unknown };
     expect(utterance.voice).toBe(networkJaVoice);
   });
 
   it("falls back to the first Japanese voice when no network voice is available", async () => {
     const localJaVoice = { lang: "ja-JP", localService: true, name: "端末内蔵" };
-    window.speechSynthesis.getVoices.mockReturnValue([localJaVoice]);
+    speechSynthesisMock.getVoices.mockReturnValue([localJaVoice]);
 
     mockProfileLoad();
     render(<VoicePractice />);
@@ -92,13 +119,13 @@ describe("VoicePractice", () => {
     mockTokenAndOpening("好きな遊びは何ですか？");
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
 
-    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
-    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    await waitFor(() => expect(speechSynthesisMock.speak).toHaveBeenCalled());
+    const utterance = speechSynthesisMock.speak.mock.calls[0][0] as { voice: unknown };
     expect(utterance.voice).toBe(localJaVoice);
   });
 
   it("does not set a voice and does not throw when no Japanese voice is available", async () => {
-    window.speechSynthesis.getVoices.mockReturnValue([{ lang: "en-US", localService: false }]);
+    speechSynthesisMock.getVoices.mockReturnValue([{ lang: "en-US", localService: false }]);
 
     mockProfileLoad();
     render(<VoicePractice />);
@@ -107,8 +134,8 @@ describe("VoicePractice", () => {
     mockTokenAndOpening("好きな遊びは何ですか？");
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
 
-    await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled());
-    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    await waitFor(() => expect(speechSynthesisMock.speak).toHaveBeenCalled());
+    const utterance = speechSynthesisMock.speak.mock.calls[0][0] as { voice: unknown };
     expect(utterance.voice).toBeUndefined();
   });
 
@@ -150,8 +177,8 @@ describe("VoicePractice", () => {
       expect(screen.getByText("好きな遊びは何ですか？")).toBeInTheDocument();
     });
     expect(screen.getByText("面接官")).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenNthCalledWith(3, "/_voice-token", { method: "POST" });
-    const startCall = global.fetch.mock.calls[3];
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/_voice-token", { method: "POST" });
+    const startCall = fetchMock.mock.calls[3] as unknown as [string, { body: string }];
     expect(startCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/voice-chat");
     const sentBody = JSON.parse(startCall[1].body);
     expect(sentBody.role).toBe("本人");
@@ -168,7 +195,7 @@ describe("VoicePractice", () => {
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
 
     mockTokenAndOpening("好きな遊びは何ですか？");
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         reply: "公園でおにごっこをするのが好きなんですね。誰と遊びますか？",
@@ -181,7 +208,7 @@ describe("VoicePractice", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "話す" }));
     const recognition = FakeSpeechRecognition.instances[0];
-    recognition.onresult({ results: [[{ transcript: "公園でおにごっこをします" }]] });
+    recognition.onresult!({ results: [[{ transcript: "公園でおにごっこをします" }]] });
 
     await waitFor(() => {
       expect(screen.getByText("公園でおにごっこをします")).toBeInTheDocument();
@@ -196,7 +223,7 @@ describe("VoicePractice", () => {
     render(<VoicePractice />);
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
 
-    global.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "権限がありません" }) });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "権限がありません" }) });
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
 
     await waitFor(() => {
@@ -205,8 +232,8 @@ describe("VoicePractice", () => {
   });
 
   it("shows a message when the browser has no speech recognition support", async () => {
-    delete window.SpeechRecognition;
-    delete window.webkitSpeechRecognition;
+    delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
+    delete (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
     mockProfileLoad();
     render(<VoicePractice />);
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
@@ -226,7 +253,7 @@ describe("VoicePractice", () => {
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
 
     mockTokenAndOpening("好きな遊びは何ですか？");
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ saved: true }) });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ saved: true }) });
 
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
     await waitFor(() => screen.getByText("好きな遊びは何ですか？"));
@@ -236,7 +263,7 @@ describe("VoicePractice", () => {
     await waitFor(() => {
       expect(screen.getByText("練習を終了し、今回の振り返りを記録しました。お疲れさまでした。")).toBeInTheDocument();
     });
-    const endCall = global.fetch.mock.calls[4];
+    const endCall = fetchMock.mock.calls[4] as unknown as [string, { body: string }];
     expect(endCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/voice-chat");
     expect(JSON.parse(endCall[1].body).action).toBe("end");
     expect(screen.getByRole("button", { name: "会話を始める" })).toBeInTheDocument();
@@ -248,7 +275,7 @@ describe("VoicePractice", () => {
     await waitFor(() => screen.getByRole("link", { name: "プロフィール編集で変更する →" }));
 
     mockTokenAndOpening("好きな遊びは何ですか？");
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ saved: false }) });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ saved: false }) });
 
     fireEvent.click(screen.getByRole("button", { name: "会話を始める" }));
     await waitFor(() => screen.getByText("好きな遊びは何ですか？"));
