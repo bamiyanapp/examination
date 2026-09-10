@@ -1,11 +1,11 @@
-import ProfileEdit from './pages/ProfileEdit.jsx'
+import ProfileEdit from './pages/ProfileEdit.tsx'
 import NavigationOverlay from './components/NavigationOverlay.jsx'
 import BackToTop from './components/BackToTop.jsx'
 import SpeculationRules from './components/SpeculationRules.jsx'
 import ServiceWorkerRegistration from './components/ServiceWorkerRegistration.jsx'
 import BackendCacheWarmer from './components/BackendCacheWarmer.jsx'
 import UpdateNotifier from './components/UpdateNotifier.jsx'
-import UserMenu from './components/UserMenu.jsx'
+import UserMenu from './components/UserMenu.tsx'
 
 // examination#105: 音声で面接練習ページ（gzip約12MB超のONNXモデルを含んでいた経緯が
 // あった）は今回もモバイル通信量への影響が大きいため先読み対象から除外している

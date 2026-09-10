@@ -2,13 +2,13 @@ import { render } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import ServiceWorkerRegistration from "./ServiceWorkerRegistration.jsx";
 
-function setVisibilityState(state) {
+function setVisibilityState(state: DocumentVisibilityState) {
   Object.defineProperty(document, "visibilityState", { value: state, configurable: true });
 }
 
 describe("ServiceWorkerRegistration", () => {
   afterEach(() => {
-    delete navigator.serviceWorker;
+    delete (navigator as unknown as { serviceWorker?: unknown }).serviceWorker;
     setVisibilityState("visible");
     vi.useRealTimers();
   });
@@ -26,7 +26,7 @@ describe("ServiceWorkerRegistration", () => {
   });
 
   it("非対応ブラウザでは何もしない", () => {
-    delete navigator.serviceWorker;
+    delete (navigator as unknown as { serviceWorker?: unknown }).serviceWorker;
 
     expect(() => render(<ServiceWorkerRegistration />)).not.toThrow();
   });
