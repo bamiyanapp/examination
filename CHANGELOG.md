@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/bamiyanapp/examination/compare/v1.42.0...v1.43.0) (2026-09-10)
+
+
+### Features
+
+* **mock-interviews:** TypeScriptへ移行する ([#386](https://github.com/bamiyanapp/examination/issues/386)) ([1ab0605](https://github.com/bamiyanapp/examination/commit/1ab0605451ad6a32817ef2477d6d5c14bda47048)), closes [#371](https://github.com/bamiyanapp/examination/issues/371)
+
 # [1.42.0](https://github.com/bamiyanapp/examination/compare/v1.41.0...v1.42.0) (2026-09-10)
 
 
