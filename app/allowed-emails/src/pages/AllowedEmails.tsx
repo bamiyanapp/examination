@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+
+interface EmailEntry {
+  email: string;
+  addedBy?: string;
+}
 
 // 家族の最後の1人が自分自身を削除する（退会する）と、家族の全データが
 // 完全に削除される（examination#284）。誤操作を防ぐため、実行前にこの内容の
@@ -11,7 +16,7 @@ const SELF_DELETE_WARNING =
 // 旧: knowledge/settings/allowed-emails.md に埋め込まれていた素の<script>実装をReactへ移植した。
 // 呼び出し先API（/_admin/emails）自体は変更しない
 export default function AllowedEmails() {
-  const [emails, setEmails] = useState([]);
+  const [emails, setEmails] = useState<EmailEntry[]>([]);
   const [myEmail, setMyEmail] = useState("");
   const [status, setStatus] = useState("読み込み中...");
   const [isError, setIsError] = useState(false);
@@ -30,7 +35,7 @@ export default function AllowedEmails() {
       setStatus("");
     } catch (error) {
       setIsError(true);
-      setStatus(error.message);
+      setStatus(error instanceof Error ? error.message : String(error));
     }
   }, []);
 
@@ -53,7 +58,7 @@ export default function AllowedEmails() {
     };
   }, []);
 
-  async function mutate(action, email) {
+  async function mutate(action: "add" | "remove", email: string) {
     setIsError(false);
     setStatus("処理中...");
     try {
@@ -76,11 +81,11 @@ export default function AllowedEmails() {
       setStatus("");
     } catch (error) {
       setIsError(true);
-      setStatus(error.message);
+      setStatus(error instanceof Error ? error.message : String(error));
     }
   }
 
-  function handleSubmit(event) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const email = newEmail.trim();
     if (!email) return;
@@ -88,7 +93,7 @@ export default function AllowedEmails() {
     setNewEmail("");
   }
 
-  function handleSelfDelete(email) {
+  function handleSelfDelete(email: string) {
     if (window.confirm(SELF_DELETE_WARNING)) {
       mutate("remove", email);
     }
