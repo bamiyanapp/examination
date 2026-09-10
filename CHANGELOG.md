@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/bamiyanapp/examination/compare/v1.43.0...v1.44.0) (2026-09-10)
+
+
+### Features
+
+* **profile-edit:** TypeScriptへ移行する ([#388](https://github.com/bamiyanapp/examination/issues/388)) ([3f1c07c](https://github.com/bamiyanapp/examination/commit/3f1c07c90a183a5dc433649424869b0d53f3659c)), closes [#372](https://github.com/bamiyanapp/examination/issues/372)
+
 # [1.43.0](https://github.com/bamiyanapp/examination/compare/v1.42.0...v1.43.0) (2026-09-10)
 
 
