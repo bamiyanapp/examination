@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 
+interface Summary {
+  sessionId: string;
+  role: string;
+  situation: string;
+  schoolCharacteristics?: string;
+  createdAt?: string;
+  summary: string;
+}
+
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/interview-questions/src/pages/InterviewQuestions.jsxと同じAPI）
 const MOCK_INTERVIEWS_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/mock-interviews";
 
-async function issueVoiceToken() {
+async function issueVoiceToken(): Promise<string> {
   const res = await fetch("/_voice-token", { method: "POST" });
   const data = await res.json();
   if (!res.ok) {
@@ -13,7 +22,7 @@ async function issueVoiceToken() {
   return data.token;
 }
 
-async function fetchSummaries(token) {
+async function fetchSummaries(token: string): Promise<Summary[]> {
   const res = await fetch(MOCK_INTERVIEWS_API_URL, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -24,7 +33,7 @@ async function fetchSummaries(token) {
   return data.summaries;
 }
 
-function formatCreatedAt(createdAt) {
+function formatCreatedAt(createdAt: string | undefined): string {
   if (!createdAt) return "";
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return createdAt;
@@ -36,7 +45,7 @@ function formatCreatedAt(createdAt) {
 // 古いデータを薄く表示した上でバックグラウンドで再取得する（examination#167）
 const SUMMARIES_CACHE_KEY = "examination-mock-interviews-cache";
 
-function loadCachedSummaries() {
+function loadCachedSummaries(): Summary[] | null {
   try {
     const raw = sessionStorage.getItem(SUMMARIES_CACHE_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -45,7 +54,7 @@ function loadCachedSummaries() {
   }
 }
 
-function saveCachedSummaries(summaries) {
+function saveCachedSummaries(summaries: Summary[]) {
   try {
     sessionStorage.setItem(SUMMARIES_CACHE_KEY, JSON.stringify(summaries));
   } catch {
@@ -62,7 +71,7 @@ export default function MockInterviews() {
   const [status, setStatus] = useState(cachedSummaries ? "stale" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [refreshError, setRefreshError] = useState("");
-  const [summaries, setSummaries] = useState(cachedSummaries || []);
+  const [summaries, setSummaries] = useState<Summary[]>(cachedSummaries || []);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,13 +86,14 @@ export default function MockInterviews() {
           saveCachedSummaries(fetched);
         }
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         if (!cancelled) {
           if (cachedSummaries) {
             // 古いキャッシュを表示したままにし、再取得に失敗したことのみ通知する
-            setRefreshError(error.message);
+            setRefreshError(message);
             setStatus("loaded");
           } else {
-            setErrorMessage(error.message);
+            setErrorMessage(message);
             setStatus("error");
           }
         }

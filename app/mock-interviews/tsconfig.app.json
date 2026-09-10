@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    /* dev-standardsからsymlink共有されるshared/ui/・shared/pwa/配下のプレーンJSX
+       ファイル（ShareButton.jsx・NavigationOverlay.jsx等）のimport解決に必要
+       （docs/client-only-vite-spa-pattern.md「PWA・共有UIコンポーネント導入時の注意点」） */
+    "allowJs": true
+  },
+  "include": ["src"]
+}

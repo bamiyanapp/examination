@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import MockInterviews from "./MockInterviews.jsx";
+import MockInterviews from "./MockInterviews.tsx";
 
 const SAMPLE_SUMMARIES = [
   {
@@ -23,13 +23,16 @@ const SAMPLE_SUMMARIES = [
   },
 ];
 
+let fetchMock: Mock;
+
 beforeEach(() => {
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
   sessionStorage.clear();
 });
 
-function mockTokenAndSummaries(summaries) {
-  global.fetch
+function mockTokenAndSummaries(summaries: unknown) {
+  fetchMock
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ summaries }) });
 }
@@ -46,8 +49,8 @@ describe("MockInterviews", () => {
     expect(screen.getByText("本人面接練習")).toBeInTheDocument();
     expect(screen.getByText("少人数制で個性を重視")).toBeInTheDocument();
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
-    const secondCall = global.fetch.mock.calls[1];
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
+    const secondCall = fetchMock.mock.calls[1] as unknown as [string, { headers: { Authorization: string } }];
     expect(secondCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/mock-interviews");
     expect(secondCall[1].headers.Authorization).toBe("Bearer voice-token");
   });
@@ -63,7 +66,7 @@ describe("MockInterviews", () => {
   });
 
   it("shows an error message when token issuance fails", async () => {
-    global.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
 
     render(<MockInterviews />);
 
@@ -73,7 +76,7 @@ describe("MockInterviews", () => {
   });
 
   it("shows an error message when fetching summaries fails", async () => {
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
 
@@ -101,7 +104,7 @@ describe("MockInterviews", () => {
 
   it("keeps showing cached summaries with a non-blocking warning when the background refresh fails (examination#167)", async () => {
     sessionStorage.setItem("examination-mock-interviews-cache", JSON.stringify(SAMPLE_SUMMARIES));
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
 
@@ -121,6 +124,6 @@ describe("MockInterviews", () => {
 
     await waitFor(() => screen.getByText("父親の保護者面接練習"));
 
-    expect(JSON.parse(sessionStorage.getItem("examination-mock-interviews-cache"))).toEqual(SAMPLE_SUMMARIES);
+    expect(JSON.parse(sessionStorage.getItem("examination-mock-interviews-cache")!)).toEqual(SAMPLE_SUMMARIES);
   });
 });
