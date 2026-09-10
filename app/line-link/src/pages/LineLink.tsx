@@ -11,7 +11,7 @@ export default function LineLink() {
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
-  const [code, setCode] = useState(null);
+  const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function issueCode() {
@@ -30,13 +30,14 @@ export default function LineLink() {
       setStatus("");
     } catch (error) {
       setIsError(true);
-      setStatus(error.message);
+      setStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setIsIssuing(false);
     }
   }
 
   async function handleCopy() {
+    if (!code) return;
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
