@@ -1,14 +1,17 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import UserMenu from "./UserMenu.jsx";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import UserMenu from "./UserMenu.tsx";
+
+let fetchMock: Mock;
 
 beforeEach(() => {
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 
 describe("UserMenu", () => {
   it("/_meを取得しユーザー名とアイコンを表示する", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ email: "taro@example.com", name: "山田太郎", picture: "https://example.com/avatar.png" }),
     });
@@ -16,13 +19,13 @@ describe("UserMenu", () => {
     render(<UserMenu />);
 
     await waitFor(() => expect(screen.getByText("山田太郎")).toBeInTheDocument());
-    expect(global.fetch).toHaveBeenCalledWith("/_me");
+    expect(fetchMock).toHaveBeenCalledWith("/_me");
     const image = screen.getByAltText("山田太郎");
     expect(image).toHaveAttribute("src", "https://example.com/avatar.png");
   });
 
   it("nameが無い場合はemailを表示し、pictureが無い場合はイニシャルを表示する", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ email: "taro@example.com", name: "", picture: "" }),
     });
@@ -34,7 +37,7 @@ describe("UserMenu", () => {
   });
 
   it("ログアウトへのリンクを表示する", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ email: "taro@example.com", name: "山田太郎", picture: "" }),
     });
@@ -46,23 +49,23 @@ describe("UserMenu", () => {
   });
 
   it("未ログイン（403）の場合は何も表示しない", async () => {
-    global.fetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
 
     const { container } = render(<UserMenu />);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
   });
 
   it("取得に失敗しても例外を投げない", async () => {
-    global.fetch.mockRejectedValueOnce(new Error("network error"));
+    fetchMock.mockRejectedValueOnce(new Error("network error"));
 
     expect(() => render(<UserMenu />)).not.toThrow();
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 
   it("「このページを共有」メニュー項目を表示する（QR共有自体の挙動はShareButton.test.jsxで検証）", async () => {
-    global.fetch.mockResolvedValueOnce({
+    fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ email: "taro@example.com", name: "山田太郎", picture: "" }),
     });

@@ -1,5 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import resizeToFitContent from "../components/resizeTextareaToFitContent.js"; // symlink先: dev-standards#164
+
+interface Question {
+  questionId: string;
+  targetPerson?: string;
+  question: string;
+  answer: string;
+  example?: string;
+  impression?: string;
+  modelAnswer?: string;
+}
+
+interface FormValues {
+  targetPerson: string;
+  question: string;
+  answer: string;
+  example: string;
+  impression: string;
+  modelAnswer: string;
+}
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/voice-practice/src/pages/VoicePractice.jsxと同じAPI）
@@ -7,7 +26,7 @@ const INTERVIEW_QUESTIONS_API_URL = "https://0yqos9utye.execute-api.us-east-1.am
 
 const TARGET_PERSONS = ["本人", "父", "母"];
 
-async function issueVoiceToken() {
+async function issueVoiceToken(): Promise<string> {
   const res = await fetch("/_voice-token", { method: "POST" });
   const data = await res.json();
   if (!res.ok) {
@@ -16,7 +35,7 @@ async function issueVoiceToken() {
   return data.token;
 }
 
-async function fetchQuestions(token) {
+async function fetchQuestions(token: string): Promise<Question[]> {
   const res = await fetch(INTERVIEW_QUESTIONS_API_URL, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -32,7 +51,7 @@ async function fetchQuestions(token) {
 // 古いデータを薄く表示した上でバックグラウンドで再取得する（examination#167）
 const QUESTIONS_CACHE_KEY = "examination-interview-questions-cache";
 
-function loadCachedQuestions() {
+function loadCachedQuestions(): Question[] | null {
   try {
     const raw = sessionStorage.getItem(QUESTIONS_CACHE_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -41,7 +60,7 @@ function loadCachedQuestions() {
   }
 }
 
-function saveCachedQuestions(questions) {
+function saveCachedQuestions(questions: Question[]) {
   try {
     sessionStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify(questions));
   } catch {
@@ -49,7 +68,7 @@ function saveCachedQuestions(questions) {
   }
 }
 
-const EMPTY_FORM = {
+const EMPTY_FORM: FormValues = {
   targetPerson: TARGET_PERSONS[0],
   question: "",
   answer: "",
@@ -68,15 +87,15 @@ export default function InterviewQuestions() {
   const [status, setStatus] = useState(cachedQuestions ? "stale" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [refreshError, setRefreshError] = useState("");
-  const [questions, setQuestions] = useState(cachedQuestions || []);
+  const [questions, setQuestions] = useState<Question[]>(cachedQuestions || []);
   const [filter, setFilter] = useState("すべて");
 
   // 質問の追加・編集フォーム（examination#165）。新規追加・編集を同じモーダルで扱い、
   // formMode/formQuestionIdで区別する
   const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState("add");
-  const [formQuestionId, setFormQuestionId] = useState(null);
-  const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [formMode, setFormMode] = useState<"add" | "edit">("add");
+  const [formQuestionId, setFormQuestionId] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState<FormValues>(EMPTY_FORM);
   const [formStatus, setFormStatus] = useState("");
   const [formIsError, setFormIsError] = useState(false);
   const [formIsSaving, setFormIsSaving] = useState(false);
@@ -94,13 +113,14 @@ export default function InterviewQuestions() {
           saveCachedQuestions(fetched);
         }
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         if (!cancelled) {
           if (cachedQuestions) {
             // 古いキャッシュを表示したままにし、再取得に失敗したことのみ通知する
-            setRefreshError(error.message);
+            setRefreshError(message);
             setStatus("loaded");
           } else {
-            setErrorMessage(error.message);
+            setErrorMessage(message);
             setStatus("error");
           }
         }
@@ -125,27 +145,27 @@ export default function InterviewQuestions() {
     setFormOpen(true);
   }
 
-  function openEditForm(q) {
+  function openEditForm(q: Question) {
     setFormMode("edit");
     setFormQuestionId(q.questionId);
     setFormValues({
       targetPerson: q.targetPerson || TARGET_PERSONS[0],
       question: q.question,
       answer: q.answer,
-      example: q.example,
-      impression: q.impression,
-      modelAnswer: q.modelAnswer,
+      example: q.example || "",
+      impression: q.impression || "",
+      modelAnswer: q.modelAnswer || "",
     });
     setFormStatus("");
     setFormIsError(false);
     setFormOpen(true);
   }
 
-  function updateFormField(field, value) {
+  function updateFormField(field: keyof FormValues, value: string) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleFormSubmit(event) {
+  async function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormIsSaving(true);
     setFormIsError(false);
@@ -169,7 +189,7 @@ export default function InterviewQuestions() {
       setFormOpen(false);
     } catch (error) {
       setFormIsError(true);
-      setFormStatus(error.message);
+      setFormStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setFormIsSaving(false);
     }
@@ -270,7 +290,7 @@ export default function InterviewQuestions() {
 
       {formOpen && (
         <>
-          <div className="modal d-block show" tabIndex="-1" role="dialog">
+          <div className="modal d-block show" tabIndex={-1} role="dialog">
             <div className="modal-dialog modal-dialog-scrollable">
               <div className="modal-content">
                 <div className="modal-header">

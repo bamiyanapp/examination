@@ -10,10 +10,10 @@ describe("NavigationOverlay", () => {
         <a href="/">トップへ</a>
       </>,
     );
-    const overlay = container.querySelector("#nav-overlay");
+    const overlay = container.querySelector("#nav-overlay")!;
     expect(overlay.classList.contains("visible")).toBe(false);
 
-    fireEvent.click(container.querySelector("a"));
+    fireEvent.click(container.querySelector("a")!);
 
     expect(overlay.classList.contains("visible")).toBe(true);
   });
@@ -27,9 +27,9 @@ describe("NavigationOverlay", () => {
         </a>
       </>,
     );
-    const overlay = container.querySelector("#nav-overlay");
+    const overlay = container.querySelector("#nav-overlay")!;
 
-    fireEvent.click(container.querySelector("a"));
+    fireEvent.click(container.querySelector("a")!);
 
     expect(overlay.classList.contains("visible")).toBe(false);
   });
@@ -41,9 +41,9 @@ describe("NavigationOverlay", () => {
         <a href="https://example.com">外部サイト</a>
       </>,
     );
-    const overlay = container.querySelector("#nav-overlay");
+    const overlay = container.querySelector("#nav-overlay")!;
 
-    fireEvent.click(container.querySelector("a"));
+    fireEvent.click(container.querySelector("a")!);
 
     expect(overlay.classList.contains("visible")).toBe(false);
   });

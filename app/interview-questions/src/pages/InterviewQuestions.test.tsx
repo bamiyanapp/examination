@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import InterviewQuestions from "./InterviewQuestions.jsx";
+import InterviewQuestions from "./InterviewQuestions.tsx";
 
 const SAMPLE_QUESTIONS = [
   {
@@ -35,13 +35,16 @@ const SAMPLE_QUESTIONS = [
   },
 ];
 
+let fetchMock: Mock;
+
 beforeEach(() => {
-  global.fetch = vi.fn();
+  fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
   sessionStorage.clear();
 });
 
-function mockTokenAndQuestions(questions) {
-  global.fetch
+function mockTokenAndQuestions(questions: unknown) {
+  fetchMock
     .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ questions }) });
 }
@@ -59,8 +62,8 @@ describe("InterviewQuestions", () => {
     expect(screen.getByText("好きな遊びは何ですか。")).toBeInTheDocument();
     expect(screen.getByText("3件")).toBeInTheDocument();
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
-    const secondCall = global.fetch.mock.calls[1];
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
+    const secondCall = fetchMock.mock.calls[1] as unknown as [string, { headers: { Authorization: string } }];
     expect(secondCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions");
     expect(secondCall[1].headers.Authorization).toBe("Bearer voice-token");
   });
@@ -91,7 +94,7 @@ describe("InterviewQuestions", () => {
   });
 
   it("shows an error message when token issuance fails", async () => {
-    global.fetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "アクセスが許可されていません" }) });
 
     render(<InterviewQuestions />);
 
@@ -101,7 +104,7 @@ describe("InterviewQuestions", () => {
   });
 
   it("shows an error message when fetching questions fails", async () => {
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
 
@@ -121,7 +124,7 @@ describe("InterviewQuestions", () => {
     fireEvent.change(screen.getByLabelText("質問:"), { target: { value: "得意科目は何ですか。" } });
     fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "算数が得意です。" } });
 
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
       .mockResolvedValueOnce({
         ok: true,
@@ -143,7 +146,7 @@ describe("InterviewQuestions", () => {
 
     await waitFor(() => expect(screen.getByText("4件")).toBeInTheDocument());
     expect(screen.getByText("得意科目は何ですか。")).toBeInTheDocument();
-    const postCall = global.fetch.mock.calls.at(-1);
+    const postCall = fetchMock.mock.calls.at(-1) as unknown as [string, { method: string; body: string }];
     expect(postCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions");
     expect(postCall[1].method).toBe("POST");
     const sentBody = JSON.parse(postCall[1].body);
@@ -161,7 +164,7 @@ describe("InterviewQuestions", () => {
     expect(screen.getByLabelText("質問:")).toHaveValue("志望理由を教えてください。");
     fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "更新後の回答です。" } });
 
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
       .mockResolvedValueOnce({
         ok: true,
@@ -173,7 +176,7 @@ describe("InterviewQuestions", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => expect(screen.getByText("更新後の回答です。")).toBeInTheDocument());
-    const putCall = global.fetch.mock.calls.at(-1);
+    const putCall = fetchMock.mock.calls.at(-1) as unknown as [string, { method: string; body: string }];
     expect(putCall[1].method).toBe("PUT");
     expect(JSON.parse(putCall[1].body).questionId).toBe("q1");
   });
@@ -187,7 +190,7 @@ describe("InterviewQuestions", () => {
     fireEvent.change(screen.getByLabelText("質問:"), { target: { value: "得意科目は何ですか。" } });
     fireEvent.change(screen.getByLabelText("回答の要点:"), { target: { value: "算数が得意です。" } });
 
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token-2" }) })
       .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: "questionは必須です" }) });
 
@@ -241,7 +244,7 @@ describe("InterviewQuestions", () => {
 
   it("keeps showing cached questions with a non-blocking warning when the background refresh fails (examination#167)", async () => {
     sessionStorage.setItem("examination-interview-questions-cache", JSON.stringify(SAMPLE_QUESTIONS));
-    global.fetch
+    fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "サーバーエラー" }) });
 
@@ -262,6 +265,6 @@ describe("InterviewQuestions", () => {
 
     await waitFor(() => screen.getByText("志望理由を教えてください。"));
 
-    expect(JSON.parse(sessionStorage.getItem("examination-interview-questions-cache"))).toEqual(SAMPLE_QUESTIONS);
+    expect(JSON.parse(sessionStorage.getItem("examination-interview-questions-cache")!)).toEqual(SAMPLE_QUESTIONS);
   });
 });
