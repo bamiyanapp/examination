@@ -1,20 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import AllowedEmails from "./AllowedEmails.jsx";
+import AllowedEmails from "./AllowedEmails.tsx";
 
 // /_admin/emailsへの応答はテストごとにこのキューへ順番に積む。/_meはmeResponseで
 // 個別に差し替える（マウント時に1回だけ呼ばれ、以後の/_admin/emailsへの呼び出しとは
 // 独立しているため、専用の変数で管理する方がテストの見通しが良い）
-let adminEmailsResponses;
-let meResponse;
+let adminEmailsResponses: unknown[];
+let meResponse: unknown;
+let fetchMock: Mock;
 
 beforeEach(() => {
   adminEmailsResponses = [];
   meResponse = { ok: false };
-  global.fetch = vi.fn((url) => {
+  fetchMock = vi.fn((url: string) => {
     if (url === "/_me") return Promise.resolve(meResponse);
     return Promise.resolve(adminEmailsResponses.shift());
   });
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 
 describe("AllowedEmails", () => {
@@ -29,7 +31,7 @@ describe("AllowedEmails", () => {
     await waitFor(() => {
       expect(screen.getByText(/a@example.com/)).toBeInTheDocument();
     });
-    expect(global.fetch).toHaveBeenCalledWith("/_admin/emails");
+    expect(fetchMock).toHaveBeenCalledWith("/_admin/emails");
   });
 
   it("adds an email via the form", async () => {
@@ -49,7 +51,7 @@ describe("AllowedEmails", () => {
     await waitFor(() => {
       expect(screen.getByText(/new@example.com/)).toBeInTheDocument();
     });
-    expect(global.fetch).toHaveBeenLastCalledWith("/_admin/emails", {
+    expect(fetchMock).toHaveBeenLastCalledWith("/_admin/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "add", email: "new@example.com" }),
@@ -102,7 +104,7 @@ describe("AllowedEmails", () => {
     await waitFor(() => {
       expect(screen.queryByText(/a@example.com/)).not.toBeInTheDocument();
     });
-    expect(global.fetch).toHaveBeenLastCalledWith("/_admin/emails", {
+    expect(fetchMock).toHaveBeenLastCalledWith("/_admin/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "remove", email: "a@example.com" }),
@@ -146,8 +148,8 @@ describe("AllowedEmails", () => {
         { ok: true, json: async () => ({ emails: [], familyDeleted: true }) }
       );
       const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-      delete window.location;
-      window.location = { href: "" };
+      delete (window as unknown as { location?: unknown }).location;
+      (window as unknown as { location: { href: string } }).location = { href: "" };
 
       render(<AllowedEmails />);
       await waitFor(() => screen.getByText(/me@example.com/));
@@ -160,7 +162,7 @@ describe("AllowedEmails", () => {
       await waitFor(() => {
         expect(window.location.href).toBe("/_logout");
       });
-      expect(global.fetch).toHaveBeenLastCalledWith("/_admin/emails", {
+      expect(fetchMock).toHaveBeenLastCalledWith("/_admin/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "remove", email: "me@example.com" }),
@@ -180,7 +182,7 @@ describe("AllowedEmails", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "退会して家族データを削除する" }));
 
-      expect(global.fetch).toHaveBeenCalledTimes(2); // 初期読み込み(/_admin/emails・/_me)のみ
+      expect(fetchMock).toHaveBeenCalledTimes(2); // 初期読み込み(/_admin/emails・/_me)のみ
     });
   });
 });
