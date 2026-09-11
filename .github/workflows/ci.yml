@@ -36,11 +36,15 @@ jobs:
         {"dir":"app/profile-edit","build":true,"node_version":"24"},
         {"dir":"app/family-create","build":true,"node_version":"24"}]
       enable_standards_check: true
-      # コード重複検知（jscpd、examination#400）。導入時点の実測値（15.91%、
-      # `app/`配下9アプリが独立したReactアプリ構成のため、共通UIパターンの
-      # 重複が主要因）を基準に、以後の増加を検知するラチェット方式のしきい値とする
+      # コード重複検知（jscpd、examination#400）。duplication-checkジョブの
+      # checkoutはsubmodules:trueを指定しない（reusable-ci.yml側の既定）ため
+      # dev-standards submoduleは未初期化のまま計測される。ローカルで最初に
+      # 計測した際はsubmodule実体（シンボリックリンク経由でdailyRateLimit.js
+      # 等が実ファイルとして解決される）を含めてしまい15.91%と誤って計測して
+      # いた（このジョブと同じ条件のクリーンな checkout で再計測すると20.44%）。
+      # 実測値20.44%を基準に、以後の増加を検知するラチェット方式のしきい値とする
       # （karuta#806・#833・#877と同様の方針）
       enable_duplication_check: true
-      duplication_threshold: 16
+      duplication_threshold: 21
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
