@@ -36,5 +36,11 @@ jobs:
         {"dir":"app/profile-edit","build":true,"node_version":"24"},
         {"dir":"app/family-create","build":true,"node_version":"24"}]
       enable_standards_check: true
+      # コード重複検知（jscpd、examination#400）。導入時点の実測値（15.91%、
+      # `app/`配下9アプリが独立したReactアプリ構成のため、共通UIパターンの
+      # 重複が主要因）を基準に、以後の増加を検知するラチェット方式のしきい値とする
+      # （karuta#806・#833・#877と同様の方針）
+      enable_duplication_check: true
+      duplication_threshold: 16
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
