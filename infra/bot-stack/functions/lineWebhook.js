@@ -273,6 +273,10 @@ async function handleRegisterExtract(lineUserId, freeText, createdBy, familySlug
   let draft;
   try {
     const raw = await callGemini([{ role: "user", content: prompt }]);
+    // Geminiの応答（信頼できる外部APIのレスポンス、任意の攻撃者入力ではない）から
+    // JSON部分を抽出するための既存パターン。lint導入時点（examination#401）では
+    // 挙動を変えるリファクタリングは見送る
+    // eslint-disable-next-line sonarjs/super-linear-regex
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     draft = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
     if (!draft.category || !draft.question || !draft.answer) {
@@ -361,6 +365,9 @@ async function handleTextMessage(lineUserId, text) {
   );
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
   if (method !== "POST") {
@@ -377,7 +384,7 @@ exports.handler = async (event) => {
   let payload;
   try {
     payload = JSON.parse(rawBody);
-  } catch (error) {
+  } catch {
     return { statusCode: 400, body: "invalid JSON" };
   }
 

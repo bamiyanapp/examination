@@ -48,6 +48,9 @@ function pushLineMessage(lineUserId, text) {
 // 管理用アカウントがまだLINE連携していない場合は通知をスキップする（呼び出し
 // 元の家族作成自体は失敗させない方針のためエラーにはしない、examination#259
 // のIssue本文参照）
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity
 exports.handler = async (event) => {
   if (event.requestContext?.http?.method !== "POST") {
     return jsonResponse(405, { error: "method not allowed" });
