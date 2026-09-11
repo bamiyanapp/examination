@@ -30,6 +30,9 @@ function deriveTargetPerson(category) {
   return CATEGORY_TARGET_PERSON[category] || "";
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity
 function toQuestionItem(item) {
   return {
     questionId: item.questionId?.S || "",

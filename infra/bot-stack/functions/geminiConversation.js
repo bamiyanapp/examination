@@ -55,7 +55,7 @@ function postJson(hostname, path, headers, bodyObj) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(data ? JSON.parse(data) : {});
-            } catch (error) {
+            } catch {
               reject(new Error(`invalid JSON response: ${data}`));
             }
           } else {
@@ -76,7 +76,10 @@ function postJson(hostname, path, headers, bodyObj) {
 function formatExistingQuestionsForPractice(existingQuestions) {
   if (!existingQuestions || existingQuestions.length === 0) return "";
   const lines = existingQuestions
-    .map((q) => `- ${q.question}${q.answer ? `（想定回答: ${q.answer}）` : ""}`)
+    .map((q) => {
+      const answerNote = q.answer ? `（想定回答: ${q.answer}）` : "";
+      return `- ${q.question}${answerNote}`;
+    })
     .join("\n");
   return (
     "質問は、まず次の事前登録済みの想定問答を中心に（言い回しを変えても構いません、" +
@@ -164,6 +167,10 @@ function escapeControlCharsInJsonStrings(raw) {
 // 両方にフォールバックさせ、致命的なエラーにしない
 function parseDualReply(rawText) {
   try {
+    // Geminiの応答（信頼できる外部APIのレスポンス、任意の攻撃者入力ではない）から
+    // JSON部分を抽出するための既存パターン。lint導入時点（examination#401）では
+    // 挙動を変えるリファクタリングは見送る
+    // eslint-disable-next-line sonarjs/super-linear-regex
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     const jsonText = escapeControlCharsInJsonStrings(jsonMatch ? jsonMatch[0] : rawText);
     const parsed = JSON.parse(jsonText);
@@ -226,7 +233,10 @@ function buildSummaryPrompt({ role, situation, schoolCharacteristics, history, e
     .join("\n");
   const characteristicsText = schoolCharacteristics ? `志望先の特色: ${schoolCharacteristics}。` : "";
   const questionsList = (existingQuestions || [])
-    .map((q) => `- id: ${q.questionId} / 質問: ${q.question}${q.modelAnswer ? ` / 既存の模範解答: ${q.modelAnswer}` : ""}`)
+    .map((q) => {
+      const modelAnswerNote = q.modelAnswer ? ` / 既存の模範解答: ${q.modelAnswer}` : "";
+      return `- id: ${q.questionId} / 質問: ${q.question}${modelAnswerNote}`;
+    })
     .join("\n");
   return (
     `以下は${situation}の練習会話です。相手は${roleDescription}です。${characteristicsText}` +
@@ -260,6 +270,10 @@ function buildSummaryPrompt({ role, situation, schoolCharacteristics, history, e
 // parseDualReplyと同じ方針を再利用する
 function parseReconciliationReply(rawText) {
   try {
+    // Geminiの応答（信頼できる外部APIのレスポンス、任意の攻撃者入力ではない）から
+    // JSON部分を抽出するための既存パターン。lint導入時点（examination#401）では
+    // 挙動を変えるリファクタリングは見送る
+    // eslint-disable-next-line sonarjs/super-linear-regex
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     const jsonText = escapeControlCharsInJsonStrings(jsonMatch ? jsonMatch[0] : rawText);
     const parsed = JSON.parse(jsonText);

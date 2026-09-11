@@ -17,6 +17,9 @@ function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
   if (method !== "POST") {

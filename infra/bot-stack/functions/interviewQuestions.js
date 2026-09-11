@@ -14,6 +14,9 @@ function jsonResponse(statusCode, body) {
   return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity
 function toQuestion(item) {
   return {
     questionId: item.questionId?.S || "",
@@ -60,6 +63,9 @@ function parseQuestionPayload(payload) {
 
 // 想定問答の一覧取得・追加・編集API（examination#77、#165）。本人/父/母を
 // 分けた複数ページではなく1画面（app/interview-questions/）に統合して扱う
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line sonarjs/cognitive-complexity
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
 

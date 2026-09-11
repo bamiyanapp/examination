@@ -44,6 +44,10 @@ function parseSimpleQaTables(markdown) {
       }
       j++;
     }
+    // 内側のwhileループで消費済みのテーブル行数分、外側forループのカウンタを
+    // 意図的に進めている（examination#401でテスト未整備のため、挙動を変える
+    // リファクタリングは見送る）
+    // eslint-disable-next-line sonarjs/updated-loop-counter
     i = j - 1;
   }
   return rows;
@@ -72,6 +76,10 @@ function parseDetailedQaTable(markdown) {
       }
       j++;
     }
+    // 内側のwhileループで消費済みのテーブル行数分、外側forループのカウンタを
+    // 意図的に進めている（examination#401でテスト未整備のため、挙動を変える
+    // リファクタリングは見送る）
+    // eslint-disable-next-line sonarjs/updated-loop-counter
     i = j - 1;
   }
   return rows;
@@ -170,7 +178,7 @@ async function seed() {
 if (require.main === module) {
   seed().catch((error) => {
     console.error(error);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
 
