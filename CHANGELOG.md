@@ -1,3 +1,10 @@
+## [1.47.1](https://github.com/bamiyanapp/examination/compare/v1.47.0...v1.47.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* **ci:** E2Eフィクスチャ用ワークフローでパスワード設定を作成有無に関わらず実行する ([#424](https://github.com/bamiyanapp/examination/issues/424)) ([d9da91b](https://github.com/bamiyanapp/examination/commit/d9da91bed00a17fd7496751f6b181ccfcdab8fee))
+
 # [1.47.0](https://github.com/bamiyanapp/examination/compare/v1.46.0...v1.47.0) (2026-09-12)
 
 
