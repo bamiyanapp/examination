@@ -23,9 +23,11 @@
 
 ## Checkpoint: #400〜#403完了後
 
-- [ ] `infra/site-stack`・`infra/bot-stack`がCIでlint/testされている
-- [ ] 重複度チェック・カバレッジ閾値がCIで機能している
-- [ ] 上記をmain上のCI実行結果で確認済み
+- [x] `infra/site-stack`・`infra/bot-stack`がCIでlint/testされている
+- [x] 重複度チェック・カバレッジ閾値がCIで機能している
+- [x] 上記をmain上のCI実行結果で確認済み（PR #411マージ後のmain push-to-main CI
+      [run 34661392334](https://github.com/bamiyanapp/examination/actions/runs/34661392334)で
+      `infra/bot-stack, 50`・`infra/site-stack, 75`を含む全ジョブの成功を確認）
 
 ## Checkpoint: #404完了後（全体完了）
 
