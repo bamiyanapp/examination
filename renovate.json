@@ -3,9 +3,9 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
-      "matchPackageNames": ["serverless"],
+      "matchPackageNames": ["osls"],
       "allowedVersions": "<4.0.0",
-      "description": "Serverless Framework v4はServerless Dashboardへのログインが必須になりOSS運用方針（infra/README.md参照）と相容れないため、v3系までに制限する"
+      "description": "infra/配下のserverless.ymlはframeworkVersion: \"3\"（v3スキーマ）で記述している。osls v4はこのframeworkVersionと互換性が無く「The osls version (4.x) does not satisfy the \"frameworkVersion\" (3)」でデプロイが即座に失敗する（examination#439、PR #441で実際に本番デプロイが失敗し発覚）。v4へ上げる場合はserverless.yml側のframeworkVersionも合わせて更新する必要があるため、機械的な自動更新の対象外とし手動での計画的な移行に限定する"
     },
     {
       "matchPackageNames": ["jose"],
