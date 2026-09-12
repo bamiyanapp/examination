@@ -80,8 +80,14 @@ jobs:
             --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH")
           ID_TOKEN=$(echo "$RESULT" | jq -r '.AuthenticationResult.IdToken')
           REFRESH_TOKEN=$(echo "$RESULT" | jq -r '.AuthenticationResult.RefreshToken')
-          echo "::add-mask::$ID_TOKEN"
-          echo "::add-mask::$REFRESH_TOKEN"
+          # id_token・refresh_tokenはjobのoutputとして次のciジョブ（別ジョブ）へ
+          # 渡す必要があるため、あえて::add-mask::しない。GitHub Actionsは
+          # ::add-mask::済みの値をjob outputへ設定しようとすると「Skip output
+          # '...' since it may contain secret」で値を空にしてしまう仕様があり、
+          # 実際にこれが原因でE2E_BASE_URL等が空文字列になりテストが失敗した
+          # （PR #428で実機確認）。E2Eテスト専用ユーザー（examination#413）は
+          # 実在の家族データを一切持たないダミーの家族にのみアクセスできるため、
+          # このトークンがログ上に残ること自体のリスクは低いと判断した
           echo "id_token=$ID_TOKEN" >> "$GITHUB_OUTPUT"
           echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
 
@@ -99,7 +105,6 @@ jobs:
               E2E_REFRESH_TOKEN: process.env.E2E_REFRESH_TOKEN,
             }));
           ')
-          echo "::add-mask::$JSON"
           echo "json=$JSON" >> "$GITHUB_OUTPUT"
 
   ci:
