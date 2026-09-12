@@ -1,6 +1,6 @@
 # infra（AWS配信基盤）
 
-Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のインフラ定義。Serverless Framework v3系（OSS版、Serverless Dashboardへのログイン不要）を使用する。
+Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のインフラ定義。OSLS（`osls`パッケージ、[oss-serverless/osls](https://github.com/oss-serverless/osls)。Serverless Framework v3系のままオープンソースで開発が継続されているフォーク、Serverless Dashboardへのログイン不要）を使用する。
 
 ## 構成
 
