@@ -1,3 +1,10 @@
+## [1.48.3](https://github.com/bamiyanapp/examination/compare/v1.48.2...v1.48.3) (2026-09-12)
+
+
+### Bug Fixes
+
+* **infra:** oslsをv3系へ戻しframeworkVersion不一致によるデプロイ失敗を修正する ([#442](https://github.com/bamiyanapp/examination/issues/442)) ([abc8706](https://github.com/bamiyanapp/examination/commit/abc87061c79a3610affccca5d403ed179ed7a094))
+
 ## [1.48.2](https://github.com/bamiyanapp/examination/compare/v1.48.1...v1.48.2) (2026-09-12)
 
 
