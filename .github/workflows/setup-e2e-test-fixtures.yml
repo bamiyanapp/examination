@@ -1,0 +1,104 @@
+name: Setup E2E test fixtures
+
+# Playwright E2Eテスト（examination#404）用の固定データを用意するワンショットワークフロー
+# （examination#413）。実Googleアカウントを新規作成せず、Cognito User Pool内に
+# ネイティブ（Google非連携）のテスト専用ユーザーを1つ作成し、examination-families・
+# examination-allowed-emailsへ対応するテスト専用家族レコードを投入する。
+# いずれも既に存在する場合は何もしない冪等な処理のため、再実行しても安全
+# （docs/sandboxed-agent-production-data-pattern.mdと同じ「実行ロジックはコード化し
+# GitHub Actions側に委ねる」方式）。
+#
+# 前提: 実行前にGitHub Secrets（Settings > Secrets and variables > Actions）へ
+# E2E_TEST_USER_PASSWORDを登録しておくこと（Cognitoのパスワードポリシー既定値を
+# 満たす8文字以上・大小英字/数字/記号混在の値）。
+on:
+  workflow_dispatch: {}
+
+env:
+  # example.comはRFC 2606でドキュメント・テスト用に予約されたドメインのため、
+  # 実在のメールボックスと衝突しない安全な識別子として使う
+  E2E_TEST_USER_EMAIL: e2e-test@example.com
+  E2E_TEST_FAMILY_SLUG: e2e-test
+  E2E_TEST_FAMILY_NAME: E2Eテスト家族
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Get auth-stack UserPoolId
+        id: auth-outputs
+        run: |
+          OUT=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-auth-prod --query "Stacks[0].Outputs")
+          echo "user_pool_id=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_OUTPUT"
+
+      - name: Create native Cognito test user (if not already present)
+        id: create-user
+        env:
+          USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: |
+          if aws cognito-idp admin-get-user --region ap-northeast-1 \
+              --user-pool-id "$USER_POOL_ID" --username "$E2E_TEST_USER_EMAIL" >/dev/null 2>&1; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "Cognito test user already exists, skipping creation"
+          else
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            aws cognito-idp admin-create-user --region ap-northeast-1 \
+              --user-pool-id "$USER_POOL_ID" \
+              --username "$E2E_TEST_USER_EMAIL" \
+              --user-attributes Name=email,Value="$E2E_TEST_USER_EMAIL" Name=email_verified,Value=true Name=name,Value="E2E Test" \
+              --message-action SUPPRESS
+            aws cognito-idp admin-set-user-password --region ap-northeast-1 \
+              --user-pool-id "$USER_POOL_ID" \
+              --username "$E2E_TEST_USER_EMAIL" \
+              --password "$E2E_TEST_USER_PASSWORD" \
+              --permanent
+            echo "Created Cognito test user $E2E_TEST_USER_EMAIL"
+          fi
+
+      - name: Seed E2E test family (if not already present)
+        id: seed-family
+        run: |
+          if aws dynamodb get-item --region us-east-1 --table-name examination-families \
+              --key "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}" --query "Item" --output text | grep -q .; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "examination-families already has $E2E_TEST_FAMILY_SLUG, skipping seed"
+          else
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            aws dynamodb put-item --region us-east-1 --table-name examination-families \
+              --item "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}, \"name\": {\"S\": \"$E2E_TEST_FAMILY_NAME\"}, \"createdBy\": {\"S\": \"e2e-setup\"}, \"createdAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+            echo "Seeded examination-families: $E2E_TEST_FAMILY_SLUG"
+          fi
+
+      - name: Seed E2E test allowed email (if not already present)
+        id: seed-allowed-email
+        run: |
+          if aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
+              --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --query "Item" --output text | grep -q .; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "examination-allowed-emails already has $E2E_TEST_USER_EMAIL, skipping seed"
+          else
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            aws dynamodb put-item --region us-east-1 --table-name examination-allowed-emails \
+              --item "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}, \"addedBy\": {\"S\": \"e2e-setup\"}, \"addedAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}, \"familySlug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}"
+            echo "Seeded examination-allowed-emails: $E2E_TEST_USER_EMAIL"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### E2Eテスト用フィクスチャ セットアップ結果"
+            echo "- Cognitoテストユーザー（$E2E_TEST_USER_EMAIL）: 新規作成=${{ steps.create-user.outputs.created }}"
+            echo "- テスト家族（$E2E_TEST_FAMILY_SLUG）: 新規作成=${{ steps.seed-family.outputs.created }}"
+            echo "- 許可メールアドレス: 新規作成=${{ steps.seed-allowed-email.outputs.created }}"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
