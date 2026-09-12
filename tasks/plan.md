@@ -111,7 +111,7 @@ dev-standards `docs/standard-tech-stack.md`は「フロントエンドは公開�
 2. **完了**: 明示的なログイン入口`/_login`（`?redirect=`で戻り先を指定可能、同一オリジンの相対パスのみ許可）を新設した。以前は末尾のCognitoリダイレクト組み立てロジックをインライン実装していたが、`buildLoginRedirect()`として切り出し`/_login`と`refresh_token`失効時のフォールバックの両方から使えるようにした
 3. **完了**: 各アプリの未ログイン時UXを改善した。`UserMenu.tsx`（8アプリ）は`/_me`が403の場合に何も表示しない代わりに`/_login`へのリンクを表示するよう変更した。`UserMenu`を持たない`app/family-create/`は、マウント時に`/_me`でログイン状態を確認し、未ログインならフォームの代わりにログイン案内を表示するよう変更した（`/_families`は未ログイン時403をプレーンテキストで返すため、フォーム送信に任せると`res.json()`が失敗し分かりにくいエラーになる問題への対応も兼ねる）
 4. ロールバック手段: 変更は`infra/site-stack/functions/checkAuth.js`1ファイルと各アプリの`UserMenu.tsx`・`FamilyCreate.tsx`に閉じている。問題発生時は該当コミットをrevertしデプロイし直すことで復元できる
-5. **未実施**: dev-standards側`docs/serverless-static-site-pattern.md`のexamination例外記載の更新は、本変更が実際にmain上でデプロイ・動作確認できてから判断する（tasks/plan.md更新時点ではまだ未反映）
+5. **完了**: main上のCDデプロイ成功（`auth-stack`・`site-stack`・`bot-stack`の3スタック全てが実際にデプロイされたことをジョブログで確認済み。CloudFront配信先: `https://d3b80dryg4uis7.cloudfront.net`）を受け、dev-standards側`docs/serverless-static-site-pattern.md`のexamination記載を実態へ更新した（dev-standards#414、PR #415）
 
 ### Risks and Mitigations
 
@@ -123,6 +123,5 @@ dev-standards `docs/standard-tech-stack.md`は「フロントエンドは公開�
 
 ### Open Questions
 
-- 全て解消済み（未ログイン時のUXは実装タスク3で対応済み）
-- dev-standards側ドキュメント更新（実装タスク4）のタイミング（examination側の移行完了後 or 並行）
+- 全て解消済み（未ログイン時のUXは実装タスク3で対応済み、dev-standards側ドキュメント更新は実装タスク5で対応済み）
 - [ ] examination#399の完了条件を全て満たしている（examination#399をクローズする）
