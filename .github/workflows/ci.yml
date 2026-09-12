@@ -36,16 +36,24 @@ jobs:
       # （duplication_thresholdと同様の方針）。bot-stackはgeminiConversation.js・
       # lineWebhook.jsの外部API呼び出し成功パス（Gemini・LINE）がテスト対象外
       # （examination#401で意図的にスコープ外とした）のため他パッケージより低め
+      #
+      # app/配下9アプリのcoverage_thresholdはexamination#408で導入。従来
+      # `test`スクリプトが`vitest run`のみでcoverageを一切生成していなかった
+      # ため（infra/bot-stack・site-stackと同じ理由）、各アプリへ
+      # `@vitest/coverage-v8`を追加し`--coverage`系オプションを付与した上で
+      # 実測した値（Stmts88.04〜100/Branches80.89〜91.56/Funcs77.92〜100/
+      # Lines90.9〜100、アプリごとに幅がある）を基準に、各アプリの実測最小値を
+      # 下回らない範囲でマージンを持たせたラチェット方式のしきい値を個別に設定する
       packages: >-
-        [{"dir":"app/line-link","build":true,"node_version":"24"},
-        {"dir":"app/allowed-emails","build":true,"node_version":"24"},
-        {"dir":"app/voice-practice","build":true,"node_version":"24"},
-        {"dir":"app/top","build":true,"node_version":"24"},
-        {"dir":"app/interview-questions","build":true,"node_version":"24"},
-        {"dir":"app/education-overview","build":true,"node_version":"24"},
-        {"dir":"app/mock-interviews","build":true,"node_version":"24"},
-        {"dir":"app/profile-edit","build":true,"node_version":"24"},
-        {"dir":"app/family-create","build":true,"node_version":"24"},
+        [{"dir":"app/line-link","build":true,"node_version":"24","coverage_threshold":85},
+        {"dir":"app/allowed-emails","build":true,"node_version":"24","coverage_threshold":85},
+        {"dir":"app/voice-practice","build":true,"node_version":"24","coverage_threshold":78},
+        {"dir":"app/top","build":true,"node_version":"24","coverage_threshold":85},
+        {"dir":"app/interview-questions","build":true,"node_version":"24","coverage_threshold":75},
+        {"dir":"app/education-overview","build":true,"node_version":"24","coverage_threshold":85},
+        {"dir":"app/mock-interviews","build":true,"node_version":"24","coverage_threshold":85},
+        {"dir":"app/profile-edit","build":true,"node_version":"24","coverage_threshold":80},
+        {"dir":"app/family-create","build":true,"node_version":"24","coverage_threshold":80},
         {"dir":"infra/bot-stack","coverage_threshold":50},
         {"dir":"infra/site-stack","coverage_threshold":75}]
       enable_standards_check: true
