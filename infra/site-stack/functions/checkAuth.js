@@ -94,7 +94,7 @@ function postForm(hostname, path, form, extraHeaders = {}) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               resolve(JSON.parse(data));
-            } catch (error) {
+            } catch {
               reject(new Error(`token endpoint returned invalid JSON: ${data}`));
             }
           } else {
@@ -169,7 +169,7 @@ async function getAllowedEmailRecord(email) {
   if (cached && cached.expiresAt > now) {
     return cached.allowed ? { familySlug: cached.familySlug || "" } : null;
   }
-  let allowed = false;
+  let allowed;
   let familySlug = "";
   try {
     const result = await ddb.send(
@@ -396,6 +396,9 @@ function parseJsonBody(request) {
   }
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#402）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line sonarjs/super-linear-regex
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function verifyIdTokenFromCookie(request) {
@@ -460,6 +463,9 @@ async function consumeCsrfNonce(nonce) {
 // 閲覧・追加・削除は自分の所属家族のメンバーに限定する（examination#243）。
 // 家族の新規作成は招待制ではなく公開登録制のため（examination#258）、この
 // APIに招待関連の操作は無い
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#402）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity
 async function handleAdminEmailsApi(request) {
   const payload = await verifyIdTokenFromCookie(request);
   if (!payload) {
@@ -678,6 +684,9 @@ async function handleVoiceTokenApi(request) {
   return jsonResponse(200, "OK", { token, expiresInSeconds: VOICE_TOKEN_TTL_SECONDS });
 }
 
+// 既存ロジックのテスト未整備のため、lint導入時点（examination#402）では
+// 挙動を変えるリファクタリングは見送る
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity
 exports.handler = async (event) => {
   const request = event.Records[0].cf.request;
   const domainName = request.headers.host[0].value;
@@ -762,7 +771,7 @@ exports.handler = async (event) => {
     // 確認する（第三者が発行させた認可コードをこのブラウザに横流しして紐付けさせる
     // 攻撃を防ぐ）。以前はCookie（csrf_state）で照合していたが、examination#143
     // 参照
-    let originalUri = "/";
+    let originalUri;
     let decoded;
     try {
       decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
@@ -857,10 +866,9 @@ exports.handler = async (event) => {
       // 未登録ユーザーは家族新規作成ページへ誘導する（examination#258・#264、
       // 上記/_callback・通常リクエストの2箇所と同じ方針）
       const isAllowed = await isAllowedEmail(refreshedPayload.email);
+      const originalUrl = `https://${domainName}${request.uri}` + (request.querystring ? `?${request.querystring}` : "");
       const destinationUrl =
-        isAllowed || isFamilyCreatePath(request.uri)
-          ? `https://${domainName}${request.uri}` + (request.querystring ? `?${request.querystring}` : "")
-          : `https://${domainName}/family-create/`;
+        isAllowed || isFamilyCreatePath(request.uri) ? originalUrl : `https://${domainName}/family-create/`;
       return redirectResponse(destinationUrl, [cookieString("id_token", tokens.id_token, tokens.expires_in)]);
     } catch (error) {
       console.warn("refresh_token exchange failed", error.message);
