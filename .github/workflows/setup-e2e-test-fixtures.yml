@@ -189,6 +189,24 @@ jobs:
             echo "Seeded examination-allowed-emails: $E2E_TEST_USER_EMAIL"
           fi
 
+      # examination#414のデバッグ用（一時的）。PR #428の実機検証で、setup-e2e-test-fixtures.ymlは
+      # 「既に許可済み」と報告しているにも関わらず、checkAuth.js（Lambda@Edge）が同じ
+      # メールアドレスを許可外と判定し/family-create/へ誘導してしまう不一致が確認された。
+      # checkAuth.js側から実際に見えるはずのDynamoDBの生レコードをJob Summaryへ出力し、
+      # キーの完全一致（大文字小文字・空白等）や属性の有無を確認する
+      - name: Debug - verify allowed-email record as checkAuth.js would read it
+        id: debug-allowed-email
+        run: |
+          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
+            --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --output json)
+          {
+            echo "### デバッグ: examination-allowed-emailsの生レコード（examination#414）"
+            echo "検索キー（checkAuth.jsのString(email).toLowerCase()相当）: \`$E2E_TEST_USER_EMAIL\`"
+            echo '```json'
+            echo "$ITEM"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Summary
         if: always()
         env:
