@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/bamiyanapp/examination/compare/v1.47.1...v1.48.0) (2026-09-12)
+
+
+### Features
+
+* **e2e:** app/topへPlaywright E2Eを導入しパイプライン全体を実証する（examination[#414](https://github.com/bamiyanapp/examination/issues/414)） ([#428](https://github.com/bamiyanapp/examination/issues/428)) ([804ed9d](https://github.com/bamiyanapp/examination/commit/804ed9dab9e30be58343b5e3b486cf6d383b8f18))
+
 ## [1.47.1](https://github.com/bamiyanapp/examination/compare/v1.47.0...v1.47.1) (2026-09-12)
 
 
