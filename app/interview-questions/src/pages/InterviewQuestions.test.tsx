@@ -267,4 +267,38 @@ describe("InterviewQuestions", () => {
 
     expect(JSON.parse(sessionStorage.getItem("examination-interview-questions-cache")!)).toEqual(SAMPLE_QUESTIONS);
   });
+
+  it("substitutes 本人/父/母 in question text with registered names once the family profile loads (examination#431)", async () => {
+    const questionsWithPlaceholders = [
+      {
+        questionId: "q1",
+        category: "本人面接",
+        targetPerson: "本人",
+        question: "本人の好きな遊びは何ですか。",
+        answer: "父と母が一緒に遊びます。",
+        example: "",
+        impression: "",
+        modelAnswer: "",
+      },
+    ];
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "voice-token" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ questions: questionsWithPlaceholders }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ childName: "山田太郎", fatherName: "山田一郎", motherName: "山田花子" }),
+      });
+
+    render(<InterviewQuestions />);
+
+    await waitFor(() => {
+      expect(screen.getByText("山田太郎の好きな遊びは何ですか。")).toBeInTheDocument();
+    });
+    expect(screen.getByText("山田一郎と山田花子が一緒に遊びます。")).toBeInTheDocument();
+    // targetPersonのフィルタ・バッジ表示は「本人」のまま変えず、本文中の語のみ差し替える
+    expect(screen.getByRole("button", { name: "本人" })).toBeInTheDocument();
+    const thirdCall = fetchMock.mock.calls[2] as unknown as [string, { headers: { Authorization: string } }];
+    expect(thirdCall[0]).toBe("https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile");
+    expect(thirdCall[1].headers.Authorization).toBe("Bearer voice-token");
+  });
 });

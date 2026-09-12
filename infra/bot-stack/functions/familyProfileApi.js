@@ -37,8 +37,20 @@ exports.handler = async (event) => {
     const situation = sanitizeField(payload.situation) || DEFAULT_SITUATION;
     const schoolCharacteristics = sanitizeField(payload.schoolCharacteristics);
     const otherContext = sanitizeField(payload.otherContext);
-    await saveFamilyProfile({ familySlug, situation, schoolCharacteristics, otherContext, updatedBy: email });
-    return jsonResponse(200, { situation, schoolCharacteristics, otherContext });
+    const childName = sanitizeField(payload.childName);
+    const fatherName = sanitizeField(payload.fatherName);
+    const motherName = sanitizeField(payload.motherName);
+    await saveFamilyProfile({
+      familySlug,
+      situation,
+      schoolCharacteristics,
+      otherContext,
+      childName,
+      fatherName,
+      motherName,
+      updatedBy: email,
+    });
+    return jsonResponse(200, { situation, schoolCharacteristics, otherContext, childName, fatherName, motherName });
   }
 
   return jsonResponse(405, { error: "method not allowed" });

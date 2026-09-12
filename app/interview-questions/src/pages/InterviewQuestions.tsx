@@ -23,8 +23,45 @@ interface FormValues {
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（app/voice-practice/src/pages/VoicePractice.jsxと同じAPI）
 const INTERVIEW_QUESTIONS_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/interview-questions";
+// app/profile-edit/と同じfamily-profile API（examination#431: 表示時に「本人」「父」「母」を
+// 登録済みの実際の氏名へ差し替えるために参照する。氏名自体はここでは編集しない）
+const FAMILY_PROFILE_API_URL = "https://0yqos9utye.execute-api.us-east-1.amazonaws.com/family-profile";
 
 const TARGET_PERSONS = ["本人", "父", "母"];
+
+interface FamilyProfile {
+  childName?: string;
+  fatherName?: string;
+  motherName?: string;
+}
+
+async function fetchFamilyProfile(token: string): Promise<FamilyProfile> {
+  const res = await fetch(FAMILY_PROFILE_API_URL, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `プロフィールの取得に失敗しました（${res.status}）`);
+  }
+  return data;
+}
+
+// フィルタ・バッジ表示用のtargetPersonラベル（本人/父/母）は変更せず、質問・回答等の
+// 本文中に現れるこれらの語のみ、登録済みの氏名があれば差し替えて表示する（examination#431）
+function buildNameSubstitutions(profile: FamilyProfile): Record<string, string> {
+  const substitutions: Record<string, string> = {};
+  if (profile.childName) substitutions["本人"] = profile.childName;
+  if (profile.fatherName) substitutions["父"] = profile.fatherName;
+  if (profile.motherName) substitutions["母"] = profile.motherName;
+  return substitutions;
+}
+
+function substituteNames(text: string, substitutions: Record<string, string>): string {
+  if (Object.keys(substitutions).length === 0) return text;
+  let result = text;
+  for (const [placeholder, name] of Object.entries(substitutions)) {
+    result = result.split(placeholder).join(name);
+  }
+  return result;
+}
 
 async function issueVoiceToken(): Promise<string> {
   const res = await fetch("/_voice-token", { method: "POST" });
@@ -89,6 +126,7 @@ export default function InterviewQuestions() {
   const [refreshError, setRefreshError] = useState("");
   const [questions, setQuestions] = useState<Question[]>(cachedQuestions || []);
   const [filter, setFilter] = useState("すべて");
+  const [nameSubstitutions, setNameSubstitutions] = useState<Record<string, string>>({});
 
   // 質問の追加・編集フォーム（examination#165）。新規追加・編集を同じモーダルで扱い、
   // formMode/formQuestionIdで区別する
@@ -111,6 +149,16 @@ export default function InterviewQuestions() {
           setStatus("loaded");
           setRefreshError("");
           saveCachedQuestions(fetched);
+        }
+        // 氏名の差し替えは表示上の付加情報にすぎないため、取得に失敗しても
+        // 質問一覧自体の表示は妨げない（「本人」「父」「母」のまま表示するだけ）
+        try {
+          const profile = await fetchFamilyProfile(token);
+          if (!cancelled) {
+            setNameSubstitutions(buildNameSubstitutions(profile));
+          }
+        } catch {
+          // 上記の理由により無視する
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -257,26 +305,26 @@ export default function InterviewQuestions() {
                         編集
                       </button>
                     </div>
-                    <h2 className="card-title h6 mt-2">{q.question}</h2>
+                    <h2 className="card-title h6 mt-2">{substituteNames(q.question, nameSubstitutions)}</h2>
                     <dl className="d-flex flex-column gap-1 mb-0">
                       <dt className="small fw-semibold text-muted">回答の要点</dt>
-                      <dd>{q.answer}</dd>
+                      <dd>{substituteNames(q.answer, nameSubstitutions)}</dd>
                       {q.example && (
                         <>
                           <dt className="mt-2 small fw-semibold text-muted">盛り込む具体例</dt>
-                          <dd>{q.example}</dd>
+                          <dd>{substituteNames(q.example, nameSubstitutions)}</dd>
                         </>
                       )}
                       {q.impression && (
                         <>
                           <dt className="mt-2 small fw-semibold text-muted">面接官への印象</dt>
-                          <dd>{q.impression}</dd>
+                          <dd>{substituteNames(q.impression, nameSubstitutions)}</dd>
                         </>
                       )}
                       {q.modelAnswer && (
                         <>
                           <dt className="mt-2 small fw-semibold text-muted">模範解答</dt>
-                          <dd>{q.modelAnswer}</dd>
+                          <dd>{substituteNames(q.modelAnswer, nameSubstitutions)}</dd>
                         </>
                       )}
                     </dl>

@@ -137,6 +137,35 @@ async function removeLegacySeedRows(ddb, tableName, familySlug) {
   }
 }
 
+// Markdown側から質問行が削除された場合（examination#431、個人情報削減のための
+// 内容整理等）に、対応するDynamoDBの行を追従して削除する。createdBy="seed"の行のみを
+// 対象とするため、LINE botの登録モード・想定問答画面からの手動追加/編集（いずれも
+// createdByがseed以外）を誤って削除することはない
+async function removeOrphanedSeedRows(ddb, tableName, familySlug, currentQuestionIds) {
+  const { QueryCommand, DeleteItemCommand } = require("@aws-sdk/client-dynamodb");
+  const result = await ddb.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "familySlug = :slug",
+      ExpressionAttributeValues: { ":slug": { S: familySlug } },
+    })
+  );
+  const orphanedItems = (result.Items || []).filter(
+    (item) => item.createdBy?.S === "seed" && !currentQuestionIds.has(item.questionId?.S || "")
+  );
+  for (const item of orphanedItems) {
+    await ddb.send(
+      new DeleteItemCommand({
+        TableName: tableName,
+        Key: { familySlug: item.familySlug, questionId: item.questionId },
+      })
+    );
+  }
+  if (orphanedItems.length > 0) {
+    console.log(`Removed ${orphanedItems.length} row(s) whose question no longer exists in the Markdown source`);
+  }
+}
+
 async function seed() {
   const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
   const region = process.env.AWS_REGION || "ap-northeast-1";
@@ -147,6 +176,7 @@ async function seed() {
   await removeLegacySeedRows(ddb, tableName, familySlug);
 
   const questions = collectQuestions();
+  const currentQuestionIds = new Set(questions.map((q) => buildQuestionId(familySlug, q.category, q.question)));
   console.log(`Seeding ${questions.length} questions into ${tableName} (familySlug=${familySlug})`);
   for (const q of questions) {
     const questionId = buildQuestionId(familySlug, q.category, q.question);
@@ -172,6 +202,7 @@ async function seed() {
       })
     );
   }
+  await removeOrphanedSeedRows(ddb, tableName, familySlug, currentQuestionIds);
   console.log("Done.");
 }
 

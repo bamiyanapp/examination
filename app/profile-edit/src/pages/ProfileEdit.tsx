@@ -5,6 +5,9 @@ interface Profile {
   situation?: string;
   schoolCharacteristics?: string;
   otherContext?: string;
+  childName?: string;
+  fatherName?: string;
+  motherName?: string;
 }
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
@@ -52,6 +55,9 @@ export default function ProfileEdit() {
   const [situation, setSituation] = useState("");
   const [schoolCharacteristics, setSchoolCharacteristics] = useState("");
   const [otherContext, setOtherContext] = useState("");
+  const [childName, setChildName] = useState("");
+  const [fatherName, setFatherName] = useState("");
+  const [motherName, setMotherName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const tokenRef = useRef<string | null>(null);
@@ -67,6 +73,9 @@ export default function ProfileEdit() {
           setSituation(profile.situation || "");
           setSchoolCharacteristics(profile.schoolCharacteristics || "");
           setOtherContext(profile.otherContext || "");
+          setChildName(profile.childName || "");
+          setFatherName(profile.fatherName || "");
+          setMotherName(profile.motherName || "");
           setStatus("loaded");
         }
       } catch (error) {
@@ -90,7 +99,7 @@ export default function ProfileEdit() {
     try {
       const token = tokenRef.current || (await issueVoiceToken());
       tokenRef.current = token;
-      await saveProfile(token, { situation, schoolCharacteristics, otherContext });
+      await saveProfile(token, { situation, schoolCharacteristics, otherContext, childName, fatherName, motherName });
       setSavedMessage("保存しました。");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -104,7 +113,7 @@ export default function ProfileEdit() {
       <h1 className="h3 fw-bold">プロフィール編集</h1>
       <p className="mt-2 text-muted">
         面接練習（音声対話ページ・LINE
-        bot）で使う「シチュエーション」「志望先の特色」「その他前提情報」をここで編集・保存します。面接練習画面ではここで保存した内容を参照するのみで、その場での編集はできません。
+        bot）で使う「シチュエーション」「志望先の特色」「その他前提情報」と、想定問答画面で「本人」「父」「母」の表記を実際の氏名に置き換えて表示するための氏名をここで編集・保存します。面接練習画面ではここで保存した内容を参照するのみで、その場での編集はできません。
       </p>
 
       {status === "loading" && (
@@ -123,6 +132,36 @@ export default function ProfileEdit() {
       {status === "loaded" && (
         <form onSubmit={handleSave} className="card mt-4">
           <div className="card-body d-flex flex-column gap-3">
+            <div>
+              <label className="form-label fw-medium">本人（子ども）の氏名（任意）:</label>
+              <input
+                type="text"
+                value={childName}
+                onChange={(event) => setChildName(event.target.value)}
+                placeholder="例: 山田太郎"
+                className="form-control"
+              />
+            </div>
+            <div>
+              <label className="form-label fw-medium">父の氏名（任意）:</label>
+              <input
+                type="text"
+                value={fatherName}
+                onChange={(event) => setFatherName(event.target.value)}
+                placeholder="例: 山田一郎"
+                className="form-control"
+              />
+            </div>
+            <div>
+              <label className="form-label fw-medium">母の氏名（任意）:</label>
+              <input
+                type="text"
+                value={motherName}
+                onChange={(event) => setMotherName(event.target.value)}
+                placeholder="例: 山田花子"
+                className="form-control"
+              />
+            </div>
             <div>
               <label className="form-label fw-medium">シチュエーション:</label>
               <input
