@@ -161,11 +161,19 @@ jobs:
             cat /tmp/initiate-auth-err.txt
           fi
 
+      # examination#414の実機検証で判明したバグの修正。`--query "Item" --output text`は
+      # レコードが存在しない場合に文字列"None"を返すため、`grep -q .`が非空文字列である
+      # "None"を「存在する」と誤判定してしまい、examination-allowed-emails・
+      # examination-familiesへのシード投入が初回から一度も実行されていなかった
+      # （examination#413導入時から潜在していた不具合。E2Eテストユーザーが常に
+      # 許可外と判定され/family-create/へリダイレクトされる原因だった）。
+      # レスポンスJSONに"Item"キー自体が存在するかで判定するよう修正する
       - name: Seed E2E test family (if not already present)
         id: seed-family
         run: |
-          if aws dynamodb get-item --region us-east-1 --table-name examination-families \
-              --key "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}" --query "Item" --output text | grep -q .; then
+          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-families \
+              --key "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}" --output json)
+          if [ "$(echo "$ITEM" | jq -r 'has("Item")')" = "true" ]; then
             echo "created=false" >> "$GITHUB_OUTPUT"
             echo "examination-families already has $E2E_TEST_FAMILY_SLUG, skipping seed"
           else
@@ -178,8 +186,9 @@ jobs:
       - name: Seed E2E test allowed email (if not already present)
         id: seed-allowed-email
         run: |
-          if aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
-              --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --query "Item" --output text | grep -q .; then
+          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
+              --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --output json)
+          if [ "$(echo "$ITEM" | jq -r 'has("Item")')" = "true" ]; then
             echo "created=false" >> "$GITHUB_OUTPUT"
             echo "examination-allowed-emails already has $E2E_TEST_USER_EMAIL, skipping seed"
           else
@@ -188,24 +197,6 @@ jobs:
               --item "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}, \"addedBy\": {\"S\": \"e2e-setup\"}, \"addedAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}, \"familySlug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}"
             echo "Seeded examination-allowed-emails: $E2E_TEST_USER_EMAIL"
           fi
-
-      # examination#414のデバッグ用（一時的）。PR #428の実機検証で、setup-e2e-test-fixtures.ymlは
-      # 「既に許可済み」と報告しているにも関わらず、checkAuth.js（Lambda@Edge）が同じ
-      # メールアドレスを許可外と判定し/family-create/へ誘導してしまう不一致が確認された。
-      # checkAuth.js側から実際に見えるはずのDynamoDBの生レコードをJob Summaryへ出力し、
-      # キーの完全一致（大文字小文字・空白等）や属性の有無を確認する
-      - name: Debug - verify allowed-email record as checkAuth.js would read it
-        id: debug-allowed-email
-        run: |
-          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
-            --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --output json)
-          {
-            echo "### デバッグ: examination-allowed-emailsの生レコード（examination#414）"
-            echo "検索キー（checkAuth.jsのString(email).toLowerCase()相当）: \`$E2E_TEST_USER_EMAIL\`"
-            echo '```json'
-            echo "$ITEM"
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Summary
         if: always()
