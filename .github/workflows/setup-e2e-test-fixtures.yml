@@ -44,7 +44,6 @@ jobs:
         id: create-user
         env:
           USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
         run: |
           if aws cognito-idp admin-get-user --region ap-northeast-1 \
               --user-pool-id "$USER_POOL_ID" --username "$E2E_TEST_USER_EMAIL" >/dev/null 2>&1; then
@@ -57,13 +56,26 @@ jobs:
               --username "$E2E_TEST_USER_EMAIL" \
               --user-attributes Name=email,Value="$E2E_TEST_USER_EMAIL" Name=email_verified,Value=true Name=name,Value="E2E Test" \
               --message-action SUPPRESS
-            aws cognito-idp admin-set-user-password --region ap-northeast-1 \
-              --user-pool-id "$USER_POOL_ID" \
-              --username "$E2E_TEST_USER_EMAIL" \
-              --password "$E2E_TEST_USER_PASSWORD" \
-              --permanent
             echo "Created Cognito test user $E2E_TEST_USER_EMAIL"
           fi
+
+      # admin-create-userはUserStatusをFORCE_CHANGE_PASSWORDにするだけでログイン可能な
+      # パスワードを設定しないため、ユーザー作成の有無に関わらず（既存ユーザーの
+      # パスワードローテーション用途も兼ね）毎回実行する（examination#413、
+      # E2E_TEST_USER_PASSWORD未登録のままadmin-create-userだけ成功しadmin-set-user-password
+      # が失敗した場合、作成判定をスキップする既存ユーザーへパスワードを設定し直せなくなる
+      # 不具合が実際に本番で発生したため分離した）
+      - name: Set native Cognito test user password
+        env:
+          USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: |
+          aws cognito-idp admin-set-user-password --region ap-northeast-1 \
+            --user-pool-id "$USER_POOL_ID" \
+            --username "$E2E_TEST_USER_EMAIL" \
+            --password "$E2E_TEST_USER_PASSWORD" \
+            --permanent
+          echo "Set password for Cognito test user $E2E_TEST_USER_EMAIL"
 
       - name: Seed E2E test family (if not already present)
         id: seed-family
