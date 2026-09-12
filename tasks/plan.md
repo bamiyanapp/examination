@@ -41,11 +41,12 @@
 | `checkAuth.js`（認証最前段、900行超）へのテスト追加自体が既存の挙動を変えてしまう | High（家族全員がサイトにアクセスできなくなる） | テスト追加のみを目的とし、本体ロジックは変更しない。変更する場合は最小限に留め、既存の挙動を保つことをテストで担保してからにする |
 | `coverage_threshold`を初回から高く設定しすぎ、以後のPRが頻繁にブロックされる | Medium | 実測値を基準に設定し、理想値は後続Issueで段階的に引き上げる（karuta方式） |
 | E2Eテストが実バックエンド（本番相当のAWSリソース）に依存し、CIから誤って本番データを変更する | High | `docs/sandboxed-agent-production-data-pattern.md`を参照し、テスト専用データ・クリーンアップ手順を設計する |
+| `auth-stack`の`UserPoolClient`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加する変更が、意図せず一般公開ログイン経路（Googleのみ）の性質を弱めてしまう | High（認証基盤の根幹） | `ALLOW_ADMIN_USER_PASSWORD_AUTH`はAWS Cognitoの仕様上`AdminInitiateAuth`（IAM認証済みAPI呼び出し専用）でのみ有効で、公開エンドポイント`InitiateAuth`・Hosted UIからは呼び出せない設計になっている。examination#413の実装時にAWS公式ドキュメント・実機検証（テスト用IAMユーザーでの`InitiateAuth`呼び出しが拒否されることの確認）で裏取りしてから本番へ適用する。GitHub ActionsのIAM権限はこのAPI・対象UserPool/UserPoolClientに最小権限で限定する |
 
 ## Open Questions
 
 - E2Eテスト（examination#404）が対象とするAWS環境（本番 or テスト用スタック）をどうするか。プロダクトごとに個別のテスト用インフラを持つコストとのバランスを着手時に検討する
-  → 下記「examination#404: Playwright E2E導入 詳細計画」で調査した結果、examinationは`site-stack`・`bot-stack`ともに単一環境（本番のみ）で、専用のテスト用スタックは存在しない（`infra/README.md`参照）。dev-standards `docs/client-only-vite-spa-pattern.md`の「E2Eはモックを作らず実際のAPIへ直結する」原則に従い、本番環境に対して**専用のE2Eテストアカウント（Google連携用テスト家族）**を作成し実行する方針とする（詳細は下記参照）。専用テスト用スタックを別途構築するコストは、家族向け個人プロダクトの規模ではリターンに見合わないと判断した
+  → 下記「examination#404: Playwright E2E導入 詳細計画」で調査した結果、examinationは`site-stack`・`bot-stack`ともに単一環境（本番のみ）で、専用のテスト用スタックは存在しない（`infra/README.md`参照）。dev-standards `docs/client-only-vite-spa-pattern.md`の「E2Eはモックを作らず実際のAPIへ直結する」原則に従い、本番環境に対して**専用のE2Eテストユーザー（Cognitoネイティブユーザー、Googleアカウント不要）**を作成し実行する方針とする（詳細は下記参照）。専用テスト用スタックを別途構築するコストは、家族向け個人プロダクトの規模ではリターンに見合わないと判断した
 
 ## examination#404: Playwright E2E導入 詳細計画
 
@@ -59,25 +60,24 @@
    - **採用**: examination側の`ci.yml`に、対象アプリ1つにつき1つの追加job（`uses: .../reusable-ci.yml@v2.12.1`を`enable_e2e_test: true`・`frontend_dir: app/<name>`で個別に呼び出し、`packages`・`enable_standards_check`・`enable_duplication_check`はいずれも指定しない＝既存の`ci` jobとは完全に独立させる）を追加する方式を取る。dev-standards側は変更しない
    - **却下**: `reusable-ci.yml`自体のマトリクス対応拡張（影響範囲が大きすぎるため一旦見送り、将来的にE2E対象アプリが増え続ける場合に改めて検討する）
 2. **AWS環境は本番のみ**: `site-stack`・`bot-stack`とも専用のテスト用スタックが存在しない（`infra/README.md`参照）。dev-standards `docs/client-only-vite-spa-pattern.md`の「E2Eはモックを作らず実際のAPIへ直結する」原則に従い、本番環境に対して実行する
-   - 本番データ保護のため、**専用のE2Eテスト用Googleアカウント・専用の家族（family）レコード**を用意し、E2Eが作成・変更するデータをこの専用家族のスコープ内に限定する。実在の家族データには一切触れない
+   - 本番データ保護のため、**専用のE2Eテスト用ユーザー・専用の家族（family）レコード**を用意し、E2Eが作成・変更するデータをこの専用家族のスコープ内に限定する。実在の家族データには一切触れない
    - `examination-allowed-emails`・`examination-families`テーブルへの書き込みを伴うテスト（`family-create`・`allowed-emails`の追加/削除）は、テスト自体が後片付け（作成したレコードの削除）を行う、またはテスト用データと分かるプレフィックス（例: `e2e-test-`）を付けて残しても実害が無い設計にする
-3. **認証はdev-standardsの`E2E_SECRETS_JSON`機構（issue #371）を使う**: Cognito Hosted UIでのGoogleログイン（対話的な同意画面）はPlaywrightで自動操作しない（不可能ではないがGoogle側のbot対策・2FA等で不安定になりやすく、dev-standards側の想定用途とも一致する）。事前に取得した専用テストアカウントの`refresh_token`をGitHub Secrets（`E2E_SECRETS_JSON`）経由でE2Eテストへ注入し、`checkAuth.js`の`refresh_token`Cookie経由の自動再発行フロー（`infra/README.md`「セッションの自動延長」参照）に乗せてid_tokenを発行させる
-   - 各アプリのE2Eテストで共通して使う認証ヘルパー（`refresh_token`Cookieを`context.addCookies()`で設定する関数）を1箇所（例: `app/`直下の共有ディレクトリ、または最初に実装するアプリ側に置き他アプリへコピー）に実装し、後続アプリのE2E追加時に再利用する
-
-### 人間の判断・一度きりの操作が必要な項目（要確認）
-
-- 専用のE2Eテスト用Googleアカウントを新規作成し、Cognito Hosted UI経由で一度だけログインして`refresh_token`を取得する一連の操作は、スマートフォンのブラウザから実行可能（Google認証画面・Cognito Hosted UI・GitHub Secretsへの登録画面はいずれも通常のモバイルブラウザ操作で完結する）。ただし、認可コードを`refresh_token`へ交換する処理（`grant_type=authorization_code`のトークンエンドポイント呼び出し）はブラウザ操作だけでは完結しないため、Claude側で一度きりのヘルパースクリプト（`workflow_dispatch`、`docs/sandboxed-agent-production-data-pattern.md`と同じ「実行ロジックはコード化しGitHub Actions側に委ねる」方式）を用意し、認可コードの入力だけを人間に依頼する設計とする
-- 上記の一度きりのセットアップ（テスト用Googleアカウントの作成・ログイン・認可コードの受け渡し）はユーザー自身の操作が必要なため、着手前に方針の合意を得る
+3. **認証はCognitoネイティブユーザー（Googleアカウント不要）＋`AdminInitiateAuth`で完結させる**（ユーザーからのフィードバックにより、当初案「専用Googleアカウント作成＋一度きりの手動ログイン」から変更）。
+   - `auth-stack`の`UserPool`は現状Googleフェデレーションのみを許可し（`SupportedIdentityProviders: [Google]`）、既存の`UserPoolClient`の`ExplicitAuthFlows`はパスワード認証を一切許可していない（`ALLOW_USER_SRP_AUTH`・`ALLOW_REFRESH_TOKEN_AUTH`のみ、serverless.ymlのコメント「Googleアカウントによるログインのみを許可する（パスワード認証は提供しない）」参照）。**この一般公開のログイン経路（Hosted UI）は一切変更しない**
+   - 既存`UserPoolClient`の`ExplicitAuthFlows`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加する。この認証フローは`AdminInitiateAuth`（IAM認証済みのサーバー間API呼び出しでのみ利用可能。`InitiateAuth`のような公開エンドポイントからは呼べない）専用で、Hosted UIや一般公開のログイン画面には一切露出しない。「Googleアカウントによるログインのみを許可する」という公開ログイン経路の性質は変わらない
+   - 同一User Pool内にネイティブ（Googleと紐付かない）のE2Eテスト専用ユーザーを1つ作成する（`AdminCreateUser`＋`AdminSetUserPassword`、パスワードはGitHub Secretsで管理）。CI実行のたびに`AdminInitiateAuth`（IAM認証、GitHub Actionsに`aws-actions/configure-aws-credentials`で付与、`docs/sandboxed-agent-production-data-pattern.md`と同じ「実行ロジックはコード化しGitHub Actions側に委ねる」方式）でこのユーザーの`id_token`・`refresh_token`をその場で発行させる。長期間有効なトークンをSecretsへ保管する必要が無くなる（当初案の`E2E_SECRETS_JSON`によるrefresh_token保管より安全）
+   - 発行された`id_token`は同一User Pool・同一`UserPoolClient`（既存の本番clientId）から発行されるため、`checkAuth.js`のJWT検証（issuer・audience・JWKS署名）を一切変更する必要が無い。**checkAuth.js自体には手を加えない**
+   - 一連のセットアップ（IAMポリシー・ネイティブユーザー作成）はいずれもコード化・`workflow_dispatch`で実行でき、**Googleアカウントの新規作成やCognito Hosted UI経由の手動ログインは不要**になった
 
 ### Task List（GitHub Issuesで管理、examination#404の子Issue）
 
-1. examination#413: E2Eテスト用の専用Googleアカウント・家族レコードを準備し、`refresh_token`取得用のワンショットワークフロー（`workflow_dispatch`）を用意する。取得した`refresh_token`を`E2E_SECRETS_JSON`としてGitHub Secretsへ登録する（人間の一度きりの操作を要する）
-2. examination#414: 共有Playwright認証ヘルパー（`refresh_token`Cookie注入）とスクリーンショットヘルパー（`shared/e2e/screenshot.js`のsymlink導入）を整備し、`ci.yml`に最初の1アプリ（`app/top`、認証必須の中で最も単純な画面）分のE2E CI job（`frontend-e2e-test`個別呼び出し）を追加してパイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/PRコメント）が動くことを実証する
+1. examination#413: `auth-stack`の既存`UserPoolClient`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加し、E2Eテスト専用のネイティブCognitoユーザー・家族レコードを作成する（`AdminCreateUser`等、`workflow_dispatch`でコード化。人間の手動ログイン操作は不要）。テストユーザーのパスワードをGitHub Secretsへ登録する
+2. examination#414: 共有Playwright認証ヘルパー（CI実行時に`AdminInitiateAuth`でid_token・refresh_tokenをその場で発行し`context.addCookies()`で注入する）とスクリーンショットヘルパー（`shared/e2e/screenshot.js`のsymlink導入）を整備し、`ci.yml`に最初の1アプリ（`app/top`、認証必須の中で最も単純な画面）分のE2E CI job（`frontend-e2e-test`個別呼び出し。AWS認証情報の設定ステップを追加）を追加してパイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/PRコメント）が動くことを実証する
 3. examination#415〜#419: 残り5アプリ（`voice-practice`・`interview-questions`・`mock-interviews`・`allowed-emails`・`family-create`）へ、#414で確立したパターンに沿ってE2Eテスト・CI jobを追加する（アプリごとに独立、並行着手可）
 
 ### Checkpoint: #413〜#414完了後
 
-- [ ] `refresh_token`によるE2E認証がCIで機能し、保護ページのスクリーンショットがJob Summary・PRコメントに表示される
+- [ ] `AdminInitiateAuth`ベースのE2E認証がCIで機能し、保護ページのスクリーンショットがJob Summary・PRコメントに表示される
 - [ ] 上記をmain上のCI実行結果で確認済み
 
 ### Checkpoint: 全アプリ完了後（examination#404完了）
