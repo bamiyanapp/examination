@@ -19,16 +19,31 @@ async function getFamilyProfile(familySlug) {
     new GetItemCommand({ TableName: FAMILY_PROFILE_TABLE, Key: { familySlug: { S: familySlug } } })
   );
   if (!result.Item) {
-    return { situation: DEFAULT_SITUATION, schoolCharacteristics: "", otherContext: "" };
+    return { situation: DEFAULT_SITUATION, schoolCharacteristics: "", otherContext: "", childName: "", fatherName: "", motherName: "" };
   }
   return {
     situation: result.Item.situation?.S || DEFAULT_SITUATION,
     schoolCharacteristics: result.Item.schoolCharacteristics?.S || "",
     otherContext: result.Item.otherContext?.S || "",
+    // 想定問答（examination-interview-questions）で「本人」「父」「母」と一般化して
+    // 保存している箇所を、閲覧画面側で実際の氏名に差し替えて表示するために使う
+    // （examination#431）。氏名自体はここにのみ保存し、想定問答データ本体には含めない
+    childName: result.Item.childName?.S || "",
+    fatherName: result.Item.fatherName?.S || "",
+    motherName: result.Item.motherName?.S || "",
   };
 }
 
-async function saveFamilyProfile({ familySlug, situation, schoolCharacteristics, otherContext, updatedBy }) {
+async function saveFamilyProfile({
+  familySlug,
+  situation,
+  schoolCharacteristics,
+  otherContext,
+  childName,
+  fatherName,
+  motherName,
+  updatedBy,
+}) {
   await ddb.send(
     new PutItemCommand({
       TableName: FAMILY_PROFILE_TABLE,
@@ -37,6 +52,9 @@ async function saveFamilyProfile({ familySlug, situation, schoolCharacteristics,
         situation: { S: situation || DEFAULT_SITUATION },
         schoolCharacteristics: { S: schoolCharacteristics || "" },
         otherContext: { S: otherContext || "" },
+        childName: { S: childName || "" },
+        fatherName: { S: fatherName || "" },
+        motherName: { S: motherName || "" },
         updatedBy: { S: updatedBy || "" },
         updatedAt: { S: new Date().toISOString() },
       },

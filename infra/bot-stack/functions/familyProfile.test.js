@@ -15,7 +15,14 @@ describe("getFamilyProfile", () => {
 
     const profile = await getFamilyProfile("tanaka");
 
-    expect(profile).toEqual({ situation: "小学校受験の面接", schoolCharacteristics: "", otherContext: "" });
+    expect(profile).toEqual({
+      situation: "小学校受験の面接",
+      schoolCharacteristics: "",
+      otherContext: "",
+      childName: "",
+      fatherName: "",
+      motherName: "",
+    });
   });
 
   it("returns the saved profile fields", async () => {
@@ -24,12 +31,22 @@ describe("getFamilyProfile", () => {
         situation: { S: "お受験理由" },
         schoolCharacteristics: { S: "自然が多い" },
         otherContext: { S: "共働き家庭" },
+        childName: { S: "たろう" },
+        fatherName: { S: "はなお" },
+        motherName: { S: "はなこ" },
       },
     });
 
     const profile = await getFamilyProfile("tanaka");
 
-    expect(profile).toEqual({ situation: "お受験理由", schoolCharacteristics: "自然が多い", otherContext: "共働き家庭" });
+    expect(profile).toEqual({
+      situation: "お受験理由",
+      schoolCharacteristics: "自然が多い",
+      otherContext: "共働き家庭",
+      childName: "たろう",
+      fatherName: "はなお",
+      motherName: "はなこ",
+    });
     const call = ddbMock.commandCalls(GetItemCommand)[0];
     expect(call.args[0].input).toEqual({
       TableName: "examination-family-profile",
@@ -55,6 +72,9 @@ describe("saveFamilyProfile", () => {
       situation: "お受験理由",
       schoolCharacteristics: "自然が多い",
       otherContext: "共働き家庭",
+      childName: "たろう",
+      fatherName: "はなお",
+      motherName: "はなこ",
       updatedBy: "family@example.com",
     });
 
@@ -66,6 +86,9 @@ describe("saveFamilyProfile", () => {
         situation: { S: "お受験理由" },
         schoolCharacteristics: { S: "自然が多い" },
         otherContext: { S: "共働き家庭" },
+        childName: { S: "たろう" },
+        fatherName: { S: "はなお" },
+        motherName: { S: "はなこ" },
         updatedBy: { S: "family@example.com" },
       }),
     });
@@ -81,6 +104,9 @@ describe("saveFamilyProfile", () => {
       situation: { S: "小学校受験の面接" },
       schoolCharacteristics: { S: "" },
       otherContext: { S: "" },
+      childName: { S: "" },
+      fatherName: { S: "" },
+      motherName: { S: "" },
       updatedBy: { S: "" },
     });
   });

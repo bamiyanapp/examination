@@ -17,7 +17,14 @@ function mockTokenAndProfile(profile: unknown) {
 
 describe("ProfileEdit", () => {
   it("issues a token and loads the saved profile on mount", async () => {
-    mockTokenAndProfile({ situation: "就職の面接", schoolCharacteristics: "自由な校風", otherContext: "共働き家庭" });
+    mockTokenAndProfile({
+      situation: "就職の面接",
+      schoolCharacteristics: "自由な校風",
+      otherContext: "共働き家庭",
+      childName: "山田太郎",
+      fatherName: "山田一郎",
+      motherName: "山田花子",
+    });
 
     render(<ProfileEdit />);
 
@@ -26,6 +33,9 @@ describe("ProfileEdit", () => {
     });
     expect(screen.getByDisplayValue("自由な校風")).toBeInTheDocument();
     expect(screen.getByDisplayValue("共働き家庭")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("山田太郎")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("山田一郎")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("山田花子")).toBeInTheDocument();
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, "/_voice-token", { method: "POST" });
     const secondCall = fetchMock.mock.calls[1] as unknown as [string, { headers: { Authorization: string } }];
@@ -52,6 +62,9 @@ describe("ProfileEdit", () => {
     fireEvent.change(screen.getByPlaceholderText("例: 志望先の特色欄では書ききれない、家族構成や志望動機の背景など"), {
       target: { value: "共働き家庭" },
     });
+    fireEvent.change(screen.getByPlaceholderText("例: 山田太郎"), { target: { value: "山田太郎" } });
+    fireEvent.change(screen.getByPlaceholderText("例: 山田一郎"), { target: { value: "山田一郎" } });
+    fireEvent.change(screen.getByPlaceholderText("例: 山田花子"), { target: { value: "山田花子" } });
     fireEvent.click(screen.getByRole("button", { name: "保存する" }));
 
     await waitFor(() => expect(screen.getByText("保存しました。")).toBeInTheDocument());
@@ -63,6 +76,9 @@ describe("ProfileEdit", () => {
       situation: "就職の面接",
       schoolCharacteristics: "自由な校風",
       otherContext: "共働き家庭",
+      childName: "山田太郎",
+      fatherName: "山田一郎",
+      motherName: "山田花子",
     });
   });
 

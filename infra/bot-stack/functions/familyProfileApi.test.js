@@ -36,7 +36,14 @@ describe("familyProfileApi handler", () => {
   it("returns the family profile on GET", async () => {
     authorizedRequest();
     ddbMock.on(GetItemCommand, { TableName: "examination-family-profile" }).resolves({
-      Item: { situation: { S: "お受験理由" }, schoolCharacteristics: { S: "" }, otherContext: { S: "" } },
+      Item: {
+        situation: { S: "お受験理由" },
+        schoolCharacteristics: { S: "" },
+        otherContext: { S: "" },
+        childName: { S: "たろう" },
+        fatherName: { S: "" },
+        motherName: { S: "" },
+      },
     });
 
     const response = await handler(event("GET"));
@@ -46,6 +53,9 @@ describe("familyProfileApi handler", () => {
       situation: "お受験理由",
       schoolCharacteristics: "",
       otherContext: "",
+      childName: "たろう",
+      fatherName: "",
+      motherName: "",
     });
   });
 
@@ -62,7 +72,15 @@ describe("familyProfileApi handler", () => {
     ddbMock.on(PutItemCommand).resolves({});
 
     const response = await handler(
-      event("POST", { body: JSON.stringify({ situation: "  お受験理由  ", schoolCharacteristics: "自然が多い" }) })
+      event("POST", {
+        body: JSON.stringify({
+          situation: "  お受験理由  ",
+          schoolCharacteristics: "自然が多い",
+          childName: " たろう ",
+          fatherName: "はなお",
+          motherName: "はなこ",
+        }),
+      })
     );
 
     expect(response.statusCode).toBe(200);
@@ -70,12 +88,18 @@ describe("familyProfileApi handler", () => {
       situation: "お受験理由",
       schoolCharacteristics: "自然が多い",
       otherContext: "",
+      childName: "たろう",
+      fatherName: "はなお",
+      motherName: "はなこ",
     });
     const call = ddbMock.commandCalls(PutItemCommand)[0];
     expect(call.args[0].input.Item).toMatchObject({
       familySlug: { S: "tanaka" },
       situation: { S: "お受験理由" },
       schoolCharacteristics: { S: "自然が多い" },
+      childName: { S: "たろう" },
+      fatherName: { S: "はなお" },
+      motherName: { S: "はなこ" },
       updatedBy: { S: "family@example.com" },
     });
   });
