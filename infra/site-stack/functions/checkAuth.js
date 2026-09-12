@@ -459,6 +459,35 @@ async function consumeCsrfNonce(nonce) {
   }
 }
 
+// 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ
+// リダイレクトするレスポンスを組み立てる（examination#143、nonceはDynamoDBへ登録し
+// /_callback側で一度きりの検証・削除を行う）。明示的なログイン導線（/_login、
+// examination#437）とrefresh_token失効時のフォールバックの両方から呼ばれる
+async function buildLoginRedirect(destinationUri, domainName, cognitoDomainHost, extraCookies = []) {
+  const nonce = await issueCsrfNonce();
+  const state = Buffer.from(JSON.stringify({ uri: destinationUri, nonce }), "utf-8").toString("base64");
+  const redirectUri = `https://${domainName}/_callback`;
+  const authorizeUrl =
+    `https://${cognitoDomainHost}/oauth2/authorize?` +
+    new URLSearchParams({
+      client_id: config.clientId,
+      response_type: "code",
+      scope: "openid email profile",
+      redirect_uri: redirectUri,
+      state,
+    }).toString();
+  return redirectResponse(authorizeUrl, extraCookies);
+}
+
+// /_loginの?redirectで指定されたログイン後の戻り先を検証する。同一オリジンの
+// 相対パス（先頭が単一の"/"）のみを許可し、外部サイトへのオープンリダイレクトを防ぐ
+function sanitizeRedirectPath(redirectPath) {
+  if (!redirectPath || !redirectPath.startsWith("/") || redirectPath.startsWith("//")) {
+    return "/";
+  }
+  return redirectPath;
+}
+
 // 許可メールアドレスの一覧・追加・削除API。既に許可されているユーザーのみ利用でき、
 // 閲覧・追加・削除は自分の所属家族のメンバーに限定する（examination#243）。
 // 家族の新規作成は招待制ではなく公開登録制のため（examination#258）、この
@@ -757,6 +786,16 @@ exports.handler = async (event) => {
     return handleVoiceTokenApi(request);
   }
 
+  // ログインの明示的な入口（examination#437）。サイトワイドの認証ゲートを廃止した
+  // ため、未認証ユーザーは自動的にはログイン画面へ誘導されなくなった。各アプリの
+  // UserMenu等から遷移させるための専用パスとしてここで用意する。?redirectでログイン
+  // 後の戻り先を指定できる（同一オリジンの相対パスのみ許可）
+  if (request.uri === "/_login") {
+    const params = new URLSearchParams(request.querystring);
+    const destinationUri = sanitizeRedirectPath(params.get("redirect"));
+    return buildLoginRedirect(destinationUri, domainName, cognitoDomainHost);
+  }
+
   // Cognito Hosted UIからのコールバック: 認可コードをトークンに交換してCookieへ保存する
   if (request.uri === "/_callback") {
     const params = new URLSearchParams(request.querystring);
@@ -854,7 +893,6 @@ exports.handler = async (event) => {
   // id_tokenが失効・無効でもrefresh_tokenが有効なら裏側で再発行し、Googleへの
   // 完全な再ログイン（アカウント選択・同意画面）を経ずにセッションを継続する
   // （examination#150）。同じURIへリダイレクトするだけの1往復で完了する
-  let extraCookiesOnLoginRedirect = [];
   const cookies = parseCookies(request.headers);
   if (cookies.refresh_token) {
     try {
@@ -872,42 +910,23 @@ exports.handler = async (event) => {
       return redirectResponse(destinationUrl, [cookieString("id_token", tokens.id_token, tokens.expires_in)]);
     } catch (error) {
       console.warn("refresh_token exchange failed", error.message);
-      // refresh_token自体が失効・無効な場合は、無駄な再試行を避けるため失効させた上で
-      // 通常のログインフローへフォールスルーする
-      extraCookiesOnLoginRedirect = [cookieString("refresh_token", "", 0)];
+      // refresh_token自体が失効・無効な場合、以前はログイン画面へフォールスルーして
+      // いたが、examination#437でサイトワイドゲートを廃止したため、ここでの失敗は
+      // 静的コンテンツの通過のみに影響する（下記へフォールスルーする）。失効した
+      // Cookie自体はここでは失効させない（この後のパスはレスポンスを合成せず
+      // requestをそのまま通過させるためSet-Cookieできない。無効なrefresh_tokenの
+      // 再試行が以降のリクエストでも続くだけで実害は無い）
     }
   }
 
-  // Service Workerのプリキャッシュ（examination#118）・Speculation Rules API
-  // （examination#105）等、ページ本体のナビゲーションを伴わない未認証の
-  // バックグラウンドリクエストは、以下のいずれかのヘッダーで検出できる場合
-  // Cognitoへのリダイレクト（無駄なnonce発行・往復）自体を避ける。nonceの
-  // 検証自体はexamination#143でサーバー側（DynamoDB）管理に変更したため、
-  // これらの判定を取りこぼしてもcsrf_stateのようなクッキー上書き競合は
-  // 発生しなくなっている（あくまで効率化のための判定であり、正しさの
-  // 担保はDynamoDB側のnonce管理に一本化されている）
-  const isPrecacheRequest = Boolean((request.headers["x-precache-request"] || [])[0]);
-  const secPurpose = (request.headers["sec-purpose"] || [])[0]?.value;
-  const isSpeculativeRequest = Boolean(secPurpose && secPurpose.includes("prefetch"));
-  const secFetchMode = (request.headers["sec-fetch-mode"] || [])[0]?.value;
-  if (isPrecacheRequest || isSpeculativeRequest || (secFetchMode && secFetchMode !== "navigate")) {
-    return { status: "401", statusDescription: "Unauthorized", body: "authentication required" };
-  }
-
-  // 未認証: 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ
-  // リダイレクトする。nonceはDynamoDBへ登録し、/_callback側で一度きりの検証・削除を
-  // 行う（examination#143、クッキーには一切依存しない）
-  const nonce = await issueCsrfNonce();
-  const state = Buffer.from(JSON.stringify({ uri: request.uri, nonce }), "utf-8").toString("base64");
-  const redirectUri = `https://${domainName}/_callback`;
-  const authorizeUrl =
-    `https://${cognitoDomainHost}/oauth2/authorize?` +
-    new URLSearchParams({
-      client_id: config.clientId,
-      response_type: "code",
-      scope: "openid email profile",
-      redirect_uri: redirectUri,
-      state,
-    }).toString();
-  return redirectResponse(authorizeUrl, extraCookiesOnLoginRedirect);
+  // examination#437: サイトワイドの認証ゲートを廃止し、dev-standards統一標準
+  // （フロントエンド公開＋API単位認証、docs/standard-tech-stack.md「2. ログイン」）
+  // へ移行する。未認証でも静的コンテンツ（ページ本体・JS/CSS等のビルド成果物）は
+  // そのまま通過させる。家族固有データを返す各API（/_me・/_admin/emails等は
+  // このファイル内で、bot-stackの各APIはapiAuth.jsのverifyBearerEmailで）は
+  // いずれもリクエスト単位で個別に認証しており、この変更によるデータ漏洩は無い
+  // （tasks/plan.md「examination#437」参照）。ログインへの導線は各アプリの
+  // UserMenu等から/_loginへのリンクとして提供する
+  request.uri = normalizeUri(request.uri);
+  return request;
 };

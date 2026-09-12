@@ -541,21 +541,22 @@ describe("checkAuth handler: normal navigation requests", () => {
     expect(result.headers.location[0].value).toContain("/family-create/");
   });
 
-  it("redirects to the Cognito login screen when unauthenticated (no refresh_token)", async () => {
-    ddbMock.on(PutItemCommand).resolves({});
-
+  it("passes through static content unauthenticated instead of redirecting to login (examination#437)", async () => {
     const result = await handler(cfEvent({ uri: "/settings/" }));
 
-    expect(result.status).toBe("302");
-    expect(result.headers.location[0].value).toContain("/oauth2/authorize?");
+    // 未認証時のようなstatus/statusDescriptionを持たず、CloudFrontへ渡す
+    // requestオブジェクトそのものが返る（サイトワイド認証ゲート廃止）
+    expect(result.status).toBeUndefined();
+    expect(result.uri).toBe("/settings/index.html");
   });
 
-  it("returns 401 for background precache requests instead of redirecting to login", async () => {
+  it("passes through background precache requests unauthenticated as well (examination#437)", async () => {
     const result = await handler(
       cfEvent({ uri: "/settings/", headers: { "x-precache-request": [{ key: "X-Precache-Request", value: "1" }] } })
     );
 
-    expect(result.status).toBe("401");
+    expect(result.status).toBeUndefined();
+    expect(result.uri).toBe("/settings/index.html");
   });
 
   it("re-issues an id_token via the refresh_token cookie when the id_token is invalid/absent", async () => {
@@ -569,16 +570,50 @@ describe("checkAuth handler: normal navigation requests", () => {
     expect(result.headers["set-cookie"][0].value).toContain("id_token=new.jwt.token");
   });
 
-  it("falls through to the Cognito login screen when the refresh_token itself is invalid", async () => {
+  it("passes through static content when the refresh_token itself is invalid (examination#437)", async () => {
     mockHttpsError("invalid_grant");
-    ddbMock.on(PutItemCommand).resolves({});
 
     const result = await handler(cfEvent({ uri: "/settings/", cookie: "refresh_token=expired-refresh-token" }));
 
+    expect(result.status).toBeUndefined();
+    expect(result.uri).toBe("/settings/index.html");
+  });
+});
+
+describe("checkAuth handler: /_login", () => {
+  it("redirects to the Cognito login screen", async () => {
+    ddbMock.on(PutItemCommand).resolves({});
+
+    const result = await handler(cfEvent({ uri: "/_login" }));
+
     expect(result.status).toBe("302");
     expect(result.headers.location[0].value).toContain("/oauth2/authorize?");
-    // 失効したrefresh_tokenは失効させ、無駄な再試行を避ける
-    expect(result.headers["set-cookie"][0].value).toContain("refresh_token=;");
+  });
+
+  it("encodes the redirect query parameter into the state for /_callback to use", async () => {
+    ddbMock.on(PutItemCommand).resolves({});
+
+    // querystringはcfEvent()が対応していないため、生成後に直接設定する
+    const event = cfEvent({ uri: "/_login" });
+    event.Records[0].cf.request.querystring = "redirect=%2Fsettings%2Fallowed-emails%2F";
+    const result = await handler(event);
+
+    expect(result.status).toBe("302");
+    const state = new URL(result.headers.location[0].value).searchParams.get("state");
+    const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+    expect(decoded.uri).toBe("/settings/allowed-emails/");
+  });
+
+  it("falls back to / when the redirect parameter points to an external origin", async () => {
+    ddbMock.on(PutItemCommand).resolves({});
+
+    const event = cfEvent({ uri: "/_login" });
+    event.Records[0].cf.request.querystring = "redirect=%2F%2Fevil.example.com";
+    const result = await handler(event);
+
+    const state = new URL(result.headers.location[0].value).searchParams.get("state");
+    const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+    expect(decoded.uri).toBe("/");
   });
 });
 
