@@ -159,7 +159,7 @@ jobs:
           mkdir -p ../../site/family-create
           cp -r dist/. ../../site/family-create/
 
-      # 教育セクションの概要ページ（examination#92）。鈴木家固有の情報（家族名入りの
+      # 教育セクションの概要ページ（examination#92）。特定の家族固有の情報（家族名入りの
       # チェックリスト等）を排除し、汎用的な方法論のみを残した。site/education/配下には
       # mkdocsが生成したmock-interviews/等の他ページや、既にビルド済みのinterview-questions/・
       # voice-practice/が既に存在するため、他ページのようなrm -rfは行わずcp -rのみで
@@ -274,9 +274,10 @@ jobs:
           fi
 
       # 複数家族対応（examination#44、#238）。examination-familiesが空の場合のみ初期家族
-      # （調布の鈴木家）を投入し、familySlug属性が未設定の既存の許可メールアドレスへ
+      # （chofu-suzuki）を投入し、familySlug属性が未設定の既存の許可メールアドレスへ
       # 同じslugをバックフィルする（新規デプロイのたびに実行しても、既にfamilySlugが
-      # 設定済みの行には影響しない冪等な処理）
+      # 設定済みの行には影響しない冪等な処理）。nameは`examination#305`で家族名から
+      # シチュエーションへ統合されて以降どこからも参照されない旧フィールドのため設定しない
       - name: Seed families table and backfill familySlug (multi-family support)
         run: |
           FAMILIES_COUNT=$(aws dynamodb scan --region us-east-1 --table-name examination-families \
@@ -284,7 +285,7 @@ jobs:
           if [ "$FAMILIES_COUNT" = "0" ]; then
             echo "Seeding initial family (chofu-suzuki)"
             aws dynamodb put-item --region us-east-1 --table-name examination-families \
-              --item "{\"slug\": {\"S\": \"chofu-suzuki\"}, \"name\": {\"S\": \"調布の鈴木家\"}, \"createdBy\": {\"S\": \"seed\"}, \"createdAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+              --item "{\"slug\": {\"S\": \"chofu-suzuki\"}, \"createdBy\": {\"S\": \"seed\"}, \"createdAt\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
           else
             echo "examination-families already has $FAMILIES_COUNT item(s), skipping seed"
           fi

@@ -20,7 +20,7 @@ const MOCK_INTERVIEW_STEPS = [
 ];
 
 // 教育セクションの概要ページ（examination#92）。旧knowledge/education/index.mdの
-// React化。鈴木家固有の情報（家族名入りの「今後の準備」チェックリスト・特定の実施日・
+// React化。特定の家族固有の情報（家族名入りの「今後の準備」チェックリスト・特定の実施日・
 // 家族プロフィールへのリンク等）は排除し、どの家族・どの受験にも通用する汎用的な
 // 方法論のみを残した。未完了だった具体的な内容更新タスクはexamination#95へ移した
 export default function EducationOverview() {
