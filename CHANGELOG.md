@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/bamiyanapp/examination/compare/v1.46.0...v1.47.0) (2026-09-12)
+
+
+### Features
+
+* **auth-stack:** E2Eテスト用ネイティブCognitoユーザーの準備を追加する（examination[#413](https://github.com/bamiyanapp/examination/issues/413)） ([#422](https://github.com/bamiyanapp/examination/issues/422)) ([4206a08](https://github.com/bamiyanapp/examination/commit/4206a08ba58993a3181a897afabeeb2a0325e551))
+
 # [1.46.0](https://github.com/bamiyanapp/examination/compare/v1.45.0...v1.46.0) (2026-09-10)
 
 
