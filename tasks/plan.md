@@ -83,4 +83,45 @@
 ### Checkpoint: 全アプリ完了後（examination#404完了）
 
 - [ ] 対象5アプリすべてで主要ユーザーフローのE2Eテストが存在しCIで実行されている
+
+## examination#437: サイトワイド認証ゲートのdev-standards統一標準への移行 設計
+
+### Overview
+
+dev-standards `docs/standard-tech-stack.md`は「フロントエンドは公開、認証はAPI呼び出し単位」を統一標準とし、`docs/serverless-static-site-pattern.md`はexaminationをこの標準の例外として明記している。Issue #431（家族固有個人情報の削減）完了を受け、この例外を解消できるか設計・検討する。
+
+### 調査結果
+
+1. **MkDocs静的ページに家族固有情報は無い**: `knowledge/`配下でMkDocsが実際にビルドする8ページ（`education/index.md`等）は全て「Reactアプリのビルド成果物で上書きされるプレースホルダー」。`interview-{yosuke,tomoyo,ritsu}.md`はそもそも`exclude_docs`でビルド対象外
+2. **`app/`配下9アプリのJSバンドルに家族固有情報は無い**: 専用エージェントによる全9アプリ`src/`配下の監査で、氏名・シチュエーション・志望先特色等の家族固有データは全て実行時にAPI（`family-profile`等）から取得しており、ソース中のハードコード文字列は既に許容済みの一般的説明文（「小学校受験の面接」）と汎用プレースホルダー氏名（山田太郎等、「John Doe」相当）のみだった
+3. **`infra/bot-stack`のAPIは既にAPIコール単位で認証済み**: `familyProfileApi.js`・`interviewQuestions.js`・`mockInterviewsApi.js`等は、サイト全体のゲートとは独立に`apiAuth.js`の`verifyBearerEmail`（`/_voice-token`で発行した短期トークンをDynamoDBで検証）でリクエストごとに認証している。dev-standards標準にかなり近い形が既に存在する
+4. **`checkAuth.js`内の管理系エンドポイントも個別に認証済み**: `/_me`・`/_admin/emails`・`/_link-line`・`/_families`・`/_voice-token`は、いずれもハンドラー内で`verifyIdTokenFromCookie`によるCognito `id_token`検証をリクエスト単位で個別に行っており、末尾の「通常のリクエスト」到達を前提にしていない
+5. **サイトワイドゲートとして機能しているのは`checkAuth.js`末尾の1箇所のみ**: 「それ以外の全リクエスト」の分岐（未認証なら常にCognito Hosted UIへリダイレクト）が、静的アセット・全ページのHTML/JS/CSSへの到達を一律にブロックしている唯一の箇所
+6. **各アプリは未ログイン状態に既に対応済み**: `UserMenu.tsx`（9アプリそれぞれに複製）は`/_me`が403を返す（未ログイン）場合、単に何も表示しないよう既に実装されている。データ取得API（`/_voice-token`経由等）も未ログイン時は403となり、各ページは既存のエラーハンドリング（例: `ProfileEdit.tsx`の`setStatus("error")`）でエラーメッセージを表示する。ただし現状は「ログインしてください」という案内ではなく汎用エラーメッセージになるため、UXとしての作り込みは移行後の課題として残る
+
+### 設計判断
+
+- **選定内容**: `checkAuth.js`末尾の「通常のリクエスト」分岐のみを変更する。未認証の場合にCognito Hosted UIへリダイレクトする代わりに、リクエストをそのまま通す（静的コンテンツ・JSバンドルを誰でも取得できるようにする）。ログイン（`/_callback`）・ログアウト（`/_logout`・`/_logout-complete`）・各管理系API（`/_me`等）はcheckAuth.js内の分岐として維持し、変更しない。Service Workerプリキャッシュ判定（`isPrecacheRequest`等）は、未認証時401を返す現行ロジックが新方針でも意味を持つか（静的コンテンツ自体は誰でも取得できるようになるため、不要になる可能性が高い）を実装時に精査する
+- **却下内容**: `infra/bot-stack`のAPIをAPI Gateway JWT Authorizer等、Lambda@Edgeを介さない完全に独立した認証機構へ置き換える案。現行の`apiAuth.js`によるBearerトークン検証は既にリクエスト単位で機能しており、dev-standardsが求める「APIコール単位の認証」の要件は満たしている。置き換えの実利が薄く、影響範囲（bot-stack API全体）に見合わないため今回は対象外とする
+- **理由**: 上記調査の通り、サイトワイドゲートを外しても、家族固有データを返す全APIは既にリクエスト単位で独立して認証しており、露出するのは「認証機能への到達点（ログインボタン等）を含む空のアプリシェル」のみ。フロントエンド公開化の障害は無いと判断した
+
+### 実装タスク（案、着手前に子Issueへ分解する）
+
+1. `checkAuth.js`末尾の未認証リダイレクトを静的コンテンツ通過へ変更し、Service Workerプリキャッシュ判定の要否を精査する
+2. 各アプリの「未ログイン時エラーメッセージ」を「ログインへの案内」に改善する（UX改善、必須ではないが移行と同時に行うのが自然）
+3. ロールバック手段の確保: 変更を`infra/site-stack`の1ファイル・1関数に閉じ、問題発生時は`checkAuth.js`を直前のコミットへ戻すデプロイのみで即座に復元できることを確認する
+4. dev-standards側`docs/serverless-static-site-pattern.md`のexamination例外記載の更新要否を判断し、必要なら別PRで更新する
+
+### Risks and Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| 移行後に想定外の経路で家族固有データが露出する | High | 実装タスク1完了後、未ログイン状態で全ページ・全API疎通確認をCI/CD上で自動化する（`docs/cicd-pipeline-specification.md`のE2E機構を流用） |
+| Service Workerプリキャッシュ判定の変更漏れ | Low | 実装タスク1に含めて精査 |
+| ロールバックが必要になった場合の対応遅れ | Medium | `checkAuth.js`は単一Lambda@Edge関数のため、変更前コミットへの復元は迅速。実装タスク3で手順を明文化する |
+
+### Open Questions
+
+- 未ログイン時のUX（実装タスク2）を移行と同時に行うか、後続の別Issueへ回すか
+- dev-standards側ドキュメント更新（実装タスク4）のタイミング（examination側の移行完了後 or 並行）
 - [ ] examination#399の完了条件を全て満たしている（examination#399をクローズする）
