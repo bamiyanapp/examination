@@ -77,6 +77,74 @@ jobs:
             --permanent
           echo "Set password for Cognito test user $E2E_TEST_USER_EMAIL"
 
+      # UserPoolClientはGenerateSecret: trueのため、Admin*Auth系APIの呼び出しには
+      # SECRET_HASH（HMAC-SHA256(username + client_id, client_secret)のBase64）が必要
+      - name: Get auth-stack client credentials
+        id: client-creds
+        run: |
+          OUT=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-auth-prod --query "Stacks[0].Outputs")
+          CLIENT_ID=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientId") | .OutputValue')
+          CLIENT_SECRET=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientSecret") | .OutputValue')
+          echo "::add-mask::$CLIENT_SECRET"
+          echo "client_id=$CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "client_secret=$CLIENT_SECRET" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SECRET_HASH
+        id: secret-hash
+        env:
+          CLIENT_ID: ${{ steps.client-creds.outputs.client_id }}
+          CLIENT_SECRET: ${{ steps.client-creds.outputs.client_secret }}
+        run: |
+          HASH=$(node -e '
+            const crypto = require("crypto");
+            const message = process.env.E2E_TEST_USER_EMAIL + process.env.CLIENT_ID;
+            const hmac = crypto.createHmac("sha256", process.env.CLIENT_SECRET);
+            hmac.update(message);
+            process.stdout.write(hmac.digest("base64"));
+          ')
+          echo "::add-mask::$HASH"
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      # examination#413の完了条件・tasks/plan.mdのRisks and Mitigationsで約束した
+      # 実機検証。ALLOW_ADMIN_USER_PASSWORD_AUTHがAdminInitiateAuth経由では
+      # 実際にトークンを発行できることを確認する
+      - name: Verify AdminInitiateAuth issues a token
+        env:
+          USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+          CLIENT_ID: ${{ steps.client-creds.outputs.client_id }}
+          SECRET_HASH: ${{ steps.secret-hash.outputs.hash }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: |
+          TOKEN_TYPE=$(aws cognito-idp admin-initiate-auth --region ap-northeast-1 \
+            --user-pool-id "$USER_POOL_ID" \
+            --client-id "$CLIENT_ID" \
+            --auth-flow ADMIN_USER_PASSWORD_AUTH \
+            --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH" \
+            --query "AuthenticationResult.TokenType" --output text)
+          echo "AdminInitiateAuth succeeded, TokenType=$TOKEN_TYPE"
+
+      # 公開エンドポイントInitiateAuthはIAM認証を必要としないため、ADMIN_USER_PASSWORD_AUTHが
+      # 誤ってここからも使えてしまうと「Googleアカウントによるログインのみを許可する」という
+      # 一般公開のログイン経路の性質が崩れる重大な問題になる。実際に拒否されることを確認する
+      - name: Verify public InitiateAuth rejects ADMIN_USER_PASSWORD_AUTH
+        env:
+          CLIENT_ID: ${{ steps.client-creds.outputs.client_id }}
+          SECRET_HASH: ${{ steps.secret-hash.outputs.hash }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: |
+          if aws cognito-idp initiate-auth --region ap-northeast-1 \
+              --client-id "$CLIENT_ID" \
+              --auth-flow ADMIN_USER_PASSWORD_AUTH \
+              --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH" \
+              >/tmp/initiate-auth-out.json 2>/tmp/initiate-auth-err.txt; then
+            echo "::error::公開InitiateAuthがADMIN_USER_PASSWORD_AUTHを受理してしまいました。重大なセキュリティ上の問題です。直ちにauth-stackのExplicitAuthFlowsからALLOW_ADMIN_USER_PASSWORD_AUTHを削除してください。"
+            cat /tmp/initiate-auth-out.json
+            exit 1
+          else
+            echo "公開InitiateAuthはADMIN_USER_PASSWORD_AUTHを想定通り拒否しました:"
+            cat /tmp/initiate-auth-err.txt
+          fi
+
       - name: Seed E2E test family (if not already present)
         id: seed-family
         run: |
