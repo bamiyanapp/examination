@@ -1,3 +1,10 @@
+## [1.48.2](https://github.com/bamiyanapp/examination/compare/v1.48.1...v1.48.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* **knowledge:** 想定問答に残っていた実在の学校名・教室名を汎用化する ([#435](https://github.com/bamiyanapp/examination/issues/435)) ([cc3dc10](https://github.com/bamiyanapp/examination/commit/cc3dc1008aaa92ef54363a614e8cc8b886ebe0f4))
+
 ## [1.48.1](https://github.com/bamiyanapp/examination/compare/v1.48.0...v1.48.1) (2026-09-12)
 
 
