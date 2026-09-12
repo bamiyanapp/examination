@@ -205,7 +205,7 @@ jobs:
             echo '```json'
             echo "$ITEM"
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Summary
         if: always()
