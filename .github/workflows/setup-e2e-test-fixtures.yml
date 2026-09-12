@@ -40,6 +40,15 @@ jobs:
           OUT=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-auth-prod --query "Stacks[0].Outputs")
           echo "user_pool_id=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_OUTPUT"
 
+      # examination#414のE2E_SECRETS_JSON（Playwright E2Eテストが読むCloudFront
+      # ドメイン）用。スタック作成後は不変のため、このワークフローの実行の都度
+      # 取得し直しても値は変わらない
+      - name: Get site-stack CloudFront domain
+        id: site-outputs
+        run: |
+          OUT=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod --query "Stacks[0].Outputs")
+          echo "domain=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="DistributionDomainName") | .OutputValue')" >> "$GITHUB_OUTPUT"
+
       - name: Create native Cognito test user (if not already present)
         id: create-user
         env:
@@ -107,21 +116,28 @@ jobs:
 
       # examination#413の完了条件・tasks/plan.mdのRisks and Mitigationsで約束した
       # 実機検証。ALLOW_ADMIN_USER_PASSWORD_AUTHがAdminInitiateAuth経由では
-      # 実際にトークンを発行できることを確認する
+      # 実際にトークンを発行できることを確認する。examination#414のE2E_SECRETS_JSON
+      # （静的secret）用のrefresh_tokenもここで併せて取得する。GitHub Actionsは
+      # ::add-mask::した値をJob Summaryでも一律「***」に伏せてしまう仕様のため
+      # （実機確認済み）、後続のSummaryステップで人間が読める平文として意図的に
+      # 表示する本設計では、ここでrefresh_tokenをマスクしてはならない
       - name: Verify AdminInitiateAuth issues a token
+        id: admin-auth
         env:
           USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
           CLIENT_ID: ${{ steps.client-creds.outputs.client_id }}
           SECRET_HASH: ${{ steps.secret-hash.outputs.hash }}
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
         run: |
-          TOKEN_TYPE=$(aws cognito-idp admin-initiate-auth --region ap-northeast-1 \
+          RESULT=$(aws cognito-idp admin-initiate-auth --region ap-northeast-1 \
             --user-pool-id "$USER_POOL_ID" \
             --client-id "$CLIENT_ID" \
             --auth-flow ADMIN_USER_PASSWORD_AUTH \
             --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH" \
-            --query "AuthenticationResult.TokenType" --output text)
-          echo "AdminInitiateAuth succeeded, TokenType=$TOKEN_TYPE"
+            --query "AuthenticationResult.{TokenType:TokenType,RefreshToken:RefreshToken}" --output json)
+          REFRESH_TOKEN=$(echo "$RESULT" | jq -r '.RefreshToken')
+          echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "AdminInitiateAuth succeeded, TokenType=$(echo "$RESULT" | jq -r '.TokenType')"
 
       # 公開エンドポイントInitiateAuthはIAM認証を必要としないため、ADMIN_USER_PASSWORD_AUTHが
       # 誤ってここからも使えてしまうと「Googleアカウントによるログインのみを許可する」という
@@ -145,11 +161,19 @@ jobs:
             cat /tmp/initiate-auth-err.txt
           fi
 
+      # examination#414の実機検証で判明したバグの修正。`--query "Item" --output text`は
+      # レコードが存在しない場合に文字列"None"を返すため、`grep -q .`が非空文字列である
+      # "None"を「存在する」と誤判定してしまい、examination-allowed-emails・
+      # examination-familiesへのシード投入が初回から一度も実行されていなかった
+      # （examination#413導入時から潜在していた不具合。E2Eテストユーザーが常に
+      # 許可外と判定され/family-create/へリダイレクトされる原因だった）。
+      # レスポンスJSONに"Item"キー自体が存在するかで判定するよう修正する
       - name: Seed E2E test family (if not already present)
         id: seed-family
         run: |
-          if aws dynamodb get-item --region us-east-1 --table-name examination-families \
-              --key "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}" --query "Item" --output text | grep -q .; then
+          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-families \
+              --key "{\"slug\": {\"S\": \"$E2E_TEST_FAMILY_SLUG\"}}" --output json)
+          if [ "$(echo "$ITEM" | jq -r 'has("Item")')" = "true" ]; then
             echo "created=false" >> "$GITHUB_OUTPUT"
             echo "examination-families already has $E2E_TEST_FAMILY_SLUG, skipping seed"
           else
@@ -162,8 +186,9 @@ jobs:
       - name: Seed E2E test allowed email (if not already present)
         id: seed-allowed-email
         run: |
-          if aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
-              --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --query "Item" --output text | grep -q .; then
+          ITEM=$(aws dynamodb get-item --region us-east-1 --table-name examination-allowed-emails \
+              --key "{\"email\": {\"S\": \"$E2E_TEST_USER_EMAIL\"}}" --output json)
+          if [ "$(echo "$ITEM" | jq -r 'has("Item")')" = "true" ]; then
             echo "created=false" >> "$GITHUB_OUTPUT"
             echo "examination-allowed-emails already has $E2E_TEST_USER_EMAIL, skipping seed"
           else
@@ -175,10 +200,24 @@ jobs:
 
       - name: Summary
         if: always()
+        env:
+          E2E_BASE_URL: https://${{ steps.site-outputs.outputs.domain }}
+          E2E_REFRESH_TOKEN: ${{ steps.admin-auth.outputs.refresh_token }}
         run: |
+          SECRETS_JSON=$(jq -nc --arg base_url "$E2E_BASE_URL" --arg refresh_token "$E2E_REFRESH_TOKEN" \
+            '{E2E_BASE_URL: $base_url, E2E_REFRESH_TOKEN: $refresh_token}')
           {
             echo "### E2Eテスト用フィクスチャ セットアップ結果"
             echo "- Cognitoテストユーザー（$E2E_TEST_USER_EMAIL）: 新規作成=${{ steps.create-user.outputs.created }}"
             echo "- テスト家族（$E2E_TEST_FAMILY_SLUG）: 新規作成=${{ steps.seed-family.outputs.created }}"
             echo "- 許可メールアドレス: 新規作成=${{ steps.seed-allowed-email.outputs.created }}"
-          } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo ""
+            echo "### ci.yml用 E2E_SECRETS_JSON"
+            echo "下記の値をGitHub Secrets（Settings > Secrets and variables > Actions）へ"
+            echo "\`E2E_SECRETS_JSON\`という名前で登録・更新してください。"
+            echo "refresh_tokenはE2Eテスト専用アカウント（アクセス範囲はテスト用の家族データのみ）の"
+            echo "資格情報で、有効期限が切れたら本ワークフローを再実行し値を再登録してください。"
+            echo '```json'
+            echo "$SECRETS_JSON"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY" >/dev/null

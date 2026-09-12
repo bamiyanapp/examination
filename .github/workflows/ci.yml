@@ -67,5 +67,26 @@ jobs:
       # （karuta#806・#833・#877と同様の方針）
       enable_duplication_check: true
       duplication_threshold: 21
+      # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
+      # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
+      # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/
+      # PRコメント）を実証する。node_versionはpackages内の各要素とは独立した
+      # トップレベル入力で、frontend-e2e-testジョブはこちらを参照するため
+      # 上記packagesの各要素と同じ24を明示する
+      enable_e2e_test: true
+      frontend_dir: app/top
+      node_version: "24"
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      # E2E_BASE_URL（examination-site-prodのCloudFrontドメイン、作成後不変）と
+      # E2E_REFRESH_TOKEN（examination#413のネイティブCognitoテストユーザーに対し
+      # 事前に1回AdminInitiateAuthで取得した値、有効期限に応じて手動で再取得・
+      # 更新する）を含むJSON文字列を静的なGitHub Secretとして直接参照する。
+      # CIジョブ内でAWS認証情報を用いてAdminInitiateAuthをその場で呼び出し
+      # job outputとして下流ジョブへ渡す方式も検討したが、GitHub Actionsは
+      # ジョブがマスク対象の値（AWS認証情報等のsecrets、::add-mask::した値）に
+      # 一度でも触れるとそのジョブのoutputsをジョブ単位で無条件に空文字へ
+      # 差し替える仕様があり（##[warning]Skip output '...' since it may
+      # contain secret.）、値の内容に関わらず後続ジョブに渡せなかったため
+      # この静的secret方式に変更した
+      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}

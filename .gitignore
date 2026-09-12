@@ -51,3 +51,9 @@ site/
 infra/site-stack/functions/configuration.json
 # deploy時にscripts/generate-config.jsが生成する（LINE・Gemini APIの認証情報を含むため）
 infra/bot-stack/functions/configuration.json
+# Playwright（examination#404）。playwright-report/・test-results/はローカル実行時の
+# 生成物、e2e-screenshots/はCI（reusable-ci.yml）がスクリーンショット公開のために
+# 参照側リポジトリ側へ書き出す生成物（別ブランチへ公開されるためmainには含めない）
+playwright-report/
+test-results/
+**/e2e-screenshots/
