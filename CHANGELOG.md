@@ -1,3 +1,10 @@
+## [1.48.1](https://github.com/bamiyanapp/examination/compare/v1.48.0...v1.48.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* **knowledge:** 家族固有の個人情報を削減し、氏名登録機能を追加する ([#432](https://github.com/bamiyanapp/examination/issues/432)) ([a77a160](https://github.com/bamiyanapp/examination/commit/a77a1606819c5b038a8c7e92ac3b832caf70fd94))
+
 # [1.48.0](https://github.com/bamiyanapp/examination/compare/v1.47.1...v1.48.0) (2026-09-12)
 
 
