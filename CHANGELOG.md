@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/bamiyanapp/examination/compare/v1.48.3...v1.49.0) (2026-09-12)
+
+
+### Features
+
+* **auth:** サイトワイド認証ゲートを廃止しフロントエンドを公開する ([#444](https://github.com/bamiyanapp/examination/issues/444)) ([12fe02c](https://github.com/bamiyanapp/examination/commit/12fe02cf49afd3dd0620fb4759a805b3972ce3a7))
+
 ## [1.48.3](https://github.com/bamiyanapp/examination/compare/v1.48.2...v1.48.3) (2026-09-12)
 
 
