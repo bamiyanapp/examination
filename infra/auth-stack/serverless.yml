@@ -70,6 +70,14 @@ resources:
         ExplicitAuthFlows:
           - ALLOW_USER_SRP_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
+          # examination#413（Playwright E2Eテスト用、examination#404の子Issue）。
+          # ALLOW_ADMIN_USER_PASSWORD_AUTHはAdminInitiateAuth（IAM認証済みの
+          # サーバー間API呼び出し専用）でのみ有効で、公開エンドポイントInitiateAuth・
+          # Hosted UIには一切露出しない。上記コメントの「Googleアカウントによる
+          # ログインのみを許可する」という一般公開のログイン経路の性質は変わらない。
+          # E2Eテスト専用のネイティブ（Google非連携）Cognitoユーザーに対し、
+          # IAM認証済みのGitHub Actionsからのみid_tokenを都度発行させる用途
+          - ALLOW_ADMIN_USER_PASSWORD_AUTH
         # ReadAttributesを明示しないとAWSの既定値に依存し、name・pictureが
         # id_tokenのクレームに含まれる保証が無い（examination#150で画面上に
         # アイコンが表示されない不具合の原因の1つ）。AttributeMappingで
