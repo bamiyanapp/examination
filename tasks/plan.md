@@ -57,28 +57,34 @@
 ### 調査結果・アーキテクチャ決定
 
 1. **reusable-ci.ymlの`frontend-e2e-test`ジョブはマトリクス非対応**: `enable_e2e_test`・`frontend_dir`はいずれも単一値の入力で、`packages`（package-testジョブ）のようなマトリクス構成に対応していない（`docs/cicd-pipeline-specification.md`「1. CIワークフロー」参照）。dev-standards側（`reusable-ci.yml`自体）を拡張してマトリクス対応させる案も検討したが、複数の参照側リポジトリ（karuta等）に影響する共有インフラの変更は影響範囲・レビューコストが大きい。
-   - **採用**: examination側の`ci.yml`に、対象アプリ1つにつき1つの追加job（`uses: .../reusable-ci.yml@v2.12.1`を`enable_e2e_test: true`・`frontend_dir: app/<name>`で個別に呼び出し、`packages`・`enable_standards_check`・`enable_duplication_check`はいずれも指定しない＝既存の`ci` jobとは完全に独立させる）を追加する方式を取る。dev-standards側は変更しない
+   - **採用（examination#414実装時に確定）**: 既存の単一`ci:`job呼び出し（`packages`・`enable_standards_check`・`enable_duplication_check`を指定済み）の`with:`へ、`enable_e2e_test: true`・`frontend_dir: app/<name>`をそのまま追加する。`frontend-e2e-test`ジョブは`inputs.enable_e2e_test`のみで動作し`packages`（package-testジョブ）とは独立した条件のため、既存jobへの追加だけで両立できる
+   - **却下**: 対象アプリごとに`reusable-ci.yml`を2つ目の`uses:`で個別に呼び出す方式（計画時点の案）。実装時に検証した結果、`reusable-ci.yml`の`merge`job（自動マージ判定）は**同一ワークフロー呼び出し内の`needs`のみ**を見るため、2つ目の呼び出しを追加すると片方の`merge`jobがもう片方のE2E結果を待たずにマージしてしまう不具合になることが判明し、この案は不採用にした
    - **却下**: `reusable-ci.yml`自体のマトリクス対応拡張（影響範囲が大きすぎるため一旦見送り、将来的にE2E対象アプリが増え続ける場合に改めて検討する）
 2. **AWS環境は本番のみ**: `site-stack`・`bot-stack`とも専用のテスト用スタックが存在しない（`infra/README.md`参照）。dev-standards `docs/client-only-vite-spa-pattern.md`の「E2Eはモックを作らず実際のAPIへ直結する」原則に従い、本番環境に対して実行する
    - 本番データ保護のため、**専用のE2Eテスト用ユーザー・専用の家族（family）レコード**を用意し、E2Eが作成・変更するデータをこの専用家族のスコープ内に限定する。実在の家族データには一切触れない
    - `examination-allowed-emails`・`examination-families`テーブルへの書き込みを伴うテスト（`family-create`・`allowed-emails`の追加/削除）は、テスト自体が後片付け（作成したレコードの削除）を行う、またはテスト用データと分かるプレフィックス（例: `e2e-test-`）を付けて残しても実害が無い設計にする
 3. **認証はCognitoネイティブユーザー（Googleアカウント不要）＋`AdminInitiateAuth`で完結させる**（ユーザーからのフィードバックにより、当初案「専用Googleアカウント作成＋一度きりの手動ログイン」から変更）。
    - `auth-stack`の`UserPool`は現状Googleフェデレーションのみを許可し（`SupportedIdentityProviders: [Google]`）、既存の`UserPoolClient`の`ExplicitAuthFlows`はパスワード認証を一切許可していない（`ALLOW_USER_SRP_AUTH`・`ALLOW_REFRESH_TOKEN_AUTH`のみ、serverless.ymlのコメント「Googleアカウントによるログインのみを許可する（パスワード認証は提供しない）」参照）。**この一般公開のログイン経路（Hosted UI）は一切変更しない**
-   - 既存`UserPoolClient`の`ExplicitAuthFlows`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加する。この認証フローは`AdminInitiateAuth`（IAM認証済みのサーバー間API呼び出しでのみ利用可能。`InitiateAuth`のような公開エンドポイントからは呼べない）専用で、Hosted UIや一般公開のログイン画面には一切露出しない。「Googleアカウントによるログインのみを許可する」という公開ログイン経路の性質は変わらない
-   - 同一User Pool内にネイティブ（Googleと紐付かない）のE2Eテスト専用ユーザーを1つ作成する（`AdminCreateUser`＋`AdminSetUserPassword`、パスワードはGitHub Secretsで管理）。CI実行のたびに`AdminInitiateAuth`（IAM認証、GitHub Actionsに`aws-actions/configure-aws-credentials`で付与、`docs/sandboxed-agent-production-data-pattern.md`と同じ「実行ロジックはコード化しGitHub Actions側に委ねる」方式）でこのユーザーの`id_token`・`refresh_token`をその場で発行させる。長期間有効なトークンをSecretsへ保管する必要が無くなる（当初案の`E2E_SECRETS_JSON`によるrefresh_token保管より安全）
-   - 発行された`id_token`は同一User Pool・同一`UserPoolClient`（既存の本番clientId）から発行されるため、`checkAuth.js`のJWT検証（issuer・audience・JWKS署名）を一切変更する必要が無い。**checkAuth.js自体には手を加えない**
-   - 一連のセットアップ（IAMポリシー・ネイティブユーザー作成）はいずれもコード化・`workflow_dispatch`で実行でき、**Googleアカウントの新規作成やCognito Hosted UI経由の手動ログインは不要**になった
+   - 既存`UserPoolClient`の`ExplicitAuthFlows`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加する。この認証フローは`AdminInitiateAuth`（IAM認証済みのサーバー間API呼び出しでのみ利用可能。`InitiateAuth`のような公開エンドポイントからは呼べない）専用で、Hosted UIや一般公開のログイン画面には一切露出しない。「Googleアカウントによるログインのみを許可する」という公開ログイン経路の性質は変わらない（examination#413で実機検証済み）
+   - 同一User Pool内にネイティブ（Googleと紐付かない）のE2Eテスト専用ユーザーを1つ作成する（`AdminCreateUser`＋`AdminSetUserPassword`、パスワードはGitHub Secretsで管理）
+   - **（examination#414実装時に静的secret方式へ変更）** 計画段階では「CI実行のたびに`AdminInitiateAuth`をその場で呼びid_token・refresh_tokenをjob outputで`frontend-e2e-test`ジョブへ渡す」設計だったが、実機検証でGitHub Actionsの仕様上不可能と判明した。**あるジョブがマスク対象の値（AWS認証情報等のsecrets、`::add-mask::`した値）に一度でも触れると、そのジョブの`outputs`はジョブ単位で無条件に空文字へ差し替えられる**（`##[warning]Skip output '...' since it may contain secret.`）。個別の出力値だけマスクを外しても、ジョブ内の他の値（AWS認証情報等）が自動マスクされている限りこの制約から逃れられない
+   - 上記の理由により、**`e2e-prep-top`のようなCI内その場発行ジョブを廃止**し、`E2E_BASE_URL`（CloudFrontドメイン、作成後不変）と`E2E_REFRESH_TOKEN`（テストユーザーに対し事前に1回`AdminInitiateAuth`で取得）を1つのJSON文字列にまとめた**静的なGitHub Secret（`E2E_SECRETS_JSON`）**として`ci.yml`から直接参照する方式に変更した。取得は`setup-e2e-test-fixtures.yml`（examination#413で導入済みのワンショットワークフロー）へ専用ステップを追加し、Job Summaryへ組み立て済みJSONを平文表示して人間が手動でSecretへ登録する（refresh_tokenの有効期限が切れたら再実行・再登録する運用）
+   - **Playwright側のCookie注入はrefresh_tokenのみ**（`id_token`は注入しない）。`checkAuth.js`自身が既に持つ「`id_token`が無い/無効でも`refresh_token`が有効なら裏側で新しい`id_token`を再発行しリダイレクトする」既存の再認証フローにそのまま乗る設計にした。実際のリピーターユーザーの挙動に近く、`id_token`の短い有効期限切れを気にする必要も無い
+   - 発行された`id_token`・`refresh_token`は同一User Pool・同一`UserPoolClient`（既存の本番clientId）から発行されるため、`checkAuth.js`のJWT検証（issuer・audience・JWKS署名）を一切変更する必要が無い。**checkAuth.js自体には手を加えない**
+   - 一連のセットアップ（IAMポリシー・ネイティブユーザー作成・refresh_token取得）はいずれもコード化・`workflow_dispatch`で実行でき、**Googleアカウントの新規作成やCognito Hosted UI経由の手動ログインは不要**になった
 
 ### Task List（GitHub Issuesで管理、examination#404の子Issue）
 
 1. examination#413: `auth-stack`の既存`UserPoolClient`へ`ALLOW_ADMIN_USER_PASSWORD_AUTH`を追加し、E2Eテスト専用のネイティブCognitoユーザー・家族レコードを作成する（`AdminCreateUser`等、`workflow_dispatch`でコード化。人間の手動ログイン操作は不要）。テストユーザーのパスワードをGitHub Secretsへ登録する
-2. examination#414: 共有Playwright認証ヘルパー（CI実行時に`AdminInitiateAuth`でid_token・refresh_tokenをその場で発行し`context.addCookies()`で注入する）とスクリーンショットヘルパー（`shared/e2e/screenshot.js`のsymlink導入）を整備し、`ci.yml`に最初の1アプリ（`app/top`、認証必須の中で最も単純な画面）分のE2E CI job（`frontend-e2e-test`個別呼び出し。AWS認証情報の設定ステップを追加）を追加してパイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/PRコメント）が動くことを実証する
+2. examination#414: 共有Playwright認証ヘルパー（事前取得済みの`refresh_token`を静的secret `E2E_SECRETS_JSON`経由で受け取り`context.addCookies()`で注入する）とスクリーンショットヘルパー（`shared/e2e/screenshot.js`のsymlink導入）を整備し、既存の`ci.yml`単一`ci`jobへ`enable_e2e_test: true`・`frontend_dir: app/top`（認証必須の中で最も単純な画面）を追加してパイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/PRコメント）が動くことを実証する。**完了・main反映済み**（PR #428）。実装過程で判明した2つの重要な知見:
+   - GitHub Actionsのjob output仕様（マスク対象値に触れたジョブのoutputsは無条件に空文字化される）により、当初計画の「CI実行のたびにその場でトークン発行」は不可能と判明し、静的secret方式へ設計変更した（詳細は上記「調査結果・アーキテクチャ決定」3.参照）
+   - `setup-e2e-test-fixtures.yml`（examination#413）の`examination-allowed-emails`・`examination-families`の既存判定ロジック（`aws dynamodb get-item --query "Item" --output text | grep -q .`）に、レコード不在時の戻り値`"None"`を「存在する」と誤判定するバグがあり、**examination#413導入以来一度もシードが実際には実行されていなかった**（E2Eテストユーザーが常に許可外と判定され`/family-create/`へリダイレクトされる根本原因だった）。`--output json`で`"Item"`キーの有無をjqで判定する方式に修正済み
 3. examination#415〜#419: 残り5アプリ（`voice-practice`・`interview-questions`・`mock-interviews`・`allowed-emails`・`family-create`）へ、#414で確立したパターンに沿ってE2Eテスト・CI jobを追加する（アプリごとに独立、並行着手可）
 
 ### Checkpoint: #413〜#414完了後
 
-- [ ] `AdminInitiateAuth`ベースのE2E認証がCIで機能し、保護ページのスクリーンショットがJob Summary・PRコメントに表示される
-- [ ] 上記をmain上のCI実行結果で確認済み
+- [x] `AdminInitiateAuth`ベースのE2E認証がCIで機能し、保護ページのスクリーンショットがJob Summary・PRコメントに表示される
+- [x] 上記をmain上のCI実行結果で確認済み（PR #428マージ後、main push時のCI/CDがいずれも成功。app/topトップページで「教育」「設定」を含む実際の画面がスクリーンショットに表示されることを確認）
 
 ### Checkpoint: 全アプリ完了後（examination#404完了）
 
