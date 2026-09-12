@@ -8,7 +8,9 @@ interface User {
 }
 
 // ログイン中のユーザー名・アイコン（Googleアカウントのプロフィール画像）を表示し、
-// ログアウトへの導線を提供する（examination#150）。id_tokenクッキーはHttpOnlyで
+// ログアウトへの導線を提供する（examination#150）。未ログイン時はログイン画面（/_login）
+// への導線を表示する（examination#437、サイトワイド認証ゲート廃止に伴い自動的には
+// ログイン画面へ遷移しなくなったため）。id_tokenクッキーはHttpOnlyで
 // JSから読めないため、同一オリジンの/_meAPI（checkAuth.js）経由でユーザー情報を取得する。
 // 各アプリは独立ビルドのため、既存の重複方針（NavigationOverlay等と同様）を
 // 踏襲しこのコンポーネントをファイルコピーで複製する
@@ -39,14 +41,25 @@ export default function UserMenu() {
         if (!cancelled && data) setUser(data);
       })
       .catch(() => {
-        // 取得失敗時はメニュー自体を表示しない（致命的ではないため無視する）
+        // 取得失敗時も未ログイン扱いとしログインリンクを表示する（致命的ではないため無視する）
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="position-fixed top-0 end-0 mt-2 me-2" style={{ zIndex: 1040 }}>
+        <a
+          href={`/_login?redirect=${encodeURIComponent(window.location.pathname)}`}
+          className="btn btn-primary btn-sm"
+        >
+          ログイン
+        </a>
+      </div>
+    );
+  }
 
   const displayName = user.name || user.email;
 
