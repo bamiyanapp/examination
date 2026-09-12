@@ -48,13 +48,13 @@ describe("UserMenu", () => {
     expect(screen.getByText("ログアウト").closest("a")).toHaveAttribute("href", "/_logout");
   });
 
-  it("未ログイン（403）の場合は何も表示しない", async () => {
+  it("未ログイン（403）の場合はログインへのリンクを表示する（examination#437）", async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
 
-    const { container } = render(<UserMenu />);
+    render(<UserMenu />);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(container).toBeEmptyDOMElement();
+    await waitFor(() => expect(screen.getByText("ログイン")).toBeInTheDocument());
+    expect(screen.getByText("ログイン").closest("a")).toHaveAttribute("href", expect.stringContaining("/_login?redirect="));
   });
 
   it("取得に失敗しても例外を投げない", async () => {

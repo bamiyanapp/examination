@@ -105,23 +105,24 @@ dev-standards `docs/standard-tech-stack.md`は「フロントエンドは公開�
 - **却下内容**: `infra/bot-stack`のAPIをAPI Gateway JWT Authorizer等、Lambda@Edgeを介さない完全に独立した認証機構へ置き換える案。現行の`apiAuth.js`によるBearerトークン検証は既にリクエスト単位で機能しており、dev-standardsが求める「APIコール単位の認証」の要件は満たしている。置き換えの実利が薄く、影響範囲（bot-stack API全体）に見合わないため今回は対象外とする
 - **理由**: 上記調査の通り、サイトワイドゲートを外しても、家族固有データを返す全APIは既にリクエスト単位で独立して認証しており、露出するのは「認証機能への到達点（ログインボタン等）を含む空のアプリシェル」のみ。フロントエンド公開化の障害は無いと判断した
 
-### 実装タスク（案、着手前に子Issueへ分解する）
+### 実装タスク・実施結果
 
-1. `checkAuth.js`末尾の未認証リダイレクトを静的コンテンツ通過へ変更し、Service Workerプリキャッシュ判定の要否を精査する
-2. 各アプリの「未ログイン時エラーメッセージ」を「ログインへの案内」に改善する（UX改善、必須ではないが移行と同時に行うのが自然）
-3. ロールバック手段の確保: 変更を`infra/site-stack`の1ファイル・1関数に閉じ、問題発生時は`checkAuth.js`を直前のコミットへ戻すデプロイのみで即座に復元できることを確認する
-4. dev-standards側`docs/serverless-static-site-pattern.md`のexamination例外記載の更新要否を判断し、必要なら別PRで更新する
+1. **完了**: `checkAuth.js`末尾の未認証時Cognitoリダイレクトを、静的コンテンツをそのまま通過させる処理へ変更した。Service Workerプリキャッシュ判定（`isPrecacheRequest`等による401ショートサーキット）は、`dev-standards/shared/pwa/sw.js`自身のコメント（「認証を挟まない構成では参照されないだけで無害」）により不要と判断し削除した
+2. **完了**: 明示的なログイン入口`/_login`（`?redirect=`で戻り先を指定可能、同一オリジンの相対パスのみ許可）を新設した。以前は末尾のCognitoリダイレクト組み立てロジックをインライン実装していたが、`buildLoginRedirect()`として切り出し`/_login`と`refresh_token`失効時のフォールバックの両方から使えるようにした
+3. **完了**: 各アプリの未ログイン時UXを改善した。`UserMenu.tsx`（8アプリ）は`/_me`が403の場合に何も表示しない代わりに`/_login`へのリンクを表示するよう変更した。`UserMenu`を持たない`app/family-create/`は、マウント時に`/_me`でログイン状態を確認し、未ログインならフォームの代わりにログイン案内を表示するよう変更した（`/_families`は未ログイン時403をプレーンテキストで返すため、フォーム送信に任せると`res.json()`が失敗し分かりにくいエラーになる問題への対応も兼ねる）
+4. ロールバック手段: 変更は`infra/site-stack/functions/checkAuth.js`1ファイルと各アプリの`UserMenu.tsx`・`FamilyCreate.tsx`に閉じている。問題発生時は該当コミットをrevertしデプロイし直すことで復元できる
+5. **未実施**: dev-standards側`docs/serverless-static-site-pattern.md`のexamination例外記載の更新は、本変更が実際にmain上でデプロイ・動作確認できてから判断する（tasks/plan.md更新時点ではまだ未反映）
 
 ### Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| 移行後に想定外の経路で家族固有データが露出する | High | 実装タスク1完了後、未ログイン状態で全ページ・全API疎通確認をCI/CD上で自動化する（`docs/cicd-pipeline-specification.md`のE2E機構を流用） |
-| Service Workerプリキャッシュ判定の変更漏れ | Low | 実装タスク1に含めて精査 |
-| ロールバックが必要になった場合の対応遅れ | Medium | `checkAuth.js`は単一Lambda@Edge関数のため、変更前コミットへの復元は迅速。実装タスク3で手順を明文化する |
+| 移行後に想定外の経路で家族固有データが露出する | High | checkAuth.js・bot-stack双方の既存ユニットテスト（リクエスト単位認証）に加え、実装後にmain上のE2E（app/top）・目視確認で全ページが引き続き正しく機能することを確認する |
+| Service Workerプリキャッシュ判定の変更漏れ | Low | 対応済み（削除。sw.js側の設計コメントで無害と確認済み） |
+| ロールバックが必要になった場合の対応遅れ | Medium | 変更は少数ファイルに閉じているため、revert 1コミットで即座に復元可能 |
 
 ### Open Questions
 
-- 未ログイン時のUX（実装タスク2）を移行と同時に行うか、後続の別Issueへ回すか
+- 全て解消済み（未ログイン時のUXは実装タスク3で対応済み）
 - dev-standards側ドキュメント更新（実装タスク4）のタイミング（examination側の移行完了後 or 並行）
 - [ ] examination#399の完了条件を全て満たしている（examination#399をクローズする）

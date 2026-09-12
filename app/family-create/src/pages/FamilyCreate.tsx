@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 // checkAuth.jsのcreateFamilyが返す文言と一致させる。既に所属済みという応答は、
 // 失敗ではなく「反映待ちで表示だけがこのページのまま」という状態を示すサインとして
@@ -32,12 +32,33 @@ async function createFamily(situation: string): Promise<CreatedFamily> {
 // （examination#305、家族名とシチュエーションの統合）。入力内容はトップページの
 // 見出し・AI練習のプロンプトに使われ、後から/settings/profile-edit/でいつでも
 // 変更できる
+//
+// examination#437でサイトワイドの認証ゲートを廃止したため、未ログインでも
+// このページ自体には到達できる。マウント時に/_meでログイン状態を確認し、
+// 未ログインならフォームの代わりにログインへの案内を表示する（/_familiesは
+// 未ログイン時に403（プレーンテキストボディ）を返すため、フォーム送信に
+// 任せるとres.json()が失敗し分かりにくいエラーになってしまう）
 export default function FamilyCreate() {
   const [situation, setSituation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [createdFamily, setCreatedFamily] = useState<CreatedFamily | null>(null);
   const [alreadyInFamily, setAlreadyInFamily] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/_me")
+      .then((res) => {
+        if (!cancelled) setIsLoggedIn(res.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setIsLoggedIn(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,6 +82,29 @@ export default function FamilyCreate() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (isLoggedIn === null) {
+    return (
+      <main className="container py-5" style={{ maxWidth: "42rem" }}>
+        <div className="d-flex align-items-center gap-2 text-muted">
+          <span className="spinner-border spinner-border-sm" role="status" />
+          読み込み中...
+        </div>
+      </main>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <main className="container py-5" style={{ maxWidth: "42rem" }}>
+        <h1 className="h3 fw-bold">家族の新規作成</h1>
+        <p className="mt-2 text-muted">家族を新規作成するには、Googleアカウントでログインしてください。</p>
+        <a href="/_login?redirect=/family-create/" className="btn btn-primary">
+          ログイン
+        </a>
+      </main>
+    );
   }
 
   return (
