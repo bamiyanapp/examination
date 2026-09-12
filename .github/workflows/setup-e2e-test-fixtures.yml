@@ -117,7 +117,10 @@ jobs:
       # examination#413の完了条件・tasks/plan.mdのRisks and Mitigationsで約束した
       # 実機検証。ALLOW_ADMIN_USER_PASSWORD_AUTHがAdminInitiateAuth経由では
       # 実際にトークンを発行できることを確認する。examination#414のE2E_SECRETS_JSON
-      # （静的secret）用のrefresh_tokenもここで併せて取得する
+      # （静的secret）用のrefresh_tokenもここで併せて取得する。GitHub Actionsは
+      # ::add-mask::した値をJob Summaryでも一律「***」に伏せてしまう仕様のため
+      # （実機確認済み）、後続のSummaryステップで人間が読める平文として意図的に
+      # 表示する本設計では、ここでrefresh_tokenをマスクしてはならない
       - name: Verify AdminInitiateAuth issues a token
         id: admin-auth
         env:
@@ -133,7 +136,6 @@ jobs:
             --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH" \
             --query "AuthenticationResult.{TokenType:TokenType,RefreshToken:RefreshToken}" --output json)
           REFRESH_TOKEN=$(echo "$RESULT" | jq -r '.RefreshToken')
-          echo "::add-mask::$REFRESH_TOKEN"
           echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
           echo "AdminInitiateAuth succeeded, TokenType=$(echo "$RESULT" | jq -r '.TokenType')"
 
