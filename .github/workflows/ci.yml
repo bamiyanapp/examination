@@ -15,7 +15,95 @@ permissions:
   pull-requests: write
 
 jobs:
+  # examination#414（examination#404の子Issue）: app/topのPlaywright E2Eテストが
+  # AdminInitiateAuth（examination#413）でE2Eテスト専用ユーザーのid_token・
+  # refresh_tokenをその場で発行するために必要な値を用意し、ciジョブへ
+  # E2E_SECRETS_JSON経由で渡す。ciジョブ内のfrontend-e2e-testジョブは
+  # reusable-ci.yml側の実装であり、examination側から追加のステップを挟めない
+  # （dynamic-config not possible inside a called reusable workflow's job）ため、
+  # 呼び出し前の別ジョブとしてここで用意する
+  e2e-prep-top:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      secrets_json: ${{ steps.build-secrets.outputs.json }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Get auth-stack outputs
+        id: auth-outputs
+        run: |
+          OUT=$(aws cloudformation describe-stacks --region ap-northeast-1 --stack-name examination-auth-prod --query "Stacks[0].Outputs")
+          echo "user_pool_id=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          CLIENT_ID=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientId") | .OutputValue')
+          CLIENT_SECRET=$(echo "$OUT" | jq -r '.[] | select(.OutputKey=="UserPoolClientSecret") | .OutputValue')
+          echo "::add-mask::$CLIENT_SECRET"
+          echo "client_id=$CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "client_secret=$CLIENT_SECRET" >> "$GITHUB_OUTPUT"
+
+      - name: Get site CloudFront domain
+        id: site-domain
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --region us-east-1 --stack-name examination-site-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" --output text)
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+
+      # examination-allowed-emailsに登録済みのE2Eテスト専用ユーザー（examination#413）で
+      # AdminInitiateAuth（IAM認証済みAPI専用、公開InitiateAuthからは呼び出せないことを
+      # examination#413で実機検証済み）を呼び、その場でid_token・refresh_tokenを発行する
+      - name: Issue E2E test tokens via AdminInitiateAuth
+        id: tokens
+        env:
+          USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+          CLIENT_ID: ${{ steps.auth-outputs.outputs.client_id }}
+          CLIENT_SECRET: ${{ steps.auth-outputs.outputs.client_secret }}
+          E2E_TEST_USER_EMAIL: e2e-test@example.com
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+        run: |
+          SECRET_HASH=$(node -e '
+            const crypto = require("crypto");
+            const message = process.env.E2E_TEST_USER_EMAIL + process.env.CLIENT_ID;
+            const hmac = crypto.createHmac("sha256", process.env.CLIENT_SECRET);
+            hmac.update(message);
+            process.stdout.write(hmac.digest("base64"));
+          ')
+          RESULT=$(aws cognito-idp admin-initiate-auth --region ap-northeast-1 \
+            --user-pool-id "$USER_POOL_ID" \
+            --client-id "$CLIENT_ID" \
+            --auth-flow ADMIN_USER_PASSWORD_AUTH \
+            --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH")
+          ID_TOKEN=$(echo "$RESULT" | jq -r '.AuthenticationResult.IdToken')
+          REFRESH_TOKEN=$(echo "$RESULT" | jq -r '.AuthenticationResult.RefreshToken')
+          echo "::add-mask::$ID_TOKEN"
+          echo "::add-mask::$REFRESH_TOKEN"
+          echo "id_token=$ID_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Build E2E_SECRETS_JSON
+        id: build-secrets
+        env:
+          E2E_BASE_URL: https://${{ steps.site-domain.outputs.domain }}
+          E2E_ID_TOKEN: ${{ steps.tokens.outputs.id_token }}
+          E2E_REFRESH_TOKEN: ${{ steps.tokens.outputs.refresh_token }}
+        run: |
+          JSON=$(node -e '
+            process.stdout.write(JSON.stringify({
+              E2E_BASE_URL: process.env.E2E_BASE_URL,
+              E2E_ID_TOKEN: process.env.E2E_ID_TOKEN,
+              E2E_REFRESH_TOKEN: process.env.E2E_REFRESH_TOKEN,
+            }));
+          ')
+          echo "::add-mask::$JSON"
+          echo "json=$JSON" >> "$GITHUB_OUTPUT"
+
   ci:
+    needs: e2e-prep-top
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.12.1
     with:
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
@@ -67,5 +155,15 @@ jobs:
       # （karuta#806・#833・#877と同様の方針）
       enable_duplication_check: true
       duplication_threshold: 21
+      # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
+      # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
+      # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/
+      # PRコメント）を実証する。node_versionはpackages内の各要素とは独立した
+      # トップレベル入力で、frontend-e2e-testジョブはこちらを参照するため
+      # 上記packagesの各要素と同じ24を明示する
+      enable_e2e_test: true
+      frontend_dir: app/top
+      node_version: "24"
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      E2E_SECRETS_JSON: ${{ needs.e2e-prep-top.outputs.secrets_json }}
