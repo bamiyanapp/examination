@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "pretest": "node scripts/ensure-test-config.js",
-    "test": "vitest run"
+    "test": "vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0"

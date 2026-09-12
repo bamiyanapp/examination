@@ -25,6 +25,17 @@ jobs:
       # node_versionを明示しないとinputs.node_version（既定"20"）が使われるが、
       # 各アプリの依存（jsdom@30等）がNode.js 22以上を要求しており、Node.js 20では
       # `webidl.util.markAsUncloneable is not a function`で失敗するため24を指定する
+      #
+      # infra/bot-stack・infra/site-stackはbuildスクリプトを持たない
+      # （デプロイはServerless Frameworkが直接ソースを参照するためビルド成果物が不要）ため
+      # build:trueを付けない。coverage_thresholdはexamination#401・#402でテストを整備した
+      # 際の実測値（bot-stack: Stmts61.48/Branches63.48/Funcs54.87/Lines61.27%、
+      # site-stack: Stmts93.16/Branches78.04/Funcs95.91/Lines94.51%）を基準に、
+      # 各パッケージの実測最小値（bot-stackはFunctions、site-stackはBranches）を
+      # 下回らない範囲でマージンを持たせたラチェット方式のしきい値とする
+      # （duplication_thresholdと同様の方針）。bot-stackはgeminiConversation.js・
+      # lineWebhook.jsの外部API呼び出し成功パス（Gemini・LINE）がテスト対象外
+      # （examination#401で意図的にスコープ外とした）のため他パッケージより低め
       packages: >-
         [{"dir":"app/line-link","build":true,"node_version":"24"},
         {"dir":"app/allowed-emails","build":true,"node_version":"24"},
@@ -34,7 +45,9 @@ jobs:
         {"dir":"app/education-overview","build":true,"node_version":"24"},
         {"dir":"app/mock-interviews","build":true,"node_version":"24"},
         {"dir":"app/profile-edit","build":true,"node_version":"24"},
-        {"dir":"app/family-create","build":true,"node_version":"24"}]
+        {"dir":"app/family-create","build":true,"node_version":"24"},
+        {"dir":"infra/bot-stack","coverage_threshold":50},
+        {"dir":"infra/site-stack","coverage_threshold":75}]
       enable_standards_check: true
       # コード重複検知（jscpd、examination#400）。duplication-checkジョブの
       # checkoutはsubmodules:trueを指定しない（reusable-ci.yml側の既定）ため

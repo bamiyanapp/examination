@@ -40,6 +40,10 @@ site/
 
 # Serverless Framework
 .serverless/
+# dev-standards管理ブロックの`*/coverage/`は1階層下（例: app/*/coverage/）のみ対象で、
+# infra/bot-stack/coverage・infra/site-stack/coverageのような2階層下は対象外のため個別に追加
+# （examination#403でinfra配下パッケージにcoverage_thresholdを導入した際に判明）
+infra/*/coverage/
 # deploy時にscripts/generate-config.jsが生成する（Cognitoクライアントシークレットを含むため）
 infra/site-stack/functions/configuration.json
 # deploy時にscripts/generate-config.jsが生成する（LINE・Gemini APIの認証情報を含むため）
