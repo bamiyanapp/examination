@@ -473,6 +473,51 @@ describe("checkAuth handler: /_families", () => {
 
     expect(result.status).toBe("200");
   });
+
+  it("creates and immediately cleans up a disposable family for the E2E test user, without notifying bot-stack (examination#419)", async () => {
+    mockValidToken({ email: "e2e-test@example.com" });
+    ddbMock.on(PutItemCommand).resolves({});
+    ddbMock.on(DeleteItemCommand).resolves({});
+
+    const result = await handler(
+      cfEvent({
+        uri: "/_families",
+        method: "POST",
+        cookie: authenticatedCookie(),
+        headers: { "x-e2e-test": [{ key: "X-E2e-Test", value: "true" }] },
+        body: JSON.stringify({ situation: "小学校受験の面接" }),
+      })
+    );
+
+    expect(result.status).toBe("200");
+    const body = JSON.parse(result.body);
+    expect(body.slug).toEqual(expect.any(String));
+    expect(body.situation).toBe("小学校受験の面接");
+    // 実際の呼び出し元（e2e-test@example.com）自身のallowed-emailsレコードには
+    // 一切触れない（合成メールアドレスのみを作成・削除する）
+    const putCalls = ddbMock.commandCalls(PutItemCommand);
+    expect(putCalls.some((c) => c.args[0].input.Item.email?.S === "e2e-test@example.com")).toBe(false);
+    expect(ddbMock.commandCalls(DeleteItemCommand, { TableName: "examination-families" })).toHaveLength(1);
+    expect(ddbMock.commandCalls(DeleteItemCommand, { TableName: "examination-allowed-emails" })).toHaveLength(1);
+    expect(httpsRequestMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores the x-e2e-test header for a non-E2E-test-user email (existing duplicate check still applies)", async () => {
+    mockValidToken({ email: "family@example.com" });
+    ddbMock.on(GetItemCommand, { TableName: "examination-allowed-emails" }).resolves({ Item: {} });
+
+    const result = await handler(
+      cfEvent({
+        uri: "/_families",
+        method: "POST",
+        cookie: authenticatedCookie(),
+        headers: { "x-e2e-test": [{ key: "X-E2e-Test", value: "true" }] },
+        body: JSON.stringify({ situation: "s" }),
+      })
+    );
+
+    expect(result.status).toBe("400");
+  });
 });
 
 describe("checkAuth handler: /_voice-token", () => {

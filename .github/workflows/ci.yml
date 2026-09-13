@@ -195,3 +195,25 @@ jobs:
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
+
+  # examination#419（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
+  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
+  # コメント参照）。家族の新規作成という性質上、テスト実行のたびに新規作成しても
+  # 実データが増え続けないよう、infra/site-stack/functions/checkAuth.js側にテスト
+  # 専用の使い捨て経路（examination#419）を用意し、共有E2Eテストユーザーの家族所属
+  # 状態を変えずに検証する
+  e2e-family-create:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.17.3
+    with:
+      enable_e2e_test: true
+      frontend_dir: app/family-create
+      node_version: "24"
+      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
+      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
+      # PR #451→#453と同じ手順）
+      e2e_coverage_threshold: 0
+      packages: "[]"
+      enable_standards_check: true
+    secrets:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
