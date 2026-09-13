@@ -138,3 +138,22 @@ jobs:
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
+
+  # examination#416（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
+  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
+  # コメント参照）
+  e2e-interview-questions:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.1
+    with:
+      enable_e2e_test: true
+      frontend_dir: app/interview-questions
+      node_version: "24"
+      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
+      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
+      # PR #451→#453と同じ手順）
+      e2e_coverage_threshold: 0
+      packages: "[]"
+      enable_standards_check: true
+    secrets:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}

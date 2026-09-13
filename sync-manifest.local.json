@@ -327,6 +327,14 @@
     {
       "source": "shared/e2e/coverageFixture.js",
       "target": "app/voice-practice/e2e/coverageFixture.js"
+    },
+    {
+      "source": "shared/e2e/screenshot.js",
+      "target": "app/interview-questions/e2e/screenshot.js"
+    },
+    {
+      "source": "shared/e2e/coverageFixture.js",
+      "target": "app/interview-questions/e2e/coverageFixture.js"
     }
   ]
 }
