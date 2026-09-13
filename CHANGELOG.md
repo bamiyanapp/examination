@@ -1,3 +1,10 @@
+## [1.51.1](https://github.com/bamiyanapp/examination/compare/v1.51.0...v1.51.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **ci:** e2e-voice-practiceジョブでフロントエンド/バックエンドレガシージョブを無効化する ([#457](https://github.com/bamiyanapp/examination/issues/457)) ([1d1d5ee](https://github.com/bamiyanapp/examination/commit/1d1d5ee3a5d27217acea4eba7763c00ded95128b))
+
 # [1.51.0](https://github.com/bamiyanapp/examination/compare/v1.50.0...v1.51.0) (2026-09-13)
 
 
