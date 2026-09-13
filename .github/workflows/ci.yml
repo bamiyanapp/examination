@@ -63,10 +63,16 @@ jobs:
       # 計測した際はsubmodule実体（シンボリックリンク経由でdailyRateLimit.js
       # 等が実ファイルとして解決される）を含めてしまい15.91%と誤って計測して
       # いた（このジョブと同じ条件のクリーンな checkout で再計測すると20.44%）。
-      # 実測値20.44%を基準に、以後の増加を検知するラチェット方式のしきい値とする
-      # （karuta#806・#833・#877と同様の方針）
+      # 実測値20.44%を基準としたラチェット方式のしきい値（21%、karuta#806・#833・
+      # #877と同様の方針）を長期間運用していたが、examination#447でこの緩さが
+      # UserMenu.tsx等の重複蓄積（tsx単体で37.42%）を検知できていなかったことが
+      # 判明。dev-standards側の開発共通標準（dev-standards#416、目標値5%以下）に
+      # 合わせ、app-shared/（UserMenu.tsx・AppShell.tsxのsymlink共有）・
+      # infra/infra-shared/（bot-stack・site-stack共通のESLint flat config基盤）
+      # 等への切り出しで実際に重複を削減した上で、実測値（クリーンなcheckoutと
+      # 同条件で4.77%）を基準に5%へ引き下げた
       enable_duplication_check: true
-      duplication_threshold: 21
+      duplication_threshold: 5
       # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
       # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
       # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/

@@ -1,6 +1,7 @@
 "use strict";
 
 const { DynamoDBClient, DeleteItemCommand, QueryCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
+const { jsonResponse, checkInternalApiAuth } = require("./internalApi");
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
@@ -10,10 +11,6 @@ const FAMILY_PROFILE_TABLE = "examination-family-profile";
 const LINE_LINKS_TABLE = "examination-line-links";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
-
-function jsonResponse(statusCode, body) {
-  return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
 
 // familySlug（PK）配下の全アイテムをQueryで取得し、1件ずつDeleteItemする
 async function deleteAllItemsByFamilySlug(tableName, sortKeyName, familySlug) {
@@ -57,13 +54,8 @@ async function deleteLineLinkByEmail(email) {
 // examination-allowed-emails・examination-familiesの削除はこのAPIの責務ではなく、
 // 呼び出し元（checkAuth.js）がこのAPIの成功を確認した後に自分で行う
 exports.handler = async (event) => {
-  if (event.requestContext?.http?.method !== "POST") {
-    return jsonResponse(405, { error: "method not allowed" });
-  }
-  const providedSecret = event.headers?.["x-internal-secret"];
-  if (!config.internalApiSecret || providedSecret !== config.internalApiSecret) {
-    return jsonResponse(403, { error: "forbidden" });
-  }
+  const authError = checkInternalApiAuth(event, config);
+  if (authError) return authError;
 
   let payload;
   try {
