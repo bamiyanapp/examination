@@ -1,3 +1,10 @@
+# [1.52.0](https://github.com/bamiyanapp/examination/compare/v1.51.2...v1.52.0) (2026-09-13)
+
+
+### Features
+
+* **e2e:** app/interview-questionsへPlaywright E2Eテストを導入する ([#461](https://github.com/bamiyanapp/examination/issues/461)) ([00169ba](https://github.com/bamiyanapp/examination/commit/00169ba5ec1da06788fe7c8f00fedb28e8881f59))
+
 ## [1.51.2](https://github.com/bamiyanapp/examination/compare/v1.51.1...v1.51.2) (2026-09-13)
 
 
