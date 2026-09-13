@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/bamiyanapp/examination/compare/v1.50.0...v1.51.0) (2026-09-13)
+
+
+### Features
+
+* **e2e:** app/voice-practiceへPlaywright E2Eテストを導入する ([#454](https://github.com/bamiyanapp/examination/issues/454)) ([48bb117](https://github.com/bamiyanapp/examination/commit/48bb117530a2547528dedc91f642107d026367c8)), closes [#415](https://github.com/bamiyanapp/examination/issues/415)
+
 # [1.50.0](https://github.com/bamiyanapp/examination/compare/v1.49.0...v1.50.0) (2026-09-13)
 
 
