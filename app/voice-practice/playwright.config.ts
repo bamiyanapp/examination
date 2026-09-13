@@ -4,5 +4,5 @@ import { buildPlaywrightConfig } from "./e2e/playwright.config.base.js"; // syml
 export default buildPlaywrightConfig({
   defineConfig,
   devices,
-  reportName: "examination(top) E2E Report",
+  reportName: "examination(voice-practice) E2E Report",
 });

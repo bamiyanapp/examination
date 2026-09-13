@@ -103,3 +103,22 @@ jobs:
       # contain secret.）、値の内容に関わらず後続ジョブに渡せなかったため
       # この静的secret方式に変更した
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
+
+  # examination#415（examination#404の子Issue）。frontend-e2e-testジョブはmatrix
+  # 非対応でfrontend_dir単一値のみのため、対象アプリ1つにつき1つの追加jobを
+  # 個別に呼び出す（packages・enable_standards_check・enable_duplication_checkは
+  # いずれも指定せず、上記ciジョブとは完全に独立させる。examination#404
+  # 「Playwright E2E導入 詳細計画」で確定した方式）
+  e2e-voice-practice:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.0
+    with:
+      enable_e2e_test: true
+      frontend_dir: app/voice-practice
+      node_version: "24"
+      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
+      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
+      # PR #451→#453と同じ手順）
+      e2e_coverage_threshold: 0
+    secrets:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
