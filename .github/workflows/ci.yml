@@ -119,6 +119,14 @@ jobs:
       # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
       # PR #451→#453と同じ手順）
       e2e_coverage_threshold: 0
+      # packagesを省略するとreusable-ci.ymlのfrontend-test/backend-testジョブ
+      # （examinationが使わない固定ディレクトリ構成向けのレガシージョブ、CLAUDE.md
+      # 「backend_dir: backend」既定値で発火しbackend/が存在せず失敗、frontend-test側も
+      # submodules: falseでチェックアウトされdev-standards symlinkが解決できず失敗）が
+      # 有効化されてしまう。packages: '[]'（空配列）を明示的に渡すことで
+      # frontend-test/backend-test/package-testの3つとも無効化する
+      # （reusable-ci.ymlのpackage-testジョブのコメント#151参照）
+      packages: "[]"
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
