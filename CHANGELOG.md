@@ -1,3 +1,10 @@
+## [1.51.2](https://github.com/bamiyanapp/examination/compare/v1.51.1...v1.51.2) (2026-09-13)
+
+
+### Bug Fixes
+
+* **ci:** e2e-voice-practiceでenable_standards_checkを有効化しsubmodulesをチェックアウトする ([#459](https://github.com/bamiyanapp/examination/issues/459)) ([b3409cd](https://github.com/bamiyanapp/examination/commit/b3409cd4ca78cd36620528e46783922db0992127))
+
 ## [1.51.1](https://github.com/bamiyanapp/examination/compare/v1.51.0...v1.51.1) (2026-09-13)
 
 
