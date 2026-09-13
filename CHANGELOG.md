@@ -1,3 +1,10 @@
+# [1.50.0](https://github.com/bamiyanapp/examination/compare/v1.49.0...v1.50.0) (2026-09-13)
+
+
+### Features
+
+* **e2e:** Playwright E2EのJS/CSSカバレッジ収集を導入する ([#451](https://github.com/bamiyanapp/examination/issues/451)) ([99ec3bc](https://github.com/bamiyanapp/examination/commit/99ec3bc2a7150a0b0feaa5371fa3fac107b1ea17)), closes [#450](https://github.com/bamiyanapp/examination/issues/450)
+
 # [1.49.0](https://github.com/bamiyanapp/examination/compare/v1.48.3...v1.49.0) (2026-09-12)
 
 
