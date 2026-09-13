@@ -17,6 +17,12 @@ export default defineConfig({
   // examination#82: /top/でのプレビュー確認の結果、正式なトップページとして採用したため
   // サイトルート('/')を基準にする
   base: '/',
+  build: {
+    // E2Eカバレッジ収集（monocart-reporter）がビルド後のバンドルファイル単位ではなく
+    // 実際のsrc/*.tsxファイル単位まで遡って集計できるようにする
+    // （dev-standards docs/e2e-coverage-pattern.md、examination#450）
+    sourcemap: true,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',

@@ -57,6 +57,8 @@ infra/bot-stack/functions/configuration.json
 playwright-report/
 test-results/
 **/e2e-screenshots/
+# monocart-reporter（examination#450、E2Eカバレッジ収集）のHTMLレポート生成物
+**/monocart-report/
 # jscpd（examination#400）のローカル実行時の生成物。CI（duplication-checkジョブ）
 # もJob Summaryへ埋め込むのみでコミットはしない
 jscpd-report/
