@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/bamiyanapp/examination/compare/v1.53.0...v1.54.0) (2026-09-13)
+
+
+### Features
+
+* **e2e:** app/allowed-emailsへPlaywright E2Eテストを導入する ([#466](https://github.com/bamiyanapp/examination/issues/466)) ([d714edb](https://github.com/bamiyanapp/examination/commit/d714edbd5b97c6034a429b7812c856254c54d3e4))
+
 # [1.53.0](https://github.com/bamiyanapp/examination/compare/v1.52.0...v1.53.0) (2026-09-13)
 
 
