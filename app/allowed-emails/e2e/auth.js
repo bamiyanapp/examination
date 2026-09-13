@@ -1,0 +1,1 @@
+../../../app-shared/e2e/auth.js

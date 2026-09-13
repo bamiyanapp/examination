@@ -343,6 +343,14 @@
     {
       "source": "shared/e2e/coverageFixture.js",
       "target": "app/mock-interviews/e2e/coverageFixture.js"
+    },
+    {
+      "source": "shared/e2e/screenshot.js",
+      "target": "app/allowed-emails/e2e/screenshot.js"
+    },
+    {
+      "source": "shared/e2e/coverageFixture.js",
+      "target": "app/allowed-emails/e2e/coverageFixture.js"
     }
   ]
 }
