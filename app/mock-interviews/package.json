@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary",
+    "test:e2e": "NODE_OPTIONS=--preserve-symlinks playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
@@ -23,6 +25,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^5.0.0",
     "jsdom": "^30.0.1",
+    "monocart-reporter": "^2.13.1",
     "oxlint": "^1.75.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
