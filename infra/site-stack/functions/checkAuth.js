@@ -18,6 +18,10 @@ const config = require("./configuration.json");
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
 const FAMILIES_TABLE = "examination-families";
 const SITUATION_MAX_LENGTH = 50;
+// examination#419（app/family-create E2E導入）。examination#413の共有E2Eテスト
+// ユーザーのメールアドレス（.github/workflows/setup-e2e-test-fixtures.ymlと同じ値）
+const E2E_TEST_USER_EMAIL = "e2e-test@example.com";
+const E2E_TEST_HEADER = "x-e2e-test";
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合は各ページのsrc/pages/*.jsx（app/profile-edit/等）とあわせて
 // ここも更新する
@@ -345,8 +349,18 @@ async function deleteFamily(slug) {
 // examination-family-profile（bot-stack）で、成功時に呼ぶbot-stackの内部API
 // （notifyFamilyCreated、サイト運営者へのLINE通知も兼ねる、examination#259）が
 // 種として保存する
-async function createFamily({ email, situation }) {
-  if (await isAllowedEmail(email)) {
+// examination#419。app/family-createのE2Eテストは「まだどの家族にも所属していない」
+// アカウントでなければ検証できないが、examination#413の共有E2Eテストユーザーは
+// 既にテスト家族へ所属済み（voice-practice等、他の全E2Eテストが依存する共有
+// フィクスチャのため、このテストのためだけに所属状態を変更する訳にはいかない）。
+// isE2ETestがtrueの場合（呼び出し元がhandleFamiliesApiで検証済み）、実際の
+// 呼び出し元メールアドレスではなく使い捨ての合成メールアドレスを「作成した家族の
+// 唯一のメンバー」として扱うことで、共有フィクスチャの所属状態に一切影響を
+// 与えずに済む。作成後は実データへの副作用を残さないようその場で削除し、
+// 本番運用者への誤通知を避けるためnotifyFamilyCreatedも呼ばない。これにより
+// モックを作らず実際のDynamoDB書き込み・削除ロジックまで検証できる
+async function createFamily({ email, situation, isE2ETest }) {
+  if (!isE2ETest && (await isAllowedEmail(email))) {
     return { status: 400, error: "既に家族に所属しています" };
   }
   const trimmedSituation = String(situation || "").trim().slice(0, SITUATION_MAX_LENGTH);
@@ -354,19 +368,25 @@ async function createFamily({ email, situation }) {
     return { status: 400, error: "シチュエーションを入力してください" };
   }
   const slug = generateFamilySlug();
+  const memberEmail = isE2ETest ? `e2e-test-family-create-${slug}@example.com` : email;
   await ddb.send(
     new PutItemCommand({
       TableName: FAMILIES_TABLE,
       Item: {
         slug: { S: slug },
-        createdBy: { S: email },
+        createdBy: { S: memberEmail },
         createdAt: { S: new Date().toISOString() },
       },
       ConditionExpression: "attribute_not_exists(slug)",
     })
   );
-  await addAllowedEmail(email, email, slug);
-  await notifyFamilyCreated(email, trimmedSituation, slug);
+  await addAllowedEmail(memberEmail, memberEmail, slug);
+  if (isE2ETest) {
+    await removeAllowedEmail(memberEmail);
+    await deleteFamily(slug);
+  } else {
+    await notifyFamilyCreated(email, trimmedSituation, slug);
+  }
   return { slug, situation: trimmedSituation };
 }
 
@@ -611,9 +631,14 @@ async function handleFamiliesApi(request) {
     return { status: "405", statusDescription: "Method Not Allowed", body: "method not allowed" };
   }
   const requesterEmail = String(payload.email || "").toLowerCase();
+  // examination#419参照（詳細はcreateFamilyのコメント）。第三者が任意のヘッダーで
+  // 本番の重複チェックを回避できないよう、実際にE2Eテストユーザー本人としてログイン
+  // できていること（=CI経由でしか知り得ないCognitoパスワードを保有すること）も
+  // あわせて要求する
+  const isE2ETest = requesterEmail === E2E_TEST_USER_EMAIL && Boolean(request.headers[E2E_TEST_HEADER]?.[0]?.value);
   const body = parseJsonBody(request);
   const situation = body && typeof body.situation === "string" ? body.situation : "";
-  const result = await createFamily({ email: requesterEmail, situation });
+  const result = await createFamily({ email: requesterEmail, situation, isE2ETest });
   if (result.error) {
     const statusDescription = result.status === 403 ? "Forbidden" : "Bad Request";
     return jsonResponse(result.status, statusDescription, { error: result.error });
