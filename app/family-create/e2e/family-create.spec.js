@@ -26,7 +26,14 @@ test("認証済みで家族の新規作成ができる", async ({ page, context 
   await captureScreenshot(page, testInfo, "family-create-form", "家族の新規作成（認証済み）");
 
   await page.getByPlaceholder("例: 小学校受験の面接").fill("E2Eテスト用シチュエーション");
-  await page.getByRole("button", { name: "作成する" }).click();
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => res.url().endsWith("/_families") && res.request().method() === "POST"),
+    page.getByRole("button", { name: "作成する" }).click(),
+  ]);
+  // アサーションが失敗した際に原因を切り分けられるよう、バックエンド（テスト専用
+  // 使い捨て経路、examination#419）からの実際のレスポンスをログへ残す
+  const responseBody = await response.json().catch(() => null);
+  console.log(`/_families レスポンス: status=${response.status()} body=${JSON.stringify(responseBody)}`);
 
   await expect(page.getByRole("alert")).toContainText("を作成しました");
   await captureScreenshot(page, testInfo, "family-create-success", "家族の新規作成（作成成功後）");
