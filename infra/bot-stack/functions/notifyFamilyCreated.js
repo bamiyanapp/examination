@@ -3,16 +3,13 @@
 const { DynamoDBClient, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { postJson } = require("./geminiConversation");
 const { saveFamilyProfile } = require("./familyProfile");
+const { jsonResponse, checkInternalApiAuth } = require("./internalApi");
 // deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
 const LINE_LINKS_TABLE = "examination-line-links";
 
 const ddb = new DynamoDBClient({ region: "us-east-1" });
-
-function jsonResponse(statusCode, body) {
-  return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
 
 // examination-line-linksはlineUserId(PK)→emailの向きでしか引けないため、
 // 管理用アカウントのemailからlineUserIdを引くにはScan＋FilterExpressionを使う
@@ -50,15 +47,9 @@ function pushLineMessage(lineUserId, text) {
 // のIssue本文参照）
 // 既存ロジックのテスト未整備のため、lint導入時点（examination#401）では
 // 挙動を変えるリファクタリングは見送る
-// eslint-disable-next-line complexity
 exports.handler = async (event) => {
-  if (event.requestContext?.http?.method !== "POST") {
-    return jsonResponse(405, { error: "method not allowed" });
-  }
-  const providedSecret = event.headers?.["x-internal-secret"];
-  if (!config.internalApiSecret || providedSecret !== config.internalApiSecret) {
-    return jsonResponse(403, { error: "forbidden" });
-  }
+  const authError = checkInternalApiAuth(event, config);
+  if (authError) return authError;
 
   let payload;
   try {

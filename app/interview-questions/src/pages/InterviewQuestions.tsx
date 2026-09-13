@@ -63,6 +63,36 @@ function substituteNames(text: string, substitutions: Record<string, string>): s
   return result;
 }
 
+// フォーム内の5つのtextarea（質問・回答の要点・具体例・印象・模範解答）はいずれも
+// 自動リサイズ＋バリデーション要否のみが異なる同じ構造のため、jscpdの重複検知
+// （examination#447）を機に共通コンポーネントへ切り出した
+function AutoGrowTextareaField({
+  label,
+  required,
+  value,
+  onChange,
+}: {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="d-block">
+      <span className="form-label d-block">{label}</span>
+      <textarea
+        required={required}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onInput={(event) => resizeToFitContent(event.target)}
+        ref={resizeToFitContent}
+        className="form-control"
+        style={{ resize: "none", overflow: "hidden" }}
+      />
+    </label>
+  );
+}
+
 async function issueVoiceToken(): Promise<string> {
   const res = await fetch("/_voice-token", { method: "POST" });
   const data = await res.json();
@@ -361,63 +391,33 @@ export default function InterviewQuestions() {
                         ))}
                       </select>
                     </label>
-                    <label className="d-block">
-                      <span className="form-label d-block">質問:</span>
-                      <textarea
-                        required
-                        value={formValues.question}
-                        onChange={(event) => updateFormField("question", event.target.value)}
-                        onInput={(event) => resizeToFitContent(event.target)}
-                        ref={resizeToFitContent}
-                        className="form-control"
-                        style={{ resize: "none", overflow: "hidden" }}
-                      />
-                    </label>
-                    <label className="d-block">
-                      <span className="form-label d-block">回答の要点:</span>
-                      <textarea
-                        required
-                        value={formValues.answer}
-                        onChange={(event) => updateFormField("answer", event.target.value)}
-                        onInput={(event) => resizeToFitContent(event.target)}
-                        ref={resizeToFitContent}
-                        className="form-control"
-                        style={{ resize: "none", overflow: "hidden" }}
-                      />
-                    </label>
-                    <label className="d-block">
-                      <span className="form-label d-block">盛り込む具体例（任意）:</span>
-                      <textarea
-                        value={formValues.example}
-                        onChange={(event) => updateFormField("example", event.target.value)}
-                        onInput={(event) => resizeToFitContent(event.target)}
-                        ref={resizeToFitContent}
-                        className="form-control"
-                        style={{ resize: "none", overflow: "hidden" }}
-                      />
-                    </label>
-                    <label className="d-block">
-                      <span className="form-label d-block">面接官への印象（任意）:</span>
-                      <textarea
-                        value={formValues.impression}
-                        onChange={(event) => updateFormField("impression", event.target.value)}
-                        onInput={(event) => resizeToFitContent(event.target)}
-                        ref={resizeToFitContent}
-                        className="form-control"
-                        style={{ resize: "none", overflow: "hidden" }}
-                      />
-                    </label>
-                    <label className="d-block">
-                      <span className="form-label d-block">模範解答（任意）:</span>
-                      <textarea
-                        value={formValues.modelAnswer}
-                        onChange={(event) => updateFormField("modelAnswer", event.target.value)}
-                        onInput={(event) => resizeToFitContent(event.target)}
-                        ref={resizeToFitContent}
-                        className="form-control"
-                        style={{ resize: "none", overflow: "hidden" }}
-                      />
-                    </label>
+                    <AutoGrowTextareaField
+                      label="質問:"
+                      required
+                      value={formValues.question}
+                      onChange={(value) => updateFormField("question", value)}
+                    />
+                    <AutoGrowTextareaField
+                      label="回答の要点:"
+                      required
+                      value={formValues.answer}
+                      onChange={(value) => updateFormField("answer", value)}
+                    />
+                    <AutoGrowTextareaField
+                      label="盛り込む具体例（任意）:"
+                      value={formValues.example}
+                      onChange={(value) => updateFormField("example", value)}
+                    />
+                    <AutoGrowTextareaField
+                      label="面接官への印象（任意）:"
+                      value={formValues.impression}
+                      onChange={(value) => updateFormField("impression", value)}
+                    />
+                    <AutoGrowTextareaField
+                      label="模範解答（任意）:"
+                      value={formValues.modelAnswer}
+                      onChange={(value) => updateFormField("modelAnswer", value)}
+                    />
                     {formStatus && (
                       <div role="alert" className={`alert mb-0 ${formIsError ? "alert-danger" : "alert-info"}`}>
                         {formStatus}

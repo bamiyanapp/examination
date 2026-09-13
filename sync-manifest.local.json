@@ -309,6 +309,10 @@
       "target": "app/allowed-emails/src/components/BackToTop.jsx"
     },
     {
+      "source": "shared/ui/BackToTop.jsx",
+      "target": "app/top/src/components/BackToTop.jsx"
+    },
+    {
       "source": "shared/e2e/screenshot.js",
       "target": "app/top/e2e/screenshot.js"
     }
