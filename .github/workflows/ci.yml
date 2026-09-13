@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.0
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.1
     with:
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
@@ -110,7 +110,7 @@ jobs:
   # いずれも指定せず、上記ciジョブとは完全に独立させる。examination#404
   # 「Playwright E2E導入 詳細計画」で確定した方式）
   e2e-voice-practice:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.0
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.1
     with:
       enable_e2e_test: true
       frontend_dir: app/voice-practice
