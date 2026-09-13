@@ -106,9 +106,8 @@ jobs:
 
   # examination#415（examination#404の子Issue）。frontend-e2e-testジョブはmatrix
   # 非対応でfrontend_dir単一値のみのため、対象アプリ1つにつき1つの追加jobを
-  # 個別に呼び出す（packages・enable_standards_check・enable_duplication_checkは
-  # いずれも指定せず、上記ciジョブとは完全に独立させる。examination#404
-  # 「Playwright E2E導入 詳細計画」で確定した方式）
+  # 個別に呼び出す（packages・enable_duplication_checkは指定せず、上記ciジョブとは
+  # 完全に独立させる。examination#404「Playwright E2E導入 詳細計画」で確定した方式）
   e2e-voice-practice:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.14.1
     with:
@@ -127,6 +126,15 @@ jobs:
       # frontend-test/backend-test/package-testの3つとも無効化する
       # （reusable-ci.ymlのpackage-testジョブのコメント#151参照）
       packages: "[]"
+      # frontend-e2e-testジョブのcheckoutはsubmodules: ${{ inputs.enable_standards_check }}
+      # という設計（reusable-ci.yml）のため、falseのままだとdev-standardsサブモジュールが
+      # チェックアウトされず、app-shared/ui/AppShell.tsx等が参照するdev-standards/shared/ui/
+      # 配下実ファイルへのsymlinkが解決できずビルド失敗する（examination#415、PR #454
+      # マージ後のmain push・PR #456・#457で実際に発生）。trueにするとstandards-checkジョブ
+      # （リポジトリ全体のsymlink/.gitignore drift検査）が上記ciジョブと重複実行される
+      # 副作用があるが、正しいビルドを優先する。恒久対応（submodulesチェックアウトの可否を
+      # enable_standards_checkから分離する設計変更）はdev-standards側でのIssue化を検討する
+      enable_standards_check: true
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
