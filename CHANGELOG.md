@@ -1,3 +1,10 @@
+# [1.55.0](https://github.com/bamiyanapp/examination/compare/v1.54.0...v1.55.0) (2026-09-13)
+
+
+### Features
+
+* **e2e:** app/family-createへPlaywright E2Eテストを導入する ([#472](https://github.com/bamiyanapp/examination/issues/472)) ([e742cab](https://github.com/bamiyanapp/examination/commit/e742cabebb7397964fbd721ea2f8800df4f61016))
+
 # [1.54.0](https://github.com/bamiyanapp/examination/compare/v1.53.0...v1.54.0) (2026-09-13)
 
 
