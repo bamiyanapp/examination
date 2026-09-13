@@ -82,6 +82,13 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/top
       node_version: "24"
+      # examination#450でE2Eカバレッジ収集（monocart-reporter）を導入した際の
+      # 実測値（lines 57.14%・statements 22.82%・functions 27.27%・
+      # branches 14.43%、PR #451のCI実行）のうち最も低いbranchesを基準に、
+      # 単発実行のばらつきを見込んでマージンを持たせたラチェット方式のしきい値
+      # とする（他のcoverage_thresholdと同様の方針）。テスト追加によりカバレッジが
+      # 向上した際は随時引き上げる
+      e2e_coverage_threshold: 10
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       # E2E_BASE_URL（examination-site-prodのCloudFrontドメイン、作成後不変）と
