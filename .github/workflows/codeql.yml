@@ -1,0 +1,19 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 火曜3:00 UTC（日本時間では火曜正午12:00）に定期実行する
+    - cron: "0 3 * * 2"
+
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
+jobs:
+  codeql:
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-codeql.yml@v2.17.3
