@@ -1,3 +1,10 @@
+# [1.56.0](https://github.com/bamiyanapp/examination/compare/v1.55.0...v1.56.0) (2026-09-16)
+
+
+### Features
+
+* **ci:** CodeQLを導入する ([#484](https://github.com/bamiyanapp/examination/issues/484)) ([a41e45f](https://github.com/bamiyanapp/examination/commit/a41e45fbf53bc151107e213ada689075d7c3d3e4)), closes [#475](https://github.com/bamiyanapp/examination/issues/475)
+
 # [1.55.0](https://github.com/bamiyanapp/examination/compare/v1.54.0...v1.55.0) (2026-09-13)
 
 
