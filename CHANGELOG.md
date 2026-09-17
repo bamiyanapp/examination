@@ -1,3 +1,10 @@
+## [1.56.1](https://github.com/bamiyanapp/examination/compare/v1.56.0...v1.56.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **bot-stack:** unused eslint-disable directiveを削除する ([#490](https://github.com/bamiyanapp/examination/issues/490)) ([b187f40](https://github.com/bamiyanapp/examination/commit/b187f40d2fca4dbe4aca73955519fadccf2e854c)), closes [#489](https://github.com/bamiyanapp/examination/issues/489)
+
 # [1.56.0](https://github.com/bamiyanapp/examination/compare/v1.55.0...v1.56.0) (2026-09-16)
 
 
