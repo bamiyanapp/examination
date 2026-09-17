@@ -89,6 +89,12 @@ jobs:
       # とする（他のcoverage_thresholdと同様の方針）。テスト追加によりカバレッジが
       # 向上した際は随時引き上げる
       e2e_coverage_threshold: 10
+      # ci・e2e-*の6job全てがreusable-ci.ymlを独立して呼び出す構成（1 job per
+      # appパターン）のため、各呼び出し自身のmerge jobでは他の呼び出しの成否を
+      # 待てず、いずれかが失敗・実行中でもPRがマージされてしまう
+      # （dev-standards#421）。全呼び出しでenable_auto_merge: falseとし、
+      # 全ての完了を待つ専用のgate job（末尾のmergeジョブ）でマージする
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       # E2E_BASE_URL（examination-site-prodのCloudFrontドメイン、作成後不変）と
@@ -135,6 +141,8 @@ jobs:
       # 副作用があるが、正しいビルドを優先する。恒久対応（submodulesチェックアウトの可否を
       # enable_standards_checkから分離する設計変更）はdev-standards側でのIssue化を検討する
       enable_standards_check: true
+      # dev-standards#421。詳細は上記ciジョブのコメント参照
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
@@ -154,6 +162,8 @@ jobs:
       e2e_coverage_threshold: 0
       packages: "[]"
       enable_standards_check: true
+      # dev-standards#421。詳細は上記ciジョブのコメント参照
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
@@ -173,6 +183,8 @@ jobs:
       e2e_coverage_threshold: 0
       packages: "[]"
       enable_standards_check: true
+      # dev-standards#421。詳細は上記ciジョブのコメント参照
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
@@ -192,6 +204,8 @@ jobs:
       e2e_coverage_threshold: 0
       packages: "[]"
       enable_standards_check: true
+      # dev-standards#421。詳細は上記ciジョブのコメント参照
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
@@ -214,6 +228,44 @@ jobs:
       e2e_coverage_threshold: 0
       packages: "[]"
       enable_standards_check: true
+      # dev-standards#421。詳細は上記ciジョブのコメント参照
+      enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
+
+  # dev-standards#421。ci・e2e-*の6job全てがenable_auto_merge: falseのため、
+  # 各呼び出し自身のmerge jobは実行されない。このgate jobが全6jobの完了を
+  # 待ってから、reusable-ci.ymlのmerge jobと同じ判定方式
+  # （skippedは許容、failure・cancelledは拒否）でPRをsquash mergeする
+  # （docs/cicd-pipeline-specification.md「複数アプリ向けにreusable-ci.ymlを
+  # 独立して複数回呼び出す構成」参照）
+  merge:
+    needs:
+      [
+        ci,
+        e2e-voice-practice,
+        e2e-interview-questions,
+        e2e-mock-interviews,
+        e2e-allowed-emails,
+        e2e-family-create,
+      ]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.ci.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-voice-practice.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-interview-questions.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-mock-interviews.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-allowed-emails.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-family-create.result)
+    runs-on: ubuntu-latest
+    # reusable-ci.yml自身のmerge jobと同じグループ名にすることで、万が一
+    # 単一呼び出し構成のPRと混在する事態になっても直列化される
+    concurrency:
+      group: merge-queue-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.18.1
+        with:
+          github-token: ${{ secrets.BOT_TOKEN != '' && secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
