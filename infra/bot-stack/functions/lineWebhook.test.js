@@ -20,7 +20,6 @@ beforeEach(() => {
 function sign(rawBody) {
   // テスト専用のダミー値（scripts/ensure-test-config.js参照）であり、実際の
   // シークレットではない
-  // eslint-disable-next-line sonarjs/hardcoded-secret-signatures
   return crypto.createHmac("sha256", LINE_CHANNEL_SECRET).update(rawBody).digest("base64");
 }
 
