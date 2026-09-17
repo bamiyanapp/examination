@@ -1,3 +1,10 @@
+## [1.56.2](https://github.com/bamiyanapp/examination/compare/v1.56.1...v1.56.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ci:** 全6job完了を待つgate mergeジョブを追加する ([#493](https://github.com/bamiyanapp/examination/issues/493)) ([20bacf6](https://github.com/bamiyanapp/examination/commit/20bacf64dae09e20b13b44c7b59fff7faf5943a7)), closes [#492](https://github.com/bamiyanapp/examination/issues/492)
+
 ## [1.56.1](https://github.com/bamiyanapp/examination/compare/v1.56.0...v1.56.1) (2026-09-17)
 
 
