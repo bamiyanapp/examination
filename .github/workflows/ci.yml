@@ -82,13 +82,12 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/top
       node_version: "24"
-      # examination#450でE2Eカバレッジ収集（monocart-reporter）を導入した際の
-      # 実測値（lines 57.14%・statements 22.82%・functions 27.27%・
-      # branches 14.43%、PR #451のCI実行）のうち最も低いbranchesを基準に、
-      # 単発実行のばらつきを見込んでマージンを持たせたラチェット方式のしきい値
-      # とする（他のcoverage_thresholdと同様の方針）。テスト追加によりカバレッジが
-      # 向上した際は随時引き上げる
-      e2e_coverage_threshold: 10
+      # examination#465（80%目標のラチェット引き上げ）。2026-09-18時点の実測値
+      # （lines 68%・statements 62.38%・functions 52.94%・branches 43.75%、
+      # run #35301255843）のうち最も低いbranchesを基準に、単発実行のばらつきを
+      # 見込んでマージンを持たせた値とする。80%へはまだ遠く、テストケースの
+      # 追加（エラーケース・分岐網羅）が必要（Issue本文の記録参照）
+      e2e_coverage_threshold: 40
       # ci・e2e-*の6job全てがreusable-ci.ymlを独立して呼び出す構成（1 job per
       # appパターン）のため、各呼び出し自身のmerge jobでは他の呼び出しの成否を
       # 待てず、いずれかが失敗・実行中でもPRがマージされてしまう
@@ -120,10 +119,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/voice-practice
       node_version: "24"
-      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
-      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
-      # PR #451→#453と同じ手順）
-      e2e_coverage_threshold: 0
+      # examination#465。2026-09-18時点の実測値（lines 77.12%・statements 71.68%・
+      # functions 56.71%・branches 55.84%、run #35301255843）のうち最も低い
+      # branchesを基準に、マージンを持たせた値とする
+      e2e_coverage_threshold: 50
       # packagesを省略するとreusable-ci.ymlのfrontend-test/backend-testジョブ
       # （examinationが使わない固定ディレクトリ構成向けのレガシージョブ、CLAUDE.md
       # 「backend_dir: backend」既定値で発火しbackend/が存在せず失敗、frontend-test側も
@@ -156,10 +155,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/interview-questions
       node_version: "24"
-      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
-      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
-      # PR #451→#453と同じ手順）
-      e2e_coverage_threshold: 0
+      # examination#465。2026-09-18時点の実測値（lines 69.59%・statements 66.66%・
+      # functions 44.44%・branches 42.94%、run #35301255843）のうち最も低い
+      # branchesを基準に、マージンを持たせた値とする
+      e2e_coverage_threshold: 40
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
@@ -177,10 +176,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/mock-interviews
       node_version: "24"
-      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
-      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
-      # PR #451→#453と同じ手順）
-      e2e_coverage_threshold: 0
+      # examination#465。2026-09-18時点の実測値（lines 69.02%・statements 64.46%・
+      # functions 52.83%・branches 43.47%、run #35301255843）のうち最も低い
+      # branchesを基準に、マージンを持たせた値とする
+      e2e_coverage_threshold: 40
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
@@ -198,10 +197,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/allowed-emails
       node_version: "24"
-      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
-      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
-      # PR #451→#453と同じ手順）
-      e2e_coverage_threshold: 0
+      # examination#465。2026-09-18時点の実測値（lines 80.7%・statements 76.85%・
+      # functions 62.06%・branches 57.79%、run #35301255843）のうち最も低い
+      # branchesを基準に、マージンを持たせた値とする
+      e2e_coverage_threshold: 55
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
@@ -222,10 +221,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/family-create
       node_version: "24"
-      # 導入直後で実測値が無いため0（ゲート無効・レポート表示のみ）から開始し、
-      # CI実行結果を見てからラチェット方式のしきい値を設定する（examination#450・
-      # PR #451→#453と同じ手順）
-      e2e_coverage_threshold: 0
+      # examination#465。2026-09-18時点の実測値（lines 80.76%・statements 80.76%・
+      # functions 77.77%・branches 53.84%、run #35301255843）のうち最も低い
+      # branchesを基準に、マージンを持たせた値とする
+      e2e_coverage_threshold: 50
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
