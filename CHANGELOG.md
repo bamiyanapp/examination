@@ -1,3 +1,10 @@
+## [1.56.3](https://github.com/bamiyanapp/examination/compare/v1.56.2...v1.56.3) (2026-09-18)
+
+
+### Bug Fixes
+
+* **ci:** e2e_coverage_thresholdを実測値に基づきラチェット引き上げする ([#499](https://github.com/bamiyanapp/examination/issues/499)) ([b056ab3](https://github.com/bamiyanapp/examination/commit/b056ab3fd15536c46552897d1323b3ad2bb11fdd)), closes [#465](https://github.com/bamiyanapp/examination/issues/465)
+
 ## [1.56.2](https://github.com/bamiyanapp/examination/compare/v1.56.1...v1.56.2) (2026-09-17)
 
 
