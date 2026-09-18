@@ -1,3 +1,10 @@
+## [1.57.1](https://github.com/bamiyanapp/examination/compare/v1.57.0...v1.57.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **ci:** interview-questionsのE2Eカバレッジしきい値のマージンを拡大する ([#502](https://github.com/bamiyanapp/examination/issues/502)) ([ab34f63](https://github.com/bamiyanapp/examination/commit/ab34f6373bfacd44e1cb0f92cd8436026e32a26d)), closes [#465](https://github.com/bamiyanapp/examination/issues/465)
+
 # [1.57.0](https://github.com/bamiyanapp/examination/compare/v1.56.3...v1.57.0) (2026-09-18)
 
 
