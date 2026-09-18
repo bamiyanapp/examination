@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/bamiyanapp/examination/compare/v1.56.3...v1.57.0) (2026-09-18)
+
+
+### Features
+
+* **ui:** Error Boundary＋サーバーサイドロギングを導入する ([#498](https://github.com/bamiyanapp/examination/issues/498)) ([bd665e4](https://github.com/bamiyanapp/examination/commit/bd665e42fdaad7b40da4452aa6acc0ea35eba63a)), closes [#449](https://github.com/bamiyanapp/examination/issues/449) [#449](https://github.com/bamiyanapp/examination/issues/449) [examination#465](https://github.com/examination/issues/465)
+
 ## [1.56.3](https://github.com/bamiyanapp/examination/compare/v1.56.2...v1.56.3) (2026-09-18)
 
 
