@@ -137,6 +137,19 @@ functions:
           path: /family-profile
           method: POST
 
+  # フロントエンドの未捕捉例外をCloudWatch Logsへ記録する（examination#449、
+  # docs/client-error-reporting-pattern.md参照）。開発環境の制約（スマホオンリー、
+  # ブラウザのコンソール出力を事後に確認できない）への対応。9アプリ全てのshared/ui/
+  # ErrorBoundary.jsxから呼ばれるため、他のAPIと異なり認証を要求しない公開エンドポイント
+  reportClientError:
+    handler: functions/reportClientError.handler
+    memorySize: 128
+    timeout: 10
+    events:
+      - httpApi:
+          path: /report-client-error
+          method: POST
+
   # 新規家族登録の通知（examination#258・#259）。site-stack（checkAuth.jsの
   # createFamily）がサーバー間で呼ぶ内部APIで、ブラウザからは直接呼ばれない。
   # 認証はBearerトークンではなく共有シークレット（X-Internal-Secretヘッダー）で行う

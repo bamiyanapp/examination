@@ -5,6 +5,15 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // dev-standards submoduleからsymlinkで共有しているコンポーネント
+  // （shared/ui/ErrorBoundary.jsx、examination#449）がimportするnpmパッケージ（react）を、
+  // symlinkの実体（dev-standards配下）ではなくこのアプリ自身のnode_modulesから
+  // 解決させるために必要（既定ではVite/Node.jsはsymlinkの実体パス基準で
+  // node_modulesを探索するため、dev-standards側にはインストールされていない
+  // パッケージの解決に失敗する）
+  resolve: {
+    preserveSymlinks: true,
+  },
   // サイトルート直下の/family-create/へビルド成果物を配置する（cd.yml、examination#242）
   base: '/family-create/',
   build: {

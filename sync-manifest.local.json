@@ -9,6 +9,10 @@
       "target": "infra/site-stack/functions/dailyRateLimit.js"
     },
     {
+      "source": "shared/lambda/clientErrorReporting.js",
+      "target": "infra/bot-stack/functions/clientErrorReporting.js"
+    },
+    {
       "source": "shared/pwa/ServiceWorkerRegistration.jsx",
       "target": "app/top/src/components/ServiceWorkerRegistration.jsx"
     },
@@ -359,6 +363,42 @@
     {
       "source": "shared/e2e/coverageFixture.js",
       "target": "app/family-create/e2e/coverageFixture.js"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/allowed-emails/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/education-overview/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/family-create/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/interview-questions/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/line-link/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/mock-interviews/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/profile-edit/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/top/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/ui/ErrorBoundary.jsx",
+      "target": "app/voice-practice/src/components/ErrorBoundary.jsx"
     }
   ]
 }
