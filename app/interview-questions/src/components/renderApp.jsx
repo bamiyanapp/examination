@@ -1,0 +1,1 @@
+../../../../app-shared/ui/renderApp.jsx
