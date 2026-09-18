@@ -158,9 +158,12 @@ jobs:
       frontend_dir: app/interview-questions
       node_version: "24"
       # examination#465。2026-09-18時点の実測値（lines 69.59%・statements 66.66%・
-      # functions 44.44%・branches 42.94%、run #35301255843）のうち最も低い
-      # branchesを基準に、マージンを持たせた値とする
-      e2e_coverage_threshold: 40
+      # functions 44.44%・branches 42.94%、run #35301255843）を基準に40としたが、
+      # 単発のE2Eテストは実行毎のばらつきが大きく、コード変更が無いpush-to-main
+      # （PR #499マージ直後のrun #35315007660）でもbranchesが34.35%まで下がり
+      # 実際に閾値超過でCIが失敗した。約9ポイントの変動が実測されているため、
+      # マージンをそのばらつきを吸収できる大きさへ広げる
+      e2e_coverage_threshold: 30
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
