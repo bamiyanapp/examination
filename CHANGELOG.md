@@ -1,3 +1,10 @@
+## [1.57.3](https://github.com/bamiyanapp/examination/compare/v1.57.2...v1.57.3) (2026-09-19)
+
+
+### Bug Fixes
+
+* **ci:** E2Eカバレッジしきい値のマージンを全6jobでまとめて拡大する ([#509](https://github.com/bamiyanapp/examination/issues/509)) ([05a3dd0](https://github.com/bamiyanapp/examination/commit/05a3dd05b57b0a537f1c88253ff2f32ce1fc866b)), closes [#498](https://github.com/bamiyanapp/examination/issues/498) [#502](https://github.com/bamiyanapp/examination/issues/502) [#465](https://github.com/bamiyanapp/examination/issues/465)
+
 ## [1.57.2](https://github.com/bamiyanapp/examination/compare/v1.57.1...v1.57.2) (2026-09-19)
 
 
