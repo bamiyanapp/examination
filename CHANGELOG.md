@@ -1,3 +1,10 @@
+## [1.57.2](https://github.com/bamiyanapp/examination/compare/v1.57.1...v1.57.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **ci:** allowed-emailsのE2Eカバレッジしきい値のマージンを拡大する ([#507](https://github.com/bamiyanapp/examination/issues/507)) ([06a91a1](https://github.com/bamiyanapp/examination/commit/06a91a140a1a15ec8c3d8a94901d2b9647dc6280)), closes [#465](https://github.com/bamiyanapp/examination/issues/465)
+
 ## [1.57.1](https://github.com/bamiyanapp/examination/compare/v1.57.0...v1.57.1) (2026-09-18)
 
 
