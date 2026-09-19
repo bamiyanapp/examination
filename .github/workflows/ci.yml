@@ -203,10 +203,13 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/allowed-emails
       node_version: "24"
-      # examination#465。2026-09-18時点の実測値（lines 80.7%・statements 76.85%・
-      # functions 62.06%・branches 57.79%、run #35301255843）のうち最も低い
-      # branchesを基準に、マージンを持たせた値とする
-      e2e_coverage_threshold: 55
+      # examination#465。2026-09-18時点の実測値（branches 57.79%、run
+      # #35301255843）を基準に55としたが、単発のE2Eテストは実行毎のばらつきが
+      # 大きく、PR #504・#506の両方でbranchesが46.9%・47.78%まで下がり閾値
+      # 超過でCIが失敗した（ci・e2e-mock-interviews・e2e-interview-questionsで
+      # 既に確認済みの約9〜10ポイント変動と同様の事象）。新しい実測値を基準に
+      # マージンを拡大する
+      e2e_coverage_threshold: 40
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
