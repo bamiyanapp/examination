@@ -1,3 +1,10 @@
+## [1.57.4](https://github.com/bamiyanapp/examination/compare/v1.57.3...v1.57.4) (2026-09-20)
+
+
+### Bug Fixes
+
+* **ci:** E2Eテスト用refresh_tokenを公開Job Summaryへ平文表示しない ([#515](https://github.com/bamiyanapp/examination/issues/515)) ([9d1511f](https://github.com/bamiyanapp/examination/commit/9d1511f34e7a456a3d105f939e2e2b408de255a5)), closes [#514](https://github.com/bamiyanapp/examination/issues/514)
+
 ## [1.57.3](https://github.com/bamiyanapp/examination/compare/v1.57.2...v1.57.3) (2026-09-19)
 
 
