@@ -11,6 +11,15 @@ name: Setup E2E test fixtures
 # 前提: 実行前にGitHub Secrets（Settings > Secrets and variables > Actions）へ
 # E2E_TEST_USER_PASSWORDを登録しておくこと（Cognitoのパスワードポリシー既定値を
 # 満たす8文字以上・大小英字/数字/記号混在の値）。
+#
+# examination#514: 以前はrefresh_tokenをJob Summaryへ平文表示し人間が
+# E2E_SECRETS_JSON Secretへ手動登録する設計だった。examinationは公開
+# リポジトリでActions実行履歴（ログ・Job Summary含む）は未ログインの第三者も
+# 閲覧できるため、この設計は認証情報の公開漏洩に直結していた。本ワークフロー
+# 自身がgh secret setでE2E_SECRETS_JSONを直接更新する方式へ変更し、
+# refresh_tokenが人の目に触れる場所（ログ・Job Summary）へ一切出力されない
+# ようにする。BOT_TOKENにはSecrets書き込み権限（classic PATのrepoスコープ、
+# またはfine-grained PATのSecrets: write権限）が必要
 on:
   workflow_dispatch: {}
 
@@ -86,6 +95,20 @@ jobs:
             --permanent
           echo "Set password for Cognito test user $E2E_TEST_USER_EMAIL"
 
+      # examination#514。admin-set-user-passwordはパスワードを変更するだけで、
+      # 既に発行済みのrefresh_tokenを失効させない。過去にJob Summaryへ平文
+      # 表示されていた（=漏洩した可能性がある）refresh_tokenを含め、この
+      # ユーザーの既存トークンを全て失効させてから、後続のAdminInitiateAuthで
+      # 新しいトークンを発行し直す
+      - name: Revoke existing tokens for the test user
+        env:
+          USER_POOL_ID: ${{ steps.auth-outputs.outputs.user_pool_id }}
+        run: |
+          aws cognito-idp admin-user-global-sign-out --region ap-northeast-1 \
+            --user-pool-id "$USER_POOL_ID" \
+            --username "$E2E_TEST_USER_EMAIL"
+          echo "Revoked existing tokens for Cognito test user $E2E_TEST_USER_EMAIL"
+
       # UserPoolClientはGenerateSecret: trueのため、Admin*Auth系APIの呼び出しには
       # SECRET_HASH（HMAC-SHA256(username + client_id, client_secret)のBase64）が必要
       - name: Get auth-stack client credentials
@@ -117,10 +140,10 @@ jobs:
       # examination#413の完了条件・tasks/plan.mdのRisks and Mitigationsで約束した
       # 実機検証。ALLOW_ADMIN_USER_PASSWORD_AUTHがAdminInitiateAuth経由では
       # 実際にトークンを発行できることを確認する。examination#414のE2E_SECRETS_JSON
-      # （静的secret）用のrefresh_tokenもここで併せて取得する。GitHub Actionsは
-      # ::add-mask::した値をJob Summaryでも一律「***」に伏せてしまう仕様のため
-      # （実機確認済み）、後続のSummaryステップで人間が読める平文として意図的に
-      # 表示する本設計では、ここでrefresh_tokenをマスクしてはならない
+      # （静的secret）用のrefresh_tokenもここで併せて取得する。examination#514。
+      # 以前は後続のSummaryステップで人間が読める平文として意図的に表示する
+      # 設計だったため::add-mask::していなかったが、現在はgh secret setで
+      # ワークフロー自身が直接Secretを更新するため、他のsecret同様にマスクする
       - name: Verify AdminInitiateAuth issues a token
         id: admin-auth
         env:
@@ -136,6 +159,7 @@ jobs:
             --auth-parameters USERNAME="$E2E_TEST_USER_EMAIL",PASSWORD="$E2E_TEST_USER_PASSWORD",SECRET_HASH="$SECRET_HASH" \
             --query "AuthenticationResult.{TokenType:TokenType,RefreshToken:RefreshToken}" --output json)
           REFRESH_TOKEN=$(echo "$RESULT" | jq -r '.RefreshToken')
+          echo "::add-mask::$REFRESH_TOKEN"
           echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
           echo "AdminInitiateAuth succeeded, TokenType=$(echo "$RESULT" | jq -r '.TokenType')"
 
@@ -198,26 +222,37 @@ jobs:
             echo "Seeded examination-allowed-emails: $E2E_TEST_USER_EMAIL"
           fi
 
-      - name: Summary
-        if: always()
+      # examination#514。以前はrefresh_tokenを組み立てたJSONをJob Summaryへ
+      # 平文表示し、人間がGitHub Secretsへ手動でコピー登録する設計だった。
+      # examinationは公開リポジトリでJob Summaryも第三者に閲覧可能なため、
+      # 実行のたびに認証情報を公開してしまっていた。ワークフロー自身が
+      # gh secret setでE2E_SECRETS_JSONを直接更新し、人の目にrefresh_tokenが
+      # 触れる経路（ログ・Job Summary）を無くす。GH_TOKENにはSecrets書き込み
+      # 権限が必要なためBOT_TOKENを使う（GITHUB_TOKEN既定値はSecretsを書き込めない）
+      - name: Update E2E_SECRETS_JSON secret
+        id: update-secret
         env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           E2E_BASE_URL: https://${{ steps.site-outputs.outputs.domain }}
           E2E_REFRESH_TOKEN: ${{ steps.admin-auth.outputs.refresh_token }}
         run: |
           SECRETS_JSON=$(jq -nc --arg base_url "$E2E_BASE_URL" --arg refresh_token "$E2E_REFRESH_TOKEN" \
             '{E2E_BASE_URL: $base_url, E2E_REFRESH_TOKEN: $refresh_token}')
+          echo "$SECRETS_JSON" | gh secret set E2E_SECRETS_JSON --repo "${{ github.repository }}"
+          echo "Updated E2E_SECRETS_JSON secret"
+
+      - name: Summary
+        if: always()
+        run: |
           {
             echo "### E2Eテスト用フィクスチャ セットアップ結果"
             echo "- Cognitoテストユーザー（$E2E_TEST_USER_EMAIL）: 新規作成=${{ steps.create-user.outputs.created }}"
             echo "- テスト家族（$E2E_TEST_FAMILY_SLUG）: 新規作成=${{ steps.seed-family.outputs.created }}"
             echo "- 許可メールアドレス: 新規作成=${{ steps.seed-allowed-email.outputs.created }}"
+            echo "- 既存トークンの失効: 完了"
+            echo "- E2E_SECRETS_JSON Secretの更新: ${{ steps.update-secret.outcome }}"
             echo ""
-            echo "### ci.yml用 E2E_SECRETS_JSON"
-            echo "下記の値をGitHub Secrets（Settings > Secrets and variables > Actions）へ"
-            echo "\`E2E_SECRETS_JSON\`という名前で登録・更新してください。"
-            echo "refresh_tokenはE2Eテスト専用アカウント（アクセス範囲はテスト用の家族データのみ）の"
-            echo "資格情報で、有効期限が切れたら本ワークフローを再実行し値を再登録してください。"
-            echo '```json'
-            echo "$SECRETS_JSON"
-            echo '```'
+            echo "refresh_tokenはE2E_SECRETS_JSON Secretへ直接書き込み済みです"
+            echo "（このJob Summary・ログには含まれません、examination#514）。"
+            echo "ci.ymlのE2Eテストは次回実行時から自動的に新しい値を使います。"
           } | tee -a "$GITHUB_STEP_SUMMARY" >/dev/null
