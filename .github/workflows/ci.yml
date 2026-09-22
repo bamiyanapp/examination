@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
@@ -116,7 +116,7 @@ jobs:
   # 個別に呼び出す（packages・enable_duplication_checkは指定せず、上記ciジョブとは
   # 完全に独立させる。examination#404「Playwright E2E導入 詳細計画」で確定した方式）
   e2e-voice-practice:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       enable_e2e_test: true
       frontend_dir: app/voice-practice
@@ -156,7 +156,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-interview-questions:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       enable_e2e_test: true
       frontend_dir: app/interview-questions
@@ -179,7 +179,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-mock-interviews:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       enable_e2e_test: true
       frontend_dir: app/mock-interviews
@@ -201,7 +201,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-allowed-emails:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       enable_e2e_test: true
       frontend_dir: app/allowed-emails
@@ -227,7 +227,7 @@ jobs:
   # 専用の使い捨て経路（examination#419）を用意し、共有E2Eテストユーザーの家族所属
   # 状態を変えずに検証する
   e2e-family-create:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.26.2
     with:
       enable_e2e_test: true
       frontend_dir: app/family-create
@@ -280,6 +280,6 @@ jobs:
       group: merge-queue-${{ github.repository }}
       cancel-in-progress: false
     steps:
-      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.26.1
+      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.26.2
         with:
           github-token: ${{ secrets.BOT_TOKEN != '' && secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
