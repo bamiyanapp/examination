@@ -38,42 +38,34 @@ jobs:
             --repo "${{ github.repository }}" \
             --name playwright-report \
             --dir ./report-interview-questions
+      - name: Show artifact file tree
+        run: |
+          {
+            echo "### family-create アーティファクトのファイル一覧"
+            echo '```'
+            find ./report-family-create -type f -printf '%10s  %p\n' 2>/dev/null | sort -k2
+            echo '```'
+            echo ""
+            echo "### interview-questions アーティファクトのファイル一覧"
+            echo '```'
+            find ./report-interview-questions -type f -printf '%10s  %p\n' 2>/dev/null | sort -k2
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Extract and summarize errors
+        # バンドルされたtrace-viewer等の巨大なJS/wasmファイルはサンプル文字列を
+        # 含み誤検知するため、小さいテキスト系ファイル（*.md/*.json/*.txt/*.log）
+        # のみを対象にする
         run: |
           {
             echo "### family-create エラー詳細"
             echo '```'
-            find ./report-family-create -iname "*.json" -exec cat {} \; 2>/dev/null \
-              | node -e '
-                let data = "";
-                process.stdin.on("data", (c) => (data += c));
-                process.stdin.on("end", () => {
-                  try {
-                    const json = JSON.parse(data);
-                    console.log(JSON.stringify(json, null, 2).slice(0, 8000));
-                  } catch (e) {
-                    console.log("JSON parse failed: " + e.message);
-                  }
-                });
-              ' || echo "(JSON抽出失敗。生grep結果を代わりに出力する)"
-            grep -rhoE '.{0,80}(Error|Timeout|expect\(|TimeoutError).{0,200}' ./report-family-create 2>/dev/null | sort -u | head -100
+            find ./report-family-create -type f -size -200k \( -iname "*.md" -o -iname "*.json" -o -iname "*.txt" -o -iname "*.log" \) -print 2>/dev/null \
+              | while read -r f; do echo "--- $f ---"; cat "$f"; echo; done
             echo '```'
             echo ""
             echo "### interview-questions エラー詳細"
             echo '```'
-            find ./report-interview-questions -iname "*.json" -exec cat {} \; 2>/dev/null \
-              | node -e '
-                let data = "";
-                process.stdin.on("data", (c) => (data += c));
-                process.stdin.on("end", () => {
-                  try {
-                    const json = JSON.parse(data);
-                    console.log(JSON.stringify(json, null, 2).slice(0, 8000));
-                  } catch (e) {
-                    console.log("JSON parse failed: " + e.message);
-                  }
-                });
-              ' || echo "(JSON抽出失敗。生grep結果を代わりに出力する)"
-            grep -rhoE '.{0,80}(Error|Timeout|expect\(|TimeoutError).{0,200}' ./report-interview-questions 2>/dev/null | sort -u | head -100
+            find ./report-interview-questions -type f -size -200k \( -iname "*.md" -o -iname "*.json" -o -iname "*.txt" -o -iname "*.log" \) -print 2>/dev/null \
+              | while read -r f; do echo "--- $f ---"; cat "$f"; echo; done
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
