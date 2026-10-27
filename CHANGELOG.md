@@ -1,3 +1,10 @@
+## [1.57.5](https://github.com/bamiyanapp/examination/compare/v1.57.4...v1.57.5) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ci:** 調査用workflowのエラー抽出をファイル一覧表示+小サイズファイル限定に改善する ([ba61a4b](https://github.com/bamiyanapp/examination/commit/ba61a4bff407d9ae51e1559cbae651fa8fef64ca))
+
 ## [1.57.4](https://github.com/bamiyanapp/examination/compare/v1.57.3...v1.57.4) (2026-09-20)
 
 
