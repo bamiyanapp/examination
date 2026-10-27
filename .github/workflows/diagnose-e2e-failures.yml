@@ -1,0 +1,79 @@
+name: Diagnose E2E failures (one-off)
+
+# examination#559の調査専用の一時workflow。sandbox-unreachable-investigation
+# Skillに従い、playwright-reportアーティファクト（サンドボックスのエグレス
+# プロキシがダウンロード先のAzure Blob Storageへの接続を拒否するため直接
+# 確認できない）をGitHub Actions側で展開し、失敗テストのエラー詳細を
+# Job Summary・ログの両方へ出力する。調査完了後に削除する
+on:
+  workflow_dispatch:
+    inputs:
+      family_create_run_id:
+        description: "e2e-family-createが失敗したworkflow run ID"
+        type: string
+        required: true
+      interview_questions_run_id:
+        description: "e2e-interview-questionsが失敗したworkflow run ID"
+        type: string
+        required: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download family-create playwright-report
+        run: |
+          gh run download "${{ inputs.family_create_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name playwright-report \
+            --dir ./report-family-create
+      - name: Download interview-questions playwright-report
+        run: |
+          gh run download "${{ inputs.interview_questions_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name playwright-report \
+            --dir ./report-interview-questions
+      - name: Extract and summarize errors
+        run: |
+          {
+            echo "### family-create エラー詳細"
+            echo '```'
+            find ./report-family-create -iname "*.json" -exec cat {} \; 2>/dev/null \
+              | node -e '
+                let data = "";
+                process.stdin.on("data", (c) => (data += c));
+                process.stdin.on("end", () => {
+                  try {
+                    const json = JSON.parse(data);
+                    console.log(JSON.stringify(json, null, 2).slice(0, 8000));
+                  } catch (e) {
+                    console.log("JSON parse failed: " + e.message);
+                  }
+                });
+              ' || echo "(JSON抽出失敗。生grep結果を代わりに出力する)"
+            grep -rhoE '.{0,80}(Error|Timeout|expect\(|TimeoutError).{0,200}' ./report-family-create 2>/dev/null | sort -u | head -100
+            echo '```'
+            echo ""
+            echo "### interview-questions エラー詳細"
+            echo '```'
+            find ./report-interview-questions -iname "*.json" -exec cat {} \; 2>/dev/null \
+              | node -e '
+                let data = "";
+                process.stdin.on("data", (c) => (data += c));
+                process.stdin.on("end", () => {
+                  try {
+                    const json = JSON.parse(data);
+                    console.log(JSON.stringify(json, null, 2).slice(0, 8000));
+                  } catch (e) {
+                    console.log("JSON parse failed: " + e.message);
+                  }
+                });
+              ' || echo "(JSON抽出失敗。生grep結果を代わりに出力する)"
+            grep -rhoE '.{0,80}(Error|Timeout|expect\(|TimeoutError).{0,200}' ./report-interview-questions 2>/dev/null | sort -u | head -100
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
