@@ -18,6 +18,8 @@ jobs:
   ci:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
       # 静的コンテンツ（Markdown）のみのままのため、matrix構成でapp/配下の
@@ -118,6 +120,8 @@ jobs:
   e2e-voice-practice:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       enable_e2e_test: true
       frontend_dir: app/voice-practice
       node_version: "24"
@@ -158,6 +162,8 @@ jobs:
   e2e-interview-questions:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       enable_e2e_test: true
       frontend_dir: app/interview-questions
       node_version: "24"
@@ -181,6 +187,8 @@ jobs:
   e2e-mock-interviews:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       enable_e2e_test: true
       frontend_dir: app/mock-interviews
       node_version: "24"
@@ -203,6 +211,8 @@ jobs:
   e2e-allowed-emails:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       enable_e2e_test: true
       frontend_dir: app/allowed-emails
       node_version: "24"
@@ -229,6 +239,8 @@ jobs:
   e2e-family-create:
     uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.1
     with:
+      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
+      self_ref: v2.114.1
       enable_e2e_test: true
       frontend_dir: app/family-create
       node_version: "24"

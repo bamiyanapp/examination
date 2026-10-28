@@ -1,3 +1,10 @@
+## [1.57.6](https://github.com/bamiyanapp/examination/compare/v1.57.5...v1.57.6) (2026-10-28)
+
+
+### Bug Fixes
+
+* **ci:** reusable-ci.yml呼び出しへ必須入力self_refを追加する ([#571](https://github.com/bamiyanapp/examination/issues/571)) ([f2eb1de](https://github.com/bamiyanapp/examination/commit/f2eb1de613cc763aa56852e64ed3e6005e3330f3))
+
 ## [1.57.5](https://github.com/bamiyanapp/examination/compare/v1.57.4...v1.57.5) (2026-10-27)
 
 
