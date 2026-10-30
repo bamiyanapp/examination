@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -118,7 +118,7 @@ jobs:
   # 個別に呼び出す（packages・enable_duplication_checkは指定せず、上記ciジョブとは
   # 完全に独立させる。examination#404「Playwright E2E導入 詳細計画」で確定した方式）
   e2e-voice-practice:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -160,7 +160,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-interview-questions:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -185,7 +185,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-mock-interviews:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -209,7 +209,7 @@ jobs:
   # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
   # コメント参照）
   e2e-allowed-emails:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -237,7 +237,7 @@ jobs:
   # 専用の使い捨て経路（examination#419）を用意し、共有E2Eテストユーザーの家族所属
   # 状態を変えずに検証する
   e2e-family-create:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.5
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.114.6
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
       self_ref: v2.114.1
@@ -292,6 +292,6 @@ jobs:
       group: merge-queue-${{ github.repository }}
       cancel-in-progress: false
     steps:
-      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.114.5
+      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.114.6
         with:
           github-token: ${{ secrets.BOT_TOKEN != '' && secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
