@@ -6,7 +6,7 @@ MkDocs静的サイトの`/education/interview-questions/`パスへビルド成�
 
 見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
 
-- 旧: 本人/父/母で分かれていた`knowledge/education/interview-yosuke.md`・`interview-tomoyo.md`・`interview-ritsu.md`の3ページをMkDocsで個別表示していたのをやめ、1画面に統合した
+- 旧: 本人/父/母ごとに個別のMarkdownページをMkDocsで表示していたのをやめ、1画面に統合した（[Issue #582](https://github.com/bamiyanapp/examination/issues/582)で元のMarkdownファイル自体も削除済み）
 - データはDynamoDB（`examination-interview-questions`、bot-stackの`GET /interview-questions` API）が唯一の正本。対象者（本人/父/母）で絞り込み表示できる
 
 ## ローカル確認

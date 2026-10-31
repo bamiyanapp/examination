@@ -31,16 +31,6 @@ plugins:
   - search:
       lang: ja
 
-# 想定問答の元データ（examination#77でDynamoDBへ完全移行済み）。閲覧画面は
-# app/interview-questions/（1画面）へ統合したため、この3ファイルは
-# scripts/seed-interview-questions.jsが読み込む内部データソースとしてのみ残し、
-# サイトのページとしては公開しない（navからも除外するとmkdocs strictモードが
-# 「navに含まれないドキュメントがある」エラーを出すため、exclude_docsで明示的に除外する）
-exclude_docs: |
-  education/interview-yosuke.md
-  education/interview-tomoyo.md
-  education/interview-ritsu.md
-
 nav:
   - ホーム: index.md
   - 教育:
