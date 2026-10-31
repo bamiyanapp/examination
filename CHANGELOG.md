@@ -1,3 +1,10 @@
+## [1.57.7](https://github.com/bamiyanapp/examination/compare/v1.57.6...v1.57.7) (2026-10-31)
+
+
+### Bug Fixes
+
+* **privacy:** 想定問答Markdownのファイル名PIIを解消し、DynamoDBのみを正本にする ([#583](https://github.com/bamiyanapp/examination/issues/583)) ([75987db](https://github.com/bamiyanapp/examination/commit/75987dbe8ce8d46449fc58c2ab4e8b05f633df77))
+
 ## [1.57.6](https://github.com/bamiyanapp/examination/compare/v1.57.5...v1.57.6) (2026-10-28)
 
 
