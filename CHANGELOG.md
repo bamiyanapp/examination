@@ -1,3 +1,10 @@
+## [1.57.8](https://github.com/bamiyanapp/examination/compare/v1.57.7...v1.57.8) (2026-10-31)
+
+
+### Bug Fixes
+
+* dev-standards管理のsymlink欠落を解消する ([#588](https://github.com/bamiyanapp/examination/issues/588)) ([b929847](https://github.com/bamiyanapp/examination/commit/b9298472e548d8a8eabead965fb7b7ef660243a8))
+
 ## [1.57.7](https://github.com/bamiyanapp/examination/compare/v1.57.6...v1.57.7) (2026-10-31)
 
 
