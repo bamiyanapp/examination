@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition.js";
 
 // bot-stack（examination-bot-prod）のHTTP APIエンドポイント。デプロイでURLが
 // 変わった場合はここを更新する（Job Summaryの「LINE bot Webhook URL」と同じAPI）
@@ -10,34 +11,6 @@ const DEFAULT_SITUATION = "小学校受験の面接";
 interface Message {
   speaker: string;
   text: string;
-}
-
-// SpeechRecognition（音声認識）はSpeechSynthesisと異なり標準のDOM型定義に
-// 含まれていない（Chrome系ブラウザ独自実装が事実上の標準として広く使われている
-// のみ）ため、実際に使用するプロパティ・メソッドのみの最小限の型を独自定義する
-interface SpeechRecognitionEventLike {
-  results: { 0: { transcript: string } }[];
-}
-interface SpeechRecognitionErrorEventLike {
-  error: string;
-}
-interface SpeechRecognitionLike {
-  lang: string;
-  interimResults: boolean;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-}
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
-
-function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | undefined {
-  if (typeof window === "undefined") return undefined;
-  const w = window as unknown as {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  };
-  return w.SpeechRecognition || w.webkitSpeechRecognition;
 }
 
 // 利用可能な音声（SpeechSynthesis.getVoices()）の中から日本語音声のうち
@@ -89,7 +62,36 @@ export default function VoicePractice() {
   const voiceTokenRef = useRef<string | null>(null);
   const historyRef = useRef<unknown[]>([]);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
-  const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+
+  const { isSupported: isSpeechRecognitionSupported, start: startSpeechRecognition } = useSpeechRecognition({
+    lang: "ja-JP",
+    onResult: async (said: string) => {
+      setMessages((prev) => [...prev, { speaker: "あなた", text: said }]);
+      setStatus("AIが応答を考えています...");
+      try {
+        const data = await sendToVoiceChat(said);
+        historyRef.current = data.history;
+        setMessages((prev) => [...prev, { speaker: "面接官", text: data.reply }]);
+        speak(data.reply, voicesRef.current);
+        setStatus("");
+      } catch (error) {
+        setIsError(true);
+        setStatus(error instanceof Error ? error.message : String(error));
+      } finally {
+        setIsListening(false);
+      }
+    },
+    onError: (error: string) => {
+      setIsError(true);
+      setStatus(`音声認識でエラーが発生しました（${error}）`);
+      setIsListening(false);
+    },
+    onNoResult: () => {
+      setIsError(true);
+      setStatus("音声を認識できませんでした。もう一度お試しください。");
+      setIsListening(false);
+    },
+  });
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -180,7 +182,7 @@ export default function VoicePractice() {
       setMessages([{ speaker: "面接官", text: data.reply }]);
       speak(data.reply, voicesRef.current);
       setStarted(true);
-      if (!SpeechRecognitionCtor) {
+      if (!isSpeechRecognitionSupported) {
         setIsError(true);
         setStatus("このブラウザは音声認識に対応していません。Google Chrome等をお試しください。");
       } else {
@@ -195,51 +197,11 @@ export default function VoicePractice() {
   }
 
   function handleSpeak() {
-    if (!SpeechRecognitionCtor) return;
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = false;
-    let resultReceived = false;
-
+    if (!isSpeechRecognitionSupported) return;
     setIsError(false);
     setIsListening(true);
     setStatus("聞き取り中...");
-
-    recognition.onresult = async (event) => {
-      resultReceived = true;
-      const said = event.results[0][0].transcript;
-      setMessages((prev) => [...prev, { speaker: "あなた", text: said }]);
-      setStatus("AIが応答を考えています...");
-      try {
-        const data = await sendToVoiceChat(said);
-        historyRef.current = data.history;
-        setMessages((prev) => [...prev, { speaker: "面接官", text: data.reply }]);
-        speak(data.reply, voicesRef.current);
-        setStatus("");
-      } catch (error) {
-        setIsError(true);
-        setStatus(error instanceof Error ? error.message : String(error));
-      } finally {
-        setIsListening(false);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      resultReceived = true;
-      setIsError(true);
-      setStatus(`音声認識でエラーが発生しました（${event.error}）`);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      if (!resultReceived) {
-        setIsError(true);
-        setStatus("音声を認識できませんでした。もう一度お試しください。");
-        setIsListening(false);
-      }
-    };
-
-    recognition.start();
+    startSpeechRecognition();
   }
 
   async function handleEnd() {
@@ -339,7 +301,7 @@ export default function VoicePractice() {
             <button
               type="button"
               onClick={handleSpeak}
-              disabled={!SpeechRecognitionCtor || isListening || isBusy}
+              disabled={!isSpeechRecognitionSupported || isListening || isBusy}
               className="btn btn-primary"
             >
               話す

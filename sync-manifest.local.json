@@ -399,6 +399,10 @@
     {
       "source": "shared/ui/ErrorBoundary.jsx",
       "target": "app/voice-practice/src/components/ErrorBoundary.jsx"
+    },
+    {
+      "source": "shared/hooks/useSpeechRecognition.js",
+      "target": "app/voice-practice/src/hooks/useSpeechRecognition.js"
     }
   ]
 }
