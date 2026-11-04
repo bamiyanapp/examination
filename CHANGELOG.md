@@ -1,3 +1,10 @@
+## [1.57.9](https://github.com/bamiyanapp/examination/compare/v1.57.8...v1.57.9) (2026-11-04)
+
+
+### Bug Fixes
+
+* **deps:** Renovateのgit-submodulesマネージャーを有効化する ([#605](https://github.com/bamiyanapp/examination/issues/605)) ([f08375d](https://github.com/bamiyanapp/examination/commit/f08375d7bddee6e1f0b6d46a82f247a2e6b893e8))
+
 ## [1.57.8](https://github.com/bamiyanapp/examination/compare/v1.57.7...v1.57.8) (2026-10-31)
 
 
