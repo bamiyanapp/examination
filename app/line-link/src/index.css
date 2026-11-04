@@ -1,12 +1,12 @@
-@import "./common-theme.css";
-@import "./bootstrap-theme.css";
+@import url("./common-theme.css");
+@import url("./bootstrap-theme.css");
 
 /* examination#100・#313: JSがclickイベントでvisibleクラスを付け外しするため、
    Bootstrapのユーティリティだけでは表現できない状態遷移をここで担う */
 .nav-overlay {
   display: none;
   z-index: 1050;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgb(0 0 0 / 50%);
 }
 
 .nav-overlay.visible {

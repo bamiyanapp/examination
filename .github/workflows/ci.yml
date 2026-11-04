@@ -269,6 +269,26 @@ jobs:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
 
+  # stylelintはreusable-ci.ymlの機能（enable_*入力）ではないため、独立した
+  # jobとして自前で用意する（examination#476）。stylelint.config.cjs
+  # （dev-standards submodule配下からのsymlink）が必要なためsubmodules: true。
+  # stylelint・stylelint-config-standardはルートpackage.jsonのdevDependencies
+  # として追加した（npx --yesでの都度取得はextends先の解決に失敗したため、
+  # dev-standards本体と同じ「実devDependencyとしてインストールする」方式に
+  # した）。対象はapp/配下9アプリの実体CSS（bootstrap-theme.css・
+  # common-theme.cssはdev-standards所有のsymlinkのため対象外）
+  stylelint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run lint:css
+
   # dev-standards#421。ci・e2e-*の6job全てがenable_auto_merge: falseのため、
   # 各呼び出し自身のmerge jobは実行されない。このgate jobが全6jobの完了を
   # 待ってから、reusable-ci.ymlのmerge jobと同じ判定方式
@@ -284,6 +304,7 @@ jobs:
         e2e-mock-interviews,
         e2e-allowed-emails,
         e2e-family-create,
+        stylelint,
       ]
     if: |
       always() &&
@@ -293,7 +314,8 @@ jobs:
       !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-interview-questions.result) &&
       !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-mock-interviews.result) &&
       !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-allowed-emails.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-family-create.result)
+      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-family-create.result) &&
+      !contains(fromJSON('["failure", "cancelled"]'), needs.stylelint.result)
     runs-on: ubuntu-latest
     # reusable-ci.yml自身のmerge jobと同じグループ名にすることで、万が一
     # 単一呼び出し構成のPRと混在する事態になっても直列化される
