@@ -4,7 +4,7 @@
 
 ## 概要
 
-このリポジトリはGitを正本（Single Source of Truth）とした家族向けナレッジベースです。小学校受験対策のほか、家族マニュアル等の情報を`knowledge/`配下のMarkdownで管理し、[MkDocs Material](https://squidfunk.github.io/mkdocs-material/)で静的サイトとしてビルドします（`docs/`はdev-standards共通規約に基づくCI/CD仕様ドキュメント専用のディレクトリのため、サイトコンテンツとは分離している）。
+このリポジトリはGitを正本（Single Source of Truth）とした家族向けナレッジベースです。小学校受験対策のほか、家族マニュアル等の情報を`knowledge/`配下のMarkdownで管理します。[MkDocs Material](https://squidfunk.github.io/mkdocs-material/)で静的サイトとしてビルドします（`docs/`はdev-standards共通規約のCI/CD仕様ドキュメント専用で、サイトコンテンツとは分離している）。
 
 コンテンツはClaude Codeと自分が更新し、GitHub Pushで反映します。妻・子どもなど閲覧側はGitを意識せず、ブラウザからサイトを見るだけで最新の内容を確認できることを目指しています（サイトの公開先・認証は[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で別途整備予定）。
 
@@ -50,6 +50,6 @@ npm run dev
 
 1. `/education/interview-questions/`（React、本人/父/母を1画面に統合）で想定問題と回答案を登録・編集する。データはDynamoDB（`examination-interview-questions`）が唯一の正本（[Issue #77](https://github.com/bamiyanapp/examination/issues/77)・[Issue #582](https://github.com/bamiyanapp/examination/issues/582)）
 2. 想定問題をもとにLINE bot／音声練習ページで模擬面接を実施する
-3. 練習セッションを終えると、AIが会話を振り返ったサマリー（よかった点・改善が必要な点・次回までのアクション）を自動生成しDynamoDB（`examination-mock-interviews`）へ記録する（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）。閲覧は`/education/mock-interviews/`（React）で行う（[Issue #103](https://github.com/bamiyanapp/examination/issues/103)）
+3. 練習セッションを終えると、AIが会話を振り返ったサマリー（よかった点・改善が必要な点・次回までのアクション）を自動生成する。DynamoDB（`examination-mock-interviews`）へ記録する（[Issue #93](https://github.com/bamiyanapp/examination/issues/93)）。閲覧は`/education/mock-interviews/`（React）で行う（[Issue #103](https://github.com/bamiyanapp/examination/issues/103)）
 4. 記録をもとに想定問答の回答案を更新する
 5. 2〜4を本番まで繰り返す
