@@ -1,3 +1,31 @@
+# [1.59.0](https://github.com/bamiyanapp/examination/compare/v1.58.0...v1.59.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** 依存更新PRへのRisk Summary・SBOM投稿を有効化する ([#610](https://github.com/bamiyanapp/examination/issues/610)) ([420d9f1](https://github.com/bamiyanapp/examination/commit/420d9f1f7a0f2448f5dd0fdb7a26e88e20d8485e))
+
+# [1.58.0](https://github.com/bamiyanapp/examination/compare/v1.57.9...v1.58.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** secret-scan（gitleaks）を有効化する ([#606](https://github.com/bamiyanapp/examination/issues/606)) ([8b4a02e](https://github.com/bamiyanapp/examination/commit/8b4a02e4c048c108690a12a9ed90e62a4663552e))
+
+## [1.57.9](https://github.com/bamiyanapp/examination/compare/v1.57.8...v1.57.9) (2026-11-04)
+
+
+### Bug Fixes
+
+* **deps:** Renovateのgit-submodulesマネージャーを有効化する ([#605](https://github.com/bamiyanapp/examination/issues/605)) ([f08375d](https://github.com/bamiyanapp/examination/commit/f08375d7bddee6e1f0b6d46a82f247a2e6b893e8))
+
+## [1.57.8](https://github.com/bamiyanapp/examination/compare/v1.57.7...v1.57.8) (2026-10-31)
+
+
+### Bug Fixes
+
+* dev-standards管理のsymlink欠落を解消する ([#588](https://github.com/bamiyanapp/examination/issues/588)) ([b929847](https://github.com/bamiyanapp/examination/commit/b9298472e548d8a8eabead965fb7b7ef660243a8))
+
 ## [1.57.7](https://github.com/bamiyanapp/examination/compare/v1.57.6...v1.57.7) (2026-10-31)
 
 
