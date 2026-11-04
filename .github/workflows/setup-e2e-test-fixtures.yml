@@ -22,6 +22,14 @@ name: Setup E2E test fixtures
 # またはfine-grained PATのSecrets: write権限）が必要
 on:
   workflow_dispatch: {}
+  # Cognitoのrefresh_token既定有効期間（30日）が切れたまま気づかれず、
+  # E2Eテストが失敗し続けていた事象（examination#559）への対応。有効期限より
+  # 十分短い間隔（週次）で自動再発行する（examination#562）。本ワークフロー自体
+  # が「既存トークンを全失効→新規発行」という冪等な処理のため、週次実行で
+  # 問題無い。日・時は他の定期実行（codeql.ymlの火曜3:00 UTC）と重複しない
+  # 値として日曜4:00 UTCを選んだ
+  schedule:
+    - cron: "0 4 * * 0"
 
 env:
   # example.comはRFC 2606でドキュメント・テスト用に予約されたドメインのため、
