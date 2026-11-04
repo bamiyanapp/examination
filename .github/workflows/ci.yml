@@ -75,6 +75,11 @@ jobs:
       # 同条件で4.77%）を基準に5%へ引き下げた
       enable_duplication_check: true
       duplication_threshold: 5
+      # 誤ってコミットされた秘密情報（APIキー・トークン等）をPR差分から検知する
+      # （examination#601、dev-standards#892）。CodeQL（SAST、脆弱性パターン検知）
+      # とは別物のため個別に有効化する。pull_requestイベント時のみbase_branchとの
+      # 差分をスキャンする（gitleaks/gitleaks-action）
+      enable_secret_scan: true
       # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
       # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
       # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/
