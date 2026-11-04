@@ -404,5 +404,8 @@
       "source": "shared/hooks/useSpeechRecognition.js",
       "target": "app/voice-practice/src/hooks/useSpeechRecognition.js"
     }
+  ],
+  "overrides": [
+    "textlint.config.cjs"
   ]
 }
