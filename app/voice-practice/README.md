@@ -4,7 +4,7 @@
 
 MkDocs静的サイトの`/education/voice-practice/`パスへビルド成果物を上書き配置する。実装本体は`src/pages/VoicePractice.jsx`。
 
-見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。チャットUIはdaisyUIの`chat`コンポーネントを使用する。
+見た目はBootstrap 5.3（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)、examination#308でdaisyUIから移行済み）で整えている。チャットUIはBootstrapのユーティリティクラスで独自に組んでいる（BootstrapにはdaisyUIのchatコンポーネントに相当するものが無いため）。
 
 - チャット風UIでユーザー自身の発言（音声認識結果）とAI応答の両方を表示する
 - シチュエーション・志望先の特色・その他前提情報（[Issue #76](https://github.com/bamiyanapp/examination/issues/76)）を自由入力でき、小学校受験に限らない汎用的な面接練習に対応する

@@ -4,7 +4,7 @@
 
 MkDocs静的サイト（リポジトリルート）から段階的に移行中。ビルド成果物は`cd.yml`でMkDocsサイトの同一URLパスへ上書き配置される。
 
-見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
+見た目はBootstrap 5.3（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)、examination#308でdaisyUIから移行済み）で整えている。
 
 ## ページ一覧
 
