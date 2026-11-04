@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/bamiyanapp/examination/compare/v1.57.9...v1.58.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** secret-scan（gitleaks）を有効化する ([#606](https://github.com/bamiyanapp/examination/issues/606)) ([8b4a02e](https://github.com/bamiyanapp/examination/commit/8b4a02e4c048c108690a12a9ed90e62a4663552e))
+
 ## [1.57.9](https://github.com/bamiyanapp/examination/compare/v1.57.8...v1.57.9) (2026-11-04)
 
 
