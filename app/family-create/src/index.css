@@ -1,2 +1,2 @@
-@import "./common-theme.css";
-@import "./bootstrap-theme.css";
+@import url("./common-theme.css");
+@import url("./bootstrap-theme.css");
