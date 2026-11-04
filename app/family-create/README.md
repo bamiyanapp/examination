@@ -4,7 +4,7 @@
 
 MkDocs静的サイト（リポジトリルート）から段階的に移行中。ビルド成果物は`cd.yml`でMkDocsサイトの同一URLパス（`/family-create/`）へ上書き配置される。
 
-見た目はTailwind CSS + daisyUI（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)）で整えている。
+見た目はBootstrap 5.3（[Issue #114](https://github.com/bamiyanapp/examination/issues/114)、examination#308でdaisyUIから移行済み）で整えている。
 
 他のアプリと異なり、PWA化（manifest.json・Service Worker）や`UserMenu`等の共通コンポーネントは含めていない。このページの訪問者は他ページが前提とする`isAllowedEmail`（サイトへの許可済みメールアドレス）をまだ満たしていないユーザーそのものであり、これらのコンポーネントが依存するAPI（`/_me`・`/_voice-token`等）は機能しないため（詳細は`src/App.jsx`のコメント参照）。
 
