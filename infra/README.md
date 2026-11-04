@@ -54,11 +54,11 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
-CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め全リクエストで実行される）で動作する。
+CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め全リクエストで実行される）で動作する。[Issue #437](https://github.com/bamiyanapp/examination/issues/437)（PR #444）で、未認証ユーザーも静的コンテンツには到達できる構成（dev-standards統一標準、フロントエンド公開＋API単位認証）へ移行済み。「未認証なら常にログイン画面へリダイレクトする」という全ページ認証ゲートはもはや存在しない。
 
-1. リクエストに有効な`id_token`Cookieが無い/検証に失敗した場合、まず`refresh_token`Cookieがあれば裏側で`grant_type=refresh_token`によりid_tokenの再発行を試みる（下記「セッションの自動延長」参照）。それも無い/失敗した場合は、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
-2. Googleでログインすると、Cognitoが`/_callback`へ認可コード付きでリダイレクトしてくる。このLambdaが認可コードをトークン（`id_token`・`refresh_token`）に交換し、HttpOnly・Secure・SameSite=LaxのCookieとして保存した上で、`state`に保存しておいた元のパスへリダイレクトする
-3. 以降のリクエストは`id_token`Cookieの署名（Cognito JWKS）・有効期限・audience/issuerを検証し、さらに`email`クレームがDynamoDBテーブル`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。未登録の場合、アクセス先が家族新規作成ページ（`/family-create/`）であればそのまま通し、それ以外のページであれば`/family-create/`へリダイレクトする（公開登録制のため、新規ユーザーは`/family-create/`というURLを知らない前提で誘導する。[Issue #264](https://github.com/bamiyanapp/examination/issues/264)、下記「複数家族対応」参照）
+1. `/_login`（examination#437で新設したログインの明示的な入口。各アプリのUserMenu等から遷移させる）へアクセスすると、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
+2. Googleでログインすると、Cognitoが`/_callback`へ認可コード付きでリダイレクトしてくる。このLambdaが認可コードをトークン（`id_token`・`refresh_token`）に交換し、HttpOnly・Secure・SameSite=LaxのCookieとして保存した上で、`state`に保存しておいた元のパスへリダイレクトする。ただしログイン直後の時点で`email`クレームが`examination-allowed-emails`に未登録（まだどの家族にも属さない）の場合は、家族新規作成ページ（`/family-create/`）へリダイレクトする（公開登録制のため。[Issue #264](https://github.com/bamiyanapp/examination/issues/264)、下記「複数家族対応」参照）
+3. 通常のリクエストは、有効な`id_token`Cookieがあれば署名（Cognito JWKS）・有効期限・audience/issuerを検証し、`email`クレームが`examination-allowed-emails`に登録されているかを確認する。登録されていれば、MkDocsのディレクトリ形式URL（例: `/education/`）を`index.html`付きのパスへ正規化した上でS3オリジンへ通す。ログイン済みだが未登録の場合は`/family-create/`へ誘導する（アクセス先が`/family-create/`自体であればそのまま通す）。`id_token`が無効/期限切れでも`refresh_token`Cookieがあれば裏側で`grant_type=refresh_token`によりid_tokenの再発行を試みる（下記「セッションの自動延長」参照）。いずれの条件にも当たらない（未認証、または`refresh_token`の再発行にも失敗した）場合は、静的コンテンツをそのまま通過させる（未認証ユーザーをログイン画面へ強制リダイレクトすることはない）
 4. `/_logout`へアクセスすると、Cookieを失効させた上でCognito自体のセッションも切って`/`へ戻す
 
 ### ログインCSRF対策のnonce管理（[Issue #143](https://github.com/bamiyanapp/examination/issues/143)）
