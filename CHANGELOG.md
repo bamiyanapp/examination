@@ -1,3 +1,10 @@
+# [1.59.0](https://github.com/bamiyanapp/examination/compare/v1.58.0...v1.59.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** 依存更新PRへのRisk Summary・SBOM投稿を有効化する ([#610](https://github.com/bamiyanapp/examination/issues/610)) ([420d9f1](https://github.com/bamiyanapp/examination/commit/420d9f1f7a0f2448f5dd0fdb7a26e88e20d8485e))
+
 # [1.58.0](https://github.com/bamiyanapp/examination/compare/v1.57.9...v1.58.0) (2026-11-04)
 
 
