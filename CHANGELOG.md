@@ -1,3 +1,10 @@
+## [1.60.1](https://github.com/bamiyanapp/examination/compare/v1.60.0...v1.60.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ci:** E2Eテスト用Cognito refresh_tokenを週次で定期再発行する ([#620](https://github.com/bamiyanapp/examination/issues/620)) ([458a09e](https://github.com/bamiyanapp/examination/commit/458a09e120721091e8c1691b5822d6a106e8c4d5)), closes [examination#562](https://github.com/examination/issues/562)
+
 # [1.60.0](https://github.com/bamiyanapp/examination/compare/v1.59.0...v1.60.0) (2026-11-04)
 
 
