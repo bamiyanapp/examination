@@ -1,3 +1,10 @@
+# [1.61.0](https://github.com/bamiyanapp/examination/compare/v1.60.1...v1.61.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** textlintを有効化する ([#619](https://github.com/bamiyanapp/examination/issues/619)) ([cd66689](https://github.com/bamiyanapp/examination/commit/cd666897708a27e38a4210f80529e65034b736d5))
+
 ## [1.60.1](https://github.com/bamiyanapp/examination/compare/v1.60.0...v1.60.1) (2026-11-04)
 
 
