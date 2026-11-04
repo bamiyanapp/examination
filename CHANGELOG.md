@@ -1,3 +1,10 @@
+# [1.60.0](https://github.com/bamiyanapp/examination/compare/v1.59.0...v1.60.0) (2026-11-04)
+
+
+### Features
+
+* **ci:** stylelintを導入する ([#614](https://github.com/bamiyanapp/examination/issues/614)) ([7fc6994](https://github.com/bamiyanapp/examination/commit/7fc6994f5a158291cc3db0d5c1e729b0cfb38bb4))
+
 # [1.59.0](https://github.com/bamiyanapp/examination/compare/v1.58.0...v1.59.0) (2026-11-04)
 
 
