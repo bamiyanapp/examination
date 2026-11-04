@@ -80,6 +80,10 @@ jobs:
       # とは別物のため個別に有効化する。pull_requestイベント時のみbase_branchとの
       # 差分をスキャンする（gitleaks/gitleaks-action）
       enable_secret_scan: true
+      # 依存更新PR（Renovate等）へ適用リスク・維持リスク判定（Risk Summary）・
+      # SBOM（CycloneDX）を投稿する（examination#602）。gating・auto_closeは
+      # 本Issueのスコープ外（別途要否を判断する）
+      enable_dependency_risk_summary: true
       # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
       # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
       # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/
