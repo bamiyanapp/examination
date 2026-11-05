@@ -1,3 +1,10 @@
+# [1.64.0](https://github.com/bamiyanapp/examination/compare/v1.63.0...v1.64.0) (2026-11-05)
+
+
+### Features
+
+* knowledge/・mkdocs.yml・requirements.txtを削除する ([#637](https://github.com/bamiyanapp/examination/issues/637)) ([#642](https://github.com/bamiyanapp/examination/issues/642)) ([987d02b](https://github.com/bamiyanapp/examination/commit/987d02bac264cbd6835474bb9c3fcdadc1932292))
+
 # [1.63.0](https://github.com/bamiyanapp/examination/compare/v1.62.0...v1.63.0) (2026-11-05)
 
 
