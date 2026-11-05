@@ -84,13 +84,13 @@ jobs:
       # SBOM（CycloneDX）を投稿する（examination#602）。gating・auto_closeは
       # 本Issueのスコープ外（別途要否を判断する）
       enable_dependency_risk_summary: true
-      # knowledge/・docs/・CLAUDE.md・.claude/skills/配下のMarkdown文章をtextlintで
+      # docs/・CLAUDE.md・.claude/skills/配下のMarkdown文章をtextlintで
       # チェックする（examination#477・#615）。dev-standards共有設定をそのまま使えると
       # 判断済み（examination#477）。固有名詞「小学校受験対策」のmax-kanji-continuous-len
       # 誤検知のみexamination独自のtextlint.config.cjs（dev-standards側をrequireして
       # ルールを上書き）で例外許容する
       enable_text_lint: true
-      text_lint_paths: "knowledge/**/*.md\ndocs/*.md\nREADME.md\nCLAUDE.md\n.claude/skills/**/*.md"
+      text_lint_paths: "docs/*.md\nREADME.md\nCLAUDE.md\n.claude/skills/**/*.md"
       # examination#414（examination#404の子Issue）。frontend-e2e-testジョブは
       # matrix非対応でfrontend_dir単一値のみのため、まずapp/topの1つで
       # パイプライン全体（認証→保護ページ表示→スクリーンショット→Job Summary/
