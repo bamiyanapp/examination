@@ -48,11 +48,6 @@ jobs:
           ref: main
           submodules: true
 
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-          cache: "pip"
-
       - uses: actions/setup-node@v7
         with:
           node-version: "26"
@@ -75,10 +70,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
 
-      - name: Build MkDocs site
+      # 以前はmkdocs buildでsite/配下のディレクトリ構造・404ページを生成していたが、
+      # 全ページを後続のReactアプリのビルド成果物で完全に上書きするため、MkDocsが
+      # 実際にレンダリングした内容がブラウザに届くことは無かった（examination#585）。
+      # 実質的に必要だったのは各ページ用ディレクトリの用意と404ページのみのため、
+      # mkdocs/Pythonへの依存を無くし、同等の内容を直接用意する
+      - name: Prepare site output directory
         run: |
-          pip install -r requirements.txt
-          mkdocs build --strict
+          mkdir -p site/education site/settings
+          cp 404.html site/404.html
 
       # LINE連携ページ（examination#78、React段階移行 Phase 1）。MkDocsが生成した
       # 同名パスのページを、app/line-link/でビルドしたReactアプリの静的アセットで上書きする
