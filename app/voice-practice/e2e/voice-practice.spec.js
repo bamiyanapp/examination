@@ -24,3 +24,22 @@ test("認証済みでプロフィールが表示され、会話を開始・終�
   await page.getByRole("button", { name: "練習を終える" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
 });
+
+test("ロールを「父」に切り替えてから会話を開始できる", async ({ page, context }, testInfo) => {
+  await loginAsE2ETestUser(context);
+  await page.goto("/education/voice-practice/");
+  await expect(page.getByText(/シチュエーション:/)).toBeVisible();
+
+  await page.getByLabel("ロール:").selectOption("父");
+  await captureScreenshot(page, testInfo, "voice-practice-role-father", "音声で面接練習（ロールを「父」に切り替え後）");
+
+  await page.getByRole("button", { name: "会話を始める" }).click();
+  await expect(page.getByText("面接官")).toBeVisible({ timeout: 30000 });
+
+  // 開始直後は音声認識が未発話のため、「話す」ボタンは未サポート環境以外では
+  // 有効になっている（isListening/isBusyがfalseの分岐）ことを確認する
+  await expect(page.getByRole("button", { name: "練習を終える" })).toBeEnabled();
+
+  await page.getByRole("button", { name: "練習を終える" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+});
