@@ -27,10 +27,14 @@ test("ユーザーメニューからページ共有モーダルを開ける", as
   await captureScreenshot(page, testInfo, "top-page-user-menu", "トップページ（ユーザーメニューを開いた直後）");
 
   await page.getByRole("button", { name: "このページを共有" }).click();
-  await expect(page.getByRole("dialog").getByText("このページを共有")).toBeVisible();
-  await expect(page.getByText(/\/$/)).toBeVisible();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("このページを共有")).toBeVisible();
+  await expect(dialog.getByText(/\/$/)).toBeVisible();
 
-  await page.getByRole("button", { name: "閉じる" }).click();
+  // モーダルヘッダーの閉じるアイコン（aria-label="閉じる"）とフッターの
+  // 「閉じる」ボタンの両方がロール名で一致してしまうため、dialog配下の
+  // ボタンに絞った上で最後（フッター側）を明示的に選ぶ
+  await dialog.getByRole("button", { name: "閉じる" }).last().click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
