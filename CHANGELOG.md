@@ -1,3 +1,10 @@
+# [1.62.0](https://github.com/bamiyanapp/examination/compare/v1.61.0...v1.62.0) (2026-11-05)
+
+
+### Features
+
+* **cd:** mkdocs buildへの依存を無くす ([#635](https://github.com/bamiyanapp/examination/issues/635)) ([#638](https://github.com/bamiyanapp/examination/issues/638)) ([06c4204](https://github.com/bamiyanapp/examination/commit/06c4204337a44ca1255d470388f63ab3e89c7b75))
+
 # [1.61.0](https://github.com/bamiyanapp/examination/compare/v1.60.1...v1.61.0) (2026-11-04)
 
 
