@@ -4,18 +4,16 @@
 
 ## 概要
 
-このリポジトリはGitを正本（Single Source of Truth）とした家族向けナレッジベースです。小学校受験対策のほか、家族マニュアル等の情報を`knowledge/`配下のMarkdownで管理します。[MkDocs Material](https://squidfunk.github.io/mkdocs-material/)で静的サイトとしてビルドします（`docs/`はdev-standards共通規約のCI/CD仕様ドキュメント専用で、サイトコンテンツとは分離している）。
+このリポジトリはGitを正本（Single Source of Truth）とした家族向けナレッジベースです。小学校受験対策のほか、家族マニュアル等の情報を`app/`配下の各React（Vite）アプリで管理します。`docs/`はdev-standards共通規約のCI/CD仕様ドキュメント専用で、サイトコンテンツとは分離しています。
 
 コンテンツはClaude Codeと自分が更新し、GitHub Pushで反映します。妻・子どもなど閲覧側はGitを意識せず、ブラウザからサイトを見るだけで最新の内容を確認できることを目指しています（サイトの公開先・認証は[Issue #6](https://github.com/bamiyanapp/examination/issues/6)で別途整備予定）。
 
-トップページ・音声対話・管理画面等は、MkDocs静的サイトからReactアプリへ段階移行中です（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)、[Issue #82](https://github.com/bamiyanapp/examination/issues/82)）。`app/`配下にページごとの独立したReact（Vite）アプリとしてビルドし、`cd.yml`（`deploy`ジョブ）でMkDocsが生成した同一URLパスへ成果物を上書き配置します。家族情報等の静的コンテンツページは当面`knowledge/`配下のMarkdownのままです。
+トップページ・音声対話・管理画面等、全ページがReactアプリとして実装済みです（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)、[Issue #82](https://github.com/bamiyanapp/examination/issues/82)）。旧MkDocs Material静的サイト層は[Issue #585](https://github.com/bamiyanapp/examination/issues/585)で廃止済みです。`app/`配下にページごとの独立したReact（Vite）アプリとしてビルドし、`cd.yml`（`deploy`ジョブ）でS3へ配置します。
 
 ## ディレクトリ構成
 
 ```
 .
-├── mkdocs.yml
-├── requirements.txt
 ├── app/                                 # ページごとのReact（Vite）アプリ（Issue #78、#82）
 │   ├── top/                             # トップページ（/）
 │   ├── line-link/                       # LINE連携（/settings/line-link/）
@@ -24,11 +22,8 @@
 │   ├── interview-questions/             # 想定問答（/education/interview-questions/、Issue #77）
 │   ├── education-overview/              # 教育セクションの概要（/education/、Issue #92）
 │   └── mock-interviews/                 # 模擬面接記録（/education/mock-interviews/、Issue #103）
-├── docs/
-│   └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
-└── knowledge/
-    ├── index.md          # サイトのホーム（app/top/のビルド成果物で上書きされる）
-    └── education/         # 小学校受験対策（想定問答・模擬面接記録）
+└── docs/
+    └── cicd-pipeline-specification.md  # CI/CD仕様（dev-standards共通規約）
 ```
 
 ## Reactアプリ（app/配下）のローカル確認
