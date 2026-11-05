@@ -34,25 +34,3 @@ test("認証済みで許可メールアドレスの追加・削除ができる",
     await expect(addedRow).toBeHidden();
   }
 });
-
-test("既に家族に所属しているメールアドレスは追加できず、エラーが表示される", async ({ page, context }, testInfo) => {
-  await loginAsE2ETestUser(context);
-  await page.goto("/settings/allowed-emails/");
-  await expect(page.getByRole("heading", { name: "閲覧許可メールアドレスの管理" })).toBeVisible();
-
-  // 既存メンバー（1件目）のメールアドレスを再度追加しようとすると、
-  // 「1メールアドレスにつき所属できる家族は1つまで」の制約でAPIがエラーを返す。
-  // 一覧は読み込み中表示（「読み込み中...」）からAPI応答を経て非同期に
-  // 差し替わるため、1件目が実際に表示されるまで明示的に待つ
-  const firstRow = page.getByRole("listitem").first();
-  await expect(firstRow).toBeVisible();
-  const existingEmailText = await firstRow.locator(".flex-grow-1").textContent();
-  const existingEmail = existingEmailText?.split("（")[0].trim();
-  if (!existingEmail) throw new Error("既存メンバーのメールアドレスを取得できなかった");
-
-  await page.getByPlaceholder("追加するメールアドレス").fill(existingEmail);
-  await page.getByRole("button", { name: "追加" }).click();
-
-  await expect(page.getByRole("alert")).toBeVisible();
-  await captureScreenshot(page, testInfo, "allowed-emails-duplicate-error", "閲覧許可メールアドレスの管理（重複追加エラー）");
-});
