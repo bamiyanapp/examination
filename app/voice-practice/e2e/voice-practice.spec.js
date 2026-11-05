@@ -30,7 +30,10 @@ test("ロールを「父」に切り替えてから会話を開始できる", as
   await page.goto("/education/voice-practice/");
   await expect(page.getByText(/シチュエーション:/)).toBeVisible();
 
-  await page.getByLabel("ロール:").selectOption("父");
+  // 「ロール:」のlabelはforいかひも付きがなく、アクセシビリティツリー上も
+  // 独立したテキストのため、getByLabelでは要素を取得できない（htmlFor未設定）。
+  // 未開始状態のselectはこの1つだけのため、roleで直接取得する
+  await page.getByRole("combobox").selectOption("父");
   await captureScreenshot(page, testInfo, "voice-practice-role-father", "音声で面接練習（ロールを「父」に切り替え後）");
 
   await page.getByRole("button", { name: "会話を始める" }).click();
