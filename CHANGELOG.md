@@ -1,3 +1,10 @@
+# [1.63.0](https://github.com/bamiyanapp/examination/compare/v1.62.0...v1.63.0) (2026-11-05)
+
+
+### Features
+
+* **ci:** CI・開発手順からMkDocsビルド検証を外す ([#640](https://github.com/bamiyanapp/examination/issues/640)) ([36792ec](https://github.com/bamiyanapp/examination/commit/36792ec7d452ae6ca694abca0909a109b9f8e580)), closes [#636](https://github.com/bamiyanapp/examination/issues/636)
+
 # [1.62.0](https://github.com/bamiyanapp/examination/compare/v1.61.0...v1.62.0) (2026-11-05)
 
 
