@@ -17,3 +17,24 @@ test("認証済みで想定問答の一覧が表示される", async ({ page, co
   await expect(fatherFilterButton).toHaveAttribute("aria-pressed", "true");
   await captureScreenshot(page, testInfo, "interview-questions-filtered", "想定問答（「父」で絞り込み後）");
 });
+
+test("質問の追加フォームを開き、必須項目未入力では保存できずキャンセルで閉じられる", async ({ page, context }, testInfo) => {
+  await loginAsE2ETestUser(context);
+  await page.goto("/education/interview-questions/");
+  await expect(page.getByRole("heading", { name: "想定問答" })).toBeVisible();
+
+  await page.getByRole("button", { name: "質問を追加" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "質問を追加" })).toBeVisible();
+  await captureScreenshot(page, testInfo, "interview-questions-add-form", "想定問答（質問を追加フォームを開いた直後）");
+
+  // 質問・回答の要点はrequiredのため、未入力のままではブラウザの標準バリデーションに
+  // より送信がブロックされ、保存APIは呼ばれない（＝一覧件数が変化しない）ことを確認する
+  const beforeCount = await page.getByText(/件$/).first().textContent();
+  await dialog.getByRole("button", { name: "保存" }).click();
+  await expect(dialog.getByRole("heading", { name: "質問を追加" })).toBeVisible();
+
+  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText(/件$/).first()).toHaveText(beforeCount ?? "");
+});
