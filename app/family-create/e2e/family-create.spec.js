@@ -38,3 +38,20 @@ test("認証済みで家族の新規作成ができる", async ({ page, context 
   await expect(page.getByRole("alert")).toContainText("を作成しました");
   await captureScreenshot(page, testInfo, "family-create-success", "家族の新規作成（作成成功後）");
 });
+
+test("既に家族に所属済みのアカウントでは「既に参加済み」の案内が表示される", async ({ page, context }, testInfo) => {
+  await loginAsE2ETestUser(context);
+
+  // このテストではx-e2e-testヘッダーを注入しない。共有E2Eテストユーザー
+  // （examination#413）は既にテスト家族へ所属済みのため、通常の経路で
+  // 送信するとcheckAuth.js側がALREADY_IN_FAMILY_MESSAGEを返す
+  // （FamilyCreate.tsxのalreadyInFamily分岐）ことを確認する
+  await page.goto("/family-create/");
+  await expect(page.getByRole("heading", { name: "家族の新規作成" })).toBeVisible();
+
+  await page.getByPlaceholder("例: 小学校受験の面接").fill("E2Eテスト用シチュエーション（所属済み確認）");
+  await page.getByRole("button", { name: "作成する" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("既に家族に参加済みです");
+  await captureScreenshot(page, testInfo, "family-create-already-in-family", "家族の新規作成（既に所属済みの案内）");
+});
