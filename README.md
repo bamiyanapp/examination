@@ -31,13 +31,6 @@
     └── education/         # 小学校受験対策（想定問答・模擬面接記録）
 ```
 
-## サイトのローカル確認
-
-```
-pip install -r requirements.txt
-mkdocs serve
-```
-
 ## Reactアプリ（app/配下）のローカル確認
 
 ```
