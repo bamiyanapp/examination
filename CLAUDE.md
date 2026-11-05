@@ -2,7 +2,7 @@
 
 # examination固有ルール
 
-家族向けナレッジベース（[Issue #4](https://github.com/bamiyanapp/examination/issues/4)）。小学校受験対策（想定問題・模擬面接記録）のほか、家族マニュアル等の情報を管理する。全ページ`app/`配下のReact（Vite）アプリで実装済み（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）。旧MkDocs Material静的サイト層は廃止済み（[Issue #585](https://github.com/bamiyanapp/examination/issues/585)、段階的移行中）で、`knowledge/`配下のプレースホルダーファイル・`mkdocs.yml`は移行完了後に削除する（[Issue #637](https://github.com/bamiyanapp/examination/issues/637)）
+家族向けナレッジベース（[Issue #4](https://github.com/bamiyanapp/examination/issues/4)）。小学校受験対策（想定問題・模擬面接記録）のほか、家族マニュアル等の情報を管理する。全ページ`app/`配下のReact（Vite）アプリで実装済み（[Issue #78](https://github.com/bamiyanapp/examination/issues/78)）。旧MkDocs Material静的サイト層は廃止作業中（[Issue #585](https://github.com/bamiyanapp/examination/issues/585)、段階的移行）。`knowledge/`配下のプレースホルダーファイル・`mkdocs.yml`は移行完了後に削除する（[Issue #637](https://github.com/bamiyanapp/examination/issues/637)）
 
 - コンテンツ本体: `app/`配下の各Reactアプリ（`docs/`はdev-standards共通規約のCI/CD仕様ドキュメント専用で、サイトコンテンツとは別）
 - パッケージ構成: `app/`配下、ページごとに独立したReact（Vite）アプリのみ（例: `app/line-link/`・`app/allowed-emails/`等）。`ci.yml`の`packages`にそれぞれlint/test/build対象として登録する。本リポジトリはfrontend/backend固定ディレクトリ構成を持たないため、`reusable-ci.yml`のfrontend-test/backend-testジョブは使わない
