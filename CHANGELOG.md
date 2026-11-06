@@ -1,3 +1,10 @@
+# [1.65.0](https://github.com/bamiyanapp/examination/compare/v1.64.0...v1.65.0) (2026-11-06)
+
+
+### Features
+
+* **ci:** E2Eカバレッジ閾値を実測値に基づきラチェット引き上げする ([#465](https://github.com/bamiyanapp/examination/issues/465)) ([#646](https://github.com/bamiyanapp/examination/issues/646)) ([b6d56e1](https://github.com/bamiyanapp/examination/commit/b6d56e14ef0580c4ef013d6eddea341b76e73139))
+
 # [1.64.0](https://github.com/bamiyanapp/examination/compare/v1.63.0...v1.64.0) (2026-11-05)
 
 
