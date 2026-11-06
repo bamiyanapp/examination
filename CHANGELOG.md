@@ -1,3 +1,10 @@
+# [1.66.0](https://github.com/bamiyanapp/examination/compare/v1.65.0...v1.66.0) (2026-11-06)
+
+
+### Features
+
+* **infra:** bot-stackのLambdaにエラー監視CloudWatch Alarmを追加する ([#649](https://github.com/bamiyanapp/examination/issues/649)) ([e916a33](https://github.com/bamiyanapp/examination/commit/e916a3350b40bb6964773727fff0c374eb56cdff))
+
 # [1.65.0](https://github.com/bamiyanapp/examination/compare/v1.64.0...v1.65.0) (2026-11-06)
 
 
