@@ -100,14 +100,11 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/top
       node_version: "24"
-      # examination#465（80%目標のラチェット引き上げ）。branchesの実測値は
-      # 43.75%（run #35301255843）→33.75%（PR #498、ErrorBoundary導入で
-      # 分岐増加）→29.76%（push-to-main run #35424288430、コード変更無し）と
-      # 変動しており、都度閾値ぎりぎりに合わせるいたちごっこになっていた。
-      # 3回の実測値のばらつき幅（約14ポイント）を踏まえ、直近の最低値からさらに
-      # 大きめのマージンを取り、同じ調整を繰り返さずに済む値とする。80%へはまだ
-      # 遠く、テストケースの追加（エラーケース・分岐網羅）が必要（Issue本文の記録参照）
-      e2e_coverage_threshold: 20
+      # examination#465（80%目標のラチェット引き上げ）。ユーザーメニュー（共有
+      # モーダルの開閉）・セクションリンク遷移のテストケースをPR #631で追加し、
+      # branchesの実測値が55.68%まで上昇した（push-to-main run #42130000729）。
+      # 過去のばらつき幅（約14ポイント）を踏まえたマージンを取り20→40へ引き上げる
+      e2e_coverage_threshold: 40
       # ci・e2e-*の6job全てがreusable-ci.ymlを独立して呼び出す構成（1 job per
       # appパターン）のため、各呼び出し自身のmerge jobでは他の呼び出しの成否を
       # 待てず、いずれかが失敗・実行中でもPRがマージされてしまう
@@ -141,13 +138,11 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/voice-practice
       node_version: "24"
-      # examination#465。2026-09-18時点の実測値（branches 55.84%、run
-      # #35301255843）を基準にするが、他の5job（ci・e2e-mock-interviews・
-      # e2e-interview-questions・e2e-allowed-emails）で単発のE2Eテストが
-      # コード変更無しでも実行毎に約9〜10ポイント変動し、直近の最低値ぎりぎりの
-      # マージンでは閾値超過が繰り返し発生することが判明している
-      # （examination#465コメント参照）。このjobはまだ実際の失敗は観測して
-      # いないが、同様の変動が起きる前提で大きめのマージンを取る
+      # examination#465。ロール切り替えテストケースをPR #628で追加したが、
+      # branchesの実測値は53.61%（push-to-main run #42051653285）で、既存の
+      # 閾値（40）からのマージンが過去の変動幅（約14ポイント）に対して十分では
+      # ないため、このjobは今回引き上げを見送る。新たな会話分岐・エラーケースの
+      # テスト追加で実測値がさらに上がった時点で再度ラチェットする
       e2e_coverage_threshold: 40
       # packagesを省略するとreusable-ci.ymlのfrontend-test/backend-testジョブ
       # （examinationが使わない固定ディレクトリ構成向けのレガシージョブ、CLAUDE.md
@@ -183,12 +178,11 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/interview-questions
       node_version: "24"
-      # examination#465。branchesの実測値は42.94%（run #35301255843）→34.35%
-      # （push-to-main run #35315007660、コード変更無し）→42.33%（PR #498）と
-      # 変動しており、直近の最低値ぎりぎりのマージンでは同じ調整を繰り返す
-      # ことになる（app/topで実際に3回発生、examination#465コメント参照）。
-      # 観測されたばらつき幅を踏まえ、大きめのマージンを取る
-      e2e_coverage_threshold: 20
+      # examination#465。質問追加フォームの開閉・バリデーション分岐テストをPR
+      # #628で追加し、branchesの実測値が43.86%まで上昇した（push-to-main run
+      # #42130000729）。過去のばらつき幅（約14ポイント）を踏まえたマージンを
+      # 取り20→25へ引き上げる
+      e2e_coverage_threshold: 25
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
@@ -208,10 +202,11 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/mock-interviews
       node_version: "24"
-      # examination#465。branchesの実測値は43.47%（run #35301255843）→33.04%
-      # （PR #498、ErrorBoundary導入で分岐増加）と低下しており、app/topと同様に
-      # 直近の最低値ぎりぎりのマージンでは同じ調整を繰り返すことになる。
-      # 観測されたばらつき幅を踏まえ、大きめのマージンを取る
+      # examination#465。branchesの実測値は29.27%（push-to-main run
+      # #42130000729）で、既存の閾値（20）からのマージンが過去の変動幅（約14
+      # ポイント）に対して十分ではないため、このjobは今回引き上げを見送る。
+      # mock-interviewsページは一覧表示のみでテストケースが少なく（既存1件）、
+      # 分岐網羅のためのテスト追加が今後必要（空状態・エラー表示等）
       e2e_coverage_threshold: 20
       packages: "[]"
       enable_standards_check: true
@@ -232,12 +227,12 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/allowed-emails
       node_version: "24"
-      # examination#465。branchesの実測値は57.79%（run #35301255843）→46.9%・
-      # 47.78%（PR #504・#506のpush-to-main、コード変更無し）と変動しており、
-      # 直近の最低値ぎりぎりのマージンでは同じ調整を繰り返すことになる
-      # （app/top等で既に複数回発生、examination#465コメント参照）。観測された
-      # ばらつき幅を踏まえ、大きめのマージンを取る
-      e2e_coverage_threshold: 30
+      # examination#465。重複所属エラーのテストケース追加を試みたが、CI失敗の
+      # 原因をログから特定できず取り下げた（PR #632参照）。現時点のbranches
+      # 実測値は54.70%（push-to-main run #42130000729、既存の追加・削除テストの
+      # みの状態）。過去のばらつき幅（約14ポイント）を踏まえたマージンを取り
+      # 30→35へ引き上げる
+      e2e_coverage_threshold: 35
       packages: "[]"
       enable_standards_check: true
       # dev-standards#421。詳細は上記ciジョブのコメント参照
@@ -260,13 +255,10 @@ jobs:
       enable_e2e_test: true
       frontend_dir: app/family-create
       node_version: "24"
-      # examination#465。2026-09-18時点の実測値（branches 53.84%、run
-      # #35301255843）を基準にするが、他の5job（ci・e2e-mock-interviews・
-      # e2e-interview-questions・e2e-allowed-emails）で単発のE2Eテストが
-      # コード変更無しでも実行毎に約9〜10ポイント変動し、直近の最低値ぎりぎりの
-      # マージンでは閾値超過が繰り返し発生することが判明している
-      # （examination#465コメント参照）。このjobはまだ実際の失敗は観測して
-      # いないが、同様の変動が起きる前提で大きめのマージンを取る
+      # examination#465。所属済みアカウント向けの案内表示テストケースをPR #634
+      # で追加し、branchesの実測値は58.82%（push-to-main run #42130000729）。
+      # 既存の閾値（40）からのマージンが過去の変動幅（約14ポイント）に対して
+      # 十分ではないため、このjobは今回引き上げを見送る
       e2e_coverage_threshold: 40
       packages: "[]"
       enable_standards_check: true
