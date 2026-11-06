@@ -10,6 +10,14 @@ Issue #6（AWS配信基盤: S3 + CloudFront + Cognito Google認証）のイン�
 
 デプロイは`.github/workflows/cd.yml`の`deploy`ジョブが`main`へのpush時に自動実行する。`deploy`ジョブは同じワークフロー内の`release`ジョブ（semantic-release、[Issue #137](https://github.com/bamiyanapp/examination/issues/137)。詳細は`docs/cicd-pipeline-specification.md`参照）に依存（`needs: release`）しており、`release`ジョブが確定させた`package.json`のバージョンを読み取ってから実行される。
 
+## 運用監視（Lambdaのサイレント障害検知、[Issue #604](https://github.com/bamiyanapp/examination/issues/604)）
+
+`bot-stack`の各Lambda関数（`lineWebhook`・`voiceChat`等8関数）にCloudWatch Alarmを設定している。`dev-standards/docs/ops-monitoring-pattern.md`参考の構成である。`Errors`メトリクスが5分間に1件以上で発火する。
+
+通知先はSNS Topic（`OpsAlertTopic`）経由。運用監視専用のLINE Botチャンネルが未整備なため、暫定でメール（SNSのEmail protocol、`cd.yml`の`OPS_ALERT_EMAIL`）を通知先にしている（[Issue #604](https://github.com/bamiyanapp/examination/issues/604)）。LINEチャンネル整備後は`OpsAlertEmailSubscription`のProtocol/Endpointを切り替える想定。
+
+`site-stack`の`checkAuth`（Lambda@Edge）は対象外。メトリクスが実行先リージョンごとに分散するため、同じ構成で単純にAlarmを張れない（フォローアップとして別途検討）。
+
 ## なぜ2つのスタックに分けているか
 
 CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビューション作成後は不変だが、作成前には分からない。一方Cognito User Pool ClientのCallback URL / Logout URLには実際のCloudFrontドメインを含める必要がある（一致しないとCognitoが認可リクエストを拒否する）。この循環依存を解消するため、`cd.yml`は以下の順序でデプロイする。
