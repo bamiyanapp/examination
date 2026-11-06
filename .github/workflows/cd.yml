@@ -344,6 +344,16 @@ jobs:
           ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL || 's.ekusoy@gmail.com' }}
         run: node scripts/generate-config.js
 
+      # Lambdaのサイレント障害検知（examination#604）の通知先。serverless.ymlの
+      # OpsAlertEmailSubscriptionが${env:OPS_ALERT_EMAIL}として参照するため、
+      # デプロイ時点（CloudFormation合成時）に環境変数として存在する必要がある。
+      # 後続の「Deploy bot-stack」ステップ（複合アクション内部のステップを含む）にも
+      # 引き続き渡るよう、ステップ単位のenv:ではなく$GITHUB_ENVで同一ジョブ全体に公開する。
+      # 新規シークレットは増やさず、上のステップと同じ管理用アカウントのメール（ADMIN_NOTIFY_EMAIL）を
+      # 運用監視通知先としても再利用する（LINEチャンネル整備後は別の通知先に切り替える想定）
+      - name: Export OPS_ALERT_EMAIL for serverless deploy
+        run: echo "OPS_ALERT_EMAIL=${{ vars.ADMIN_NOTIFY_EMAIL || 's.ekusoy@gmail.com' }}" >> "$GITHUB_ENV"
+
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
       # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
       # LINE_CHANNEL_SECRET等の更新がLambdaへ反映されないことがある（examination#51で実際に発生）
