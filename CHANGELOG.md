@@ -1,3 +1,10 @@
+## [1.66.1](https://github.com/bamiyanapp/examination/compare/v1.66.0...v1.66.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* self_refをuses:と同じv2.115.2に合わせる ([#680](https://github.com/bamiyanapp/examination/issues/680)) ([ceaaac1](https://github.com/bamiyanapp/examination/commit/ceaaac100a1b7a834c630bb2b21773878f9f9360))
+
 # [1.66.0](https://github.com/bamiyanapp/examination/compare/v1.65.0...v1.66.0) (2026-11-06)
 
 
