@@ -1,3 +1,10 @@
+## [1.66.2](https://github.com/bamiyanapp/examination/compare/v1.66.1...v1.66.2) (2026-11-14)
+
+
+### Bug Fixes
+
+* **e2e:** カバレッジentryFilterを自アプリの成果物のみに厳密化する ([#688](https://github.com/bamiyanapp/examination/issues/688)) ([9dfaad1](https://github.com/bamiyanapp/examination/commit/9dfaad109491751f32d0d0f81d38443170ecfdd3))
+
 ## [1.66.1](https://github.com/bamiyanapp/examination/compare/v1.66.0...v1.66.1) (2026-11-13)
 
 
