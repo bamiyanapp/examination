@@ -12,7 +12,7 @@
 // （infra/infra-shared/eslint.config.base.jsと同じ理由。examination#447）。
 // app/配下のアプリ間で内容がほぼ完全に共通のため、app-shared/e2e/から
 // symlinkで共有する
-export function buildPlaywrightConfig({ defineConfig, devices, reportName }) {
+export function buildPlaywrightConfig({ defineConfig, devices, reportName, basePath }) {
   return defineConfig({
     testDir: "./e2e",
     fullyParallel: true,
@@ -27,9 +27,19 @@ export function buildPlaywrightConfig({ defineConfig, devices, reportName }) {
           coverage: {
             outputDir: "./coverage",
             reports: [["json-summary"], ["console-summary"]],
-            // 各アプリが実際に読み込むのは自身のビルド成果物（/assets/配下）のみ
-            // （Googleアバター画像等の外部リソースはJS/CSSではないため対象外）
-            entryFilter: (entry) => entry.url.includes("/assets/"),
+            // 各アプリが実際に読み込むのは自身のビルド成果物（<basePath>assets/配下）
+            // のみ（Googleアバター画像等の外部リソースはJS/CSSではないため対象外）。
+            // examinationは1リポジトリに9つの独立したViteアプリを持ち（dev-standards
+            // docs/e2e-coverage-pattern.mdが想定する単一アプリ構成とは異なる）、
+            // いずれのアプリも/assets/配下にビルド成果物を置くため、basePathを
+            // 指定せず単純に"/assets/"を含むかどうかだけで判定すると、本番環境
+            // （単一CloudFrontドメイン）上で他アプリのJSが実行された場合に
+            // そのカバレッジまで巻き込んでしまう（examination#687）。
+            // includes()だと、base: '/'のアプリ（app/top）では「/assets/」という
+            // 短い文字列が他アプリの絶対パス（例: /education/mock-interviews/assets/
+            // foo.js）の部分文字列としてもマッチしてしまうため、pathnameの先頭から
+            // の一致（startsWith）で厳密に判定する
+            entryFilter: (entry) => new URL(entry.url).pathname.startsWith(`${basePath}assets/`),
             sourceFilter: {
               "**/node_modules/**": false,
               "src/**": true,

@@ -5,4 +5,5 @@ export default buildPlaywrightConfig({
   defineConfig,
   devices,
   reportName: "examination(interview-questions) E2E Report",
+  basePath: "/education/interview-questions/",
 });
