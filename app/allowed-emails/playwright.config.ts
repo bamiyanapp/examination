@@ -5,4 +5,5 @@ export default buildPlaywrightConfig({
   defineConfig,
   devices,
   reportName: "examination(allowed-emails) E2E Report",
+  basePath: "/settings/allowed-emails/",
 });

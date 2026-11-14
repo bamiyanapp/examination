@@ -5,4 +5,5 @@ export default buildPlaywrightConfig({
   defineConfig,
   devices,
   reportName: "examination(family-create) E2E Report",
+  basePath: "/family-create/",
 });

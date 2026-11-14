@@ -5,4 +5,5 @@ export default buildPlaywrightConfig({
   defineConfig,
   devices,
   reportName: "examination(voice-practice) E2E Report",
+  basePath: "/education/voice-practice/",
 });
