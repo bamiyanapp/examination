@@ -7,7 +7,8 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "pretest": "node scripts/ensure-test-config.js",
+    "generate-config": "node ../../dev-standards/scripts/generate-config-from-env.js --out functions/configuration.json region=AWS_REGION userPoolId=COGNITO_USER_POOL_ID clientId=COGNITO_CLIENT_ID clientSecret=COGNITO_CLIENT_SECRET cognitoDomain=COGNITO_DOMAIN internalApiSecret=INTERNAL_API_SECRET",
+    "pretest": "node ../../dev-standards/scripts/generate-config-from-env.js --out functions/configuration.json --ensure-test --dummy region=us-east-1 --dummy cognitoDomain=https://test-domain.auth.us-east-1.amazoncognito.com region=AWS_REGION userPoolId=COGNITO_USER_POOL_ID clientId=COGNITO_CLIENT_ID clientSecret=COGNITO_CLIENT_SECRET cognitoDomain=COGNITO_DOMAIN internalApiSecret=INTERNAL_API_SECRET",
     "test": "vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary"
   },
   "dependencies": {

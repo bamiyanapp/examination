@@ -11,14 +11,14 @@ import { handler } from "./lineWebhook.js";
 // 対象外とする。署名検証・リクエストの入口（405/403/400）と、返信対象イベントが
 // 0件のケース（ネットワーク呼び出しが発生しない）のみを検証する
 const ddbMock = mockClient(DynamoDBClient);
-const LINE_CHANNEL_SECRET = "test-line-channel-secret"; // scripts/ensure-test-config.jsのダミー値と一致させる
+const LINE_CHANNEL_SECRET = "test-line-channel-secret"; // package.jsonのpretest（dev-standardsのgenerate-config-from-env.js）のダミー値と一致させる
 
 beforeEach(() => {
   ddbMock.reset();
 });
 
 function sign(rawBody) {
-  // テスト専用のダミー値（scripts/ensure-test-config.js参照）であり、実際の
+  // テスト専用のダミー値（package.jsonのpretest（dev-standardsのgenerate-config-from-env.js）参照）であり、実際の
   // シークレットではない
   return crypto.createHmac("sha256", LINE_CHANNEL_SECRET).update(rawBody).digest("base64");
 }

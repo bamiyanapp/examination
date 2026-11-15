@@ -7,7 +7,8 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "pretest": "node scripts/ensure-test-config.js",
+    "generate-config": "node ../../dev-standards/scripts/generate-config-from-env.js --out functions/configuration.json lineChannelSecret=LINE_CHANNEL_SECRET lineChannelAccessToken=LINE_CHANNEL_ACCESS_TOKEN geminiApiKey=GEMINI_API_KEY internalApiSecret=INTERNAL_API_SECRET adminNotifyEmail=ADMIN_NOTIFY_EMAIL",
+    "pretest": "node ../../dev-standards/scripts/generate-config-from-env.js --out functions/configuration.json --ensure-test --dummy adminNotifyEmail=test-admin@example.com lineChannelSecret=LINE_CHANNEL_SECRET lineChannelAccessToken=LINE_CHANNEL_ACCESS_TOKEN geminiApiKey=GEMINI_API_KEY internalApiSecret=INTERNAL_API_SECRET adminNotifyEmail=ADMIN_NOTIFY_EMAIL",
     "test": "vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary"
   },
   "dependencies": {
