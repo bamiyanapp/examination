@@ -47,9 +47,9 @@ site/
 # app/配下にも同じ抜け漏れがあると判明）。深さに関わらず捕捉できる`**/coverage/`へ
 # 一般化する
 **/coverage/
-# deploy時にscripts/generate-config.jsが生成する（Cognitoクライアントシークレットを含むため）
+# deploy時に`npm run generate-config`が生成する（Cognitoクライアントシークレットを含むため）
 infra/site-stack/functions/configuration.json
-# deploy時にscripts/generate-config.jsが生成する（LINE・Gemini APIの認証情報を含むため）
+# deploy時に`npm run generate-config`が生成する（LINE・Gemini APIの認証情報を含むため）
 infra/bot-stack/functions/configuration.json
 # Playwright（examination#404）。playwright-report/・test-results/はローカル実行時の
 # 生成物、e2e-screenshots/はCI（reusable-ci.yml）がスクリーンショット公開のために

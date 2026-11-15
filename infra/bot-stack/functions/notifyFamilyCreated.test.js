@@ -13,7 +13,7 @@ import { handler } from "./notifyFamilyCreated.js";
 // それ以外の分岐（認証・バリデーション・LINE未連携時のフォールバック等）のみ検証する。
 // 依存注入等によるテスト容易性の改善は本Issue（examination#401）の範囲外とする
 const ddbMock = mockClient(DynamoDBClient);
-const INTERNAL_SECRET = "test-internal-api-secret"; // scripts/ensure-test-config.jsのダミー値と一致させる
+const INTERNAL_SECRET = "test-internal-api-secret"; // package.jsonのpretest（dev-standardsのgenerate-config-from-env.js）のダミー値と一致させる
 
 beforeEach(() => {
   ddbMock.reset();

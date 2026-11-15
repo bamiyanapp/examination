@@ -3,7 +3,7 @@
 // node_modulesから解決させる必要があるため、このファイル自身ではrequireせず
 // 引数で受け取る（bot-stack・site-stackはそれぞれ独立したnpmパッケージで、
 // npm workspaces等の依存ホイスティングを行っていないため）。生成される設定ファイル
-// （configuration.json等、デプロイ時にscripts/generate-config.jsが生成しgitには
+// （configuration.json等、デプロイ時に`npm run generate-config`が生成しgitには
 // 含めない）を参照するファイル一覧だけがパッケージごとに異なるため、これも引数で
 // 受け取る。jscpdの重複検知（examination#447）を機に切り出した
 function buildBaseConfig({ js, globals, sonarjs, n, generatedConfigConsumers }) {
@@ -36,7 +36,7 @@ function buildBaseConfig({ js, globals, sonarjs, n, generatedConfigConsumers }) 
       },
     },
     {
-      // configuration.jsonはデプロイ時にscripts/generate-config.jsが生成するファイルで、
+      // configuration.jsonはデプロイ時に`npm run generate-config`が生成するファイルで、
       // gitには含めない（.gitignore参照）。lint実行時（生成前）には存在しないため誤検知する
       files: generatedConfigConsumers,
       rules: {

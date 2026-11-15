@@ -1,7 +1,7 @@
 "use strict";
 
 const https = require("https");
-// deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
+// deploy時に`npm run generate-config`が生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
 // gemini-2.0-flashはGoogle側で廃止(404 NOT_FOUND)されたため後継モデルに変更した

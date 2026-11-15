@@ -4,7 +4,7 @@ import { DynamoDBClient, QueryCommand, DeleteItemCommand, ScanCommand } from "@a
 import { handler } from "./deleteFamilyData.js";
 
 const ddbMock = mockClient(DynamoDBClient);
-const INTERNAL_SECRET = "test-internal-api-secret"; // scripts/ensure-test-config.jsのダミー値と一致させる
+const INTERNAL_SECRET = "test-internal-api-secret"; // package.jsonのpretest（dev-standardsのgenerate-config-from-env.js）のダミー値と一致させる
 
 beforeEach(() => {
   ddbMock.reset();

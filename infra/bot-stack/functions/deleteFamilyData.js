@@ -2,7 +2,7 @@
 
 const { DynamoDBClient, DeleteItemCommand, QueryCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { jsonResponse, checkInternalApiAuth } = require("./internalApi");
-// deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
+// deploy時に`npm run generate-config`が生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
 const INTERVIEW_QUESTIONS_TABLE = "examination-interview-questions";

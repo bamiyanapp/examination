@@ -12,7 +12,7 @@ const {
   UpdateItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { incrementAndCheckDailyLimit } = require("./dailyRateLimit"); // symlink先: dev-standards#165
-// deploy時にscripts/generate-config.jsが生成する（gitには含めない。.gitignore参照）
+// deploy時に`npm run generate-config`が生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
