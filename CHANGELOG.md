@@ -1,3 +1,10 @@
+## [1.66.3](https://github.com/bamiyanapp/examination/compare/v1.66.2...v1.66.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* use constant-time secret compare and shared Lambda helpers ([#712](https://github.com/bamiyanapp/examination/issues/712)) ([21f496c](https://github.com/bamiyanapp/examination/commit/21f496c6772793dda8080a5d0808dbf3c9dd732e))
+
 ## [1.66.2](https://github.com/bamiyanapp/examination/compare/v1.66.1...v1.66.2) (2026-11-14)
 
 
