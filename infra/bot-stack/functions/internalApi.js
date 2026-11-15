@@ -4,9 +4,8 @@
 // site-stackがサーバー間で呼ぶAPI）が共通で使うレスポンス整形・認証チェック。
 // jscpdの重複検知（examination#447）を機に切り出した
 
-function jsonResponse(statusCode, body) {
-  return { statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
+const { plainJsonResponse: jsonResponse } = require("./httpResponse.js");
+const { isSameSecret } = require("./sharedSecret.js");
 
 // POSTメソッド・共有シークレット（X-Internal-Secretヘッダー）を検証し、
 // 問題があればそのまま返すべきjsonResponseを返す。問題無ければnullを返す
@@ -15,7 +14,8 @@ function checkInternalApiAuth(event, config) {
     return jsonResponse(405, { error: "method not allowed" });
   }
   const providedSecret = event.headers?.["x-internal-secret"];
-  if (!config.internalApiSecret || providedSecret !== config.internalApiSecret) {
+  // 定数時間比較（examination#711）。未設定・空のシークレットは常に不一致になる
+  if (!isSameSecret(providedSecret, config.internalApiSecret)) {
     return jsonResponse(403, { error: "forbidden" });
   }
   return null;

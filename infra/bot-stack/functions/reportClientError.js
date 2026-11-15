@@ -1,7 +1,7 @@
 "use strict";
 
 const { buildClientErrorLogPayload } = require("./clientErrorReporting.js"); // symlink
-const { jsonResponse } = require("./httpResponse.js");
+const { plainJsonResponse: jsonResponse } = require("./httpResponse.js");
 
 // shared/ui/ErrorBoundary.jsxが送信するフロントエンドの未捕捉例外を受け取り、
 // CloudWatch Logsへ記録する（examination#449、docs/client-error-reporting-pattern.md参照）。

@@ -13,6 +13,18 @@
       "target": "infra/bot-stack/functions/clientErrorReporting.js"
     },
     {
+      "source": "shared/lambda/sharedSecret.js",
+      "target": "infra/bot-stack/functions/sharedSecret.js"
+    },
+    {
+      "source": "shared/lambda/bearerToken.js",
+      "target": "infra/bot-stack/functions/bearerToken.js"
+    },
+    {
+      "source": "shared/lambda/httpResponse.js",
+      "target": "infra/bot-stack/functions/httpResponse.js"
+    },
+    {
       "source": "shared/pwa/ServiceWorkerRegistration.jsx",
       "target": "app/top/src/components/ServiceWorkerRegistration.jsx"
     },
