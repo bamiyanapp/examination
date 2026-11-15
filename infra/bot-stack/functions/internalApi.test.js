@@ -23,6 +23,18 @@ describe("checkInternalApiAuth", () => {
     expect(result.statusCode).toBe(403);
   });
 
+  it("長さの異なるシークレットでも例外を投げず403を返す", () => {
+    const event = { requestContext: { http: { method: "POST" } }, headers: { "x-internal-secret": "s" } };
+    const result = checkInternalApiAuth(event, { internalApiSecret: "secret" });
+    expect(result.statusCode).toBe(403);
+  });
+
+  it("ヘッダー無しは403を返す", () => {
+    const event = { requestContext: { http: { method: "POST" } }, headers: {} };
+    const result = checkInternalApiAuth(event, { internalApiSecret: "secret" });
+    expect(result.statusCode).toBe(403);
+  });
+
   it("internalApiSecret未設定時も403を返す", () => {
     const event = { requestContext: { http: { method: "POST" } }, headers: { "x-internal-secret": "secret" } };
     const result = checkInternalApiAuth(event, {});

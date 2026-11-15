@@ -1,6 +1,7 @@
 "use strict";
 
 const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
+const { extractBearerToken } = require("./bearerToken.js");
 
 const VOICE_TOKENS_TABLE = "examination-voice-tokens";
 const ALLOWED_EMAILS_TABLE = "examination-allowed-emails";
@@ -31,8 +32,7 @@ async function getAllowedEmailRecord(email) {
 // Authorization: Bearer <token> ヘッダーを検証し、許可済みユーザーのメールアドレス・
 // 所属家族（familySlug）を返す。認証できない場合はnullを返す（呼び出し側で403を返す）
 async function verifyBearerEmail(event) {
-  const authHeader = event.headers?.authorization || event.headers?.Authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  const token = extractBearerToken(event);
   if (!token) return null;
   const email = await verifyVoiceToken(token);
   if (!email) return null;
