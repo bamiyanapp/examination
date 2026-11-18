@@ -207,13 +207,17 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | `GEMINI_API_KEY` | Google AI Studioで発行するGemini APIキー（LINE bot・音声対話機能の両方で使用） |
 | `INTERNAL_API_SECRET` | site-stackとbot-stack間の内部API呼び出し（新規家族登録の通知、[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を検証する共有シークレット。任意の推測困難な文字列を設定する（両スタックの`configuration.json`へ同じ値が注入される） |
 
-### Variables（任意、既定値あり）
+### Variables
+
+`ADMIN_NOTIFY_EMAIL`のみ必須で、既定値は無い。他は任意で、既定値がある。
+
+未設定のままデプロイすると、最初のステップ（Validate required variables）で失敗する。設定はスマホのブラウザから行える（リポジトリの Settings > Secrets and variables > Actions > Variables）。
 
 | 名前 | 既定値 | 用途 |
 | --- | --- | --- |
 | `SITE_BUCKET_NAME` | `bamiyanapp-examination-knowledge` | サイト配信用S3バケット名（**全AWSアカウント間でグローバルに一意**である必要がある。既定値が既に使われている場合はここで別名を指定する） |
 | `COGNITO_DOMAIN_PREFIX` | `bamiyanapp-examination` | Cognito Hosted UIのドメインprefix（**リージョン内でグローバルに一意**である必要がある） |
-| `ADMIN_NOTIFY_EMAIL` | `s.ekusoy@gmail.com` | 新規家族登録の通知（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を受け取る管理用Googleアカウントのメールアドレス。LINE連携（`/settings/line-link/`）済みである必要がある（未連携の場合は通知がスキップされるのみで、家族作成自体は失敗しない） |
+| `ADMIN_NOTIFY_EMAIL` | なし（**必須**） | 新規家族登録の通知（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を受け取る管理用Googleアカウントのメールアドレス。LINE連携（`/settings/line-link/`）済みである必要がある（未連携の場合は通知がスキップされるのみで、家族作成自体は失敗しない） |
 
 ## 初回デプロイ時によくある失敗
 
