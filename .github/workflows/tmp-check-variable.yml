@@ -1,0 +1,18 @@
+# examination#695の調査用の一時workflow（値は出力せず、設定の有無だけを表示する）。
+# mainへはマージせず、確認後にこのブランチごと削除する
+name: tmp-check-variable
+on:
+  push:
+    branches:
+      - "tmp/695-check-variable"
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 変数の設定有無だけを表示する
+        env:
+          ADMIN_NOTIFY_EMAIL_SET: ${{ vars.ADMIN_NOTIFY_EMAIL != '' && 'set' || 'unset' }}
+        run: |
+          echo "ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL_SET}"
