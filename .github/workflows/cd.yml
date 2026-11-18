@@ -63,6 +63,18 @@ jobs:
             app/profile-edit/package-lock.json
             app/family-create/package-lock.json
 
+      # 必須のRepository Variableが未設定のまま、後半のbot-stack設定生成で初めて失敗すると、
+      # それより前のauth-stack・site-stackだけが新しい内容でデプロイされた中途半端な状態になる。
+      # 実在の値を既定値として直書きしない（examination#695）ため、未設定はここで最初に止める
+      - name: Validate required variables
+        env:
+          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
+        run: |
+          if [ -z "$ADMIN_NOTIFY_EMAIL" ]; then
+            echo "::error::Repository Variable ADMIN_NOTIFY_EMAIL が未設定です。設定場所は Settings > Secrets and variables > Actions > Variables です。"
+            exit 1
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -341,7 +353,7 @@ jobs:
           # 検証する共有シークレット。site-stack側にも同じ値を注入する
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           # 新規家族登録の通知（examination#259）を受け取る管理用Googleアカウントのメール
-          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL || 's.ekusoy@gmail.com' }}
+          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
         run: npm run generate-config
 
       # Lambdaのサイレント障害検知（examination#604）の通知先。serverless.ymlの
@@ -352,7 +364,9 @@ jobs:
       # 新規シークレットは増やさず、上のステップと同じ管理用アカウントのメール（ADMIN_NOTIFY_EMAIL）を
       # 運用監視通知先としても再利用する（LINEチャンネル整備後は別の通知先に切り替える想定）
       - name: Export OPS_ALERT_EMAIL for serverless deploy
-        run: echo "OPS_ALERT_EMAIL=${{ vars.ADMIN_NOTIFY_EMAIL || 's.ekusoy@gmail.com' }}" >> "$GITHUB_ENV"
+        env:
+          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
+        run: echo "OPS_ALERT_EMAIL=${ADMIN_NOTIFY_EMAIL}" >> "$GITHUB_ENV"
 
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
       # ケースをServerless Frameworkの変更検知が拾えず「No changes to deploy」でスキップされ、
