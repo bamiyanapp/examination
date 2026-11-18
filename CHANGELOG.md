@@ -1,3 +1,10 @@
+## [1.66.4](https://github.com/bamiyanapp/examination/compare/v1.66.3...v1.66.4) (2026-11-18)
+
+
+### Bug Fixes
+
+* **ci:** cd.ymlの変数フォールバックから実在のメールアドレスを削除する ([#723](https://github.com/bamiyanapp/examination/issues/723)) ([4505afa](https://github.com/bamiyanapp/examination/commit/4505afac1f122829935dbe8ee72c3c22a3744ac6))
+
 ## [1.66.3](https://github.com/bamiyanapp/examination/compare/v1.66.2...v1.66.3) (2026-11-15)
 
 
