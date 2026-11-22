@@ -74,19 +74,23 @@ jobs:
         env:
           ADMIN_NOTIFY_EMAIL_VAR: ${{ vars.ADMIN_NOTIFY_EMAIL }}
           ALLOWED_EMAILS_VAR: ${{ vars.ALLOWED_EMAILS }}
+          ALLOWED_EMAILS_SECRET: ${{ secrets.ALLOWED_EMAILS }}
         run: |
           ADMIN_NOTIFY_EMAIL="$ADMIN_NOTIFY_EMAIL_VAR"
           if [ -z "$ADMIN_NOTIFY_EMAIL" ]; then
-            ADMIN_NOTIFY_EMAIL=$(printf '%s' "$ALLOWED_EMAILS_VAR" | tr ',;' '  ' | awk '{print $1}')
+            # ALLOWED_EMAILSは、VariableでもSecretでもよい（Variableを優先）
+            ADMIN_NOTIFY_EMAIL=$(printf '%s' "${ALLOWED_EMAILS_VAR:-$ALLOWED_EMAILS_SECRET}" | tr ',;' '  ' | awk '{print $1}')
             [ -n "$ADMIN_NOTIFY_EMAIL" ] && echo "ADMIN_NOTIFY_EMAILは未設定のため、ALLOWED_EMAILSの先頭の1件を使います"
           fi
           case "$ADMIN_NOTIFY_EMAIL" in
             ?*@?*) ;;
             *)
-              echo "::error::Repository Variable ADMIN_NOTIFY_EMAIL（または、先頭にメールアドレスを持つALLOWED_EMAILS）が未設定です。設定場所は Settings > Secrets and variables > Actions > Variables です。"
+              echo "::error::Repository Variable ADMIN_NOTIFY_EMAIL（または、先頭にメールアドレスを持つ、VariableかSecretのALLOWED_EMAILS）が未設定です。設定場所は Settings > Secrets and variables > Actions です。"
               exit 1
               ;;
           esac
+          # Secretの一部（先頭の1件）は、そのままではマスクされない。以降のログへ出ないよう、先にマスクする
+          echo "::add-mask::${ADMIN_NOTIFY_EMAIL}"
           echo "ADMIN_NOTIFY_EMAIL=${ADMIN_NOTIFY_EMAIL}" >> "$GITHUB_ENV"
 
       - name: Configure AWS credentials
