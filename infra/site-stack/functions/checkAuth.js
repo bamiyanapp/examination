@@ -2,7 +2,7 @@
 
 const https = require("https");
 const crypto = require("crypto");
-const { createRemoteJWKSet, jwtVerify } = require("jose");
+const jose = require("jose");
 const {
   DynamoDBClient,
   GetItemCommand,
@@ -12,6 +12,12 @@ const {
   UpdateItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { incrementAndCheckDailyLimit } = require("./dailyRateLimit"); // symlink先: dev-standards#165
+// 認証の汎用部分。いずれもsymlink先: dev-standards#1378
+const { parseCookies, cookieString, redirectResponse, jsonResponse, normalizeUri, parseJsonBody } = require("./edgeHttp");
+const { sanitizeRedirectPath } = require("./redirectPath");
+const { createCsrfNonce } = require("./csrfNonce");
+const { createCognitoTokens } = require("./cognitoTokens");
+const { createLoginFlow, forbiddenResponse } = require("./loginFlow");
 // deploy時に`npm run generate-config`が生成する（gitには含めない。.gitignore参照）
 const config = require("./configuration.json");
 
@@ -48,107 +54,19 @@ const VOICE_TOKEN_DAILY_LIMIT = 1000;
 // スタック（us-east-1）内に存在するためリージョンを固定する
 const ddb = new DynamoDBClient({ region: "us-east-1" });
 
-let jwks;
-function getJwks() {
-  if (!jwks) {
-    jwks = createRemoteJWKSet(
-      new URL(`https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}/.well-known/jwks.json`)
-    );
-  }
-  return jwks;
-}
-
-function parseCookies(headers) {
-  const cookies = {};
-  const cookieHeaders = (headers.cookie || []).map((h) => h.value);
-  for (const header of cookieHeaders) {
-    for (const part of header.split(";")) {
-      const separatorIndex = part.indexOf("=");
-      if (separatorIndex === -1) continue;
-      const key = part.slice(0, separatorIndex).trim();
-      const value = part.slice(separatorIndex + 1).trim();
-      if (key) cookies[key] = value;
-    }
-  }
-  return cookies;
-}
-
-function postForm(hostname, path, form, extraHeaders = {}) {
-  const body = new URLSearchParams(form).toString();
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname,
-        path,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Content-Length": Buffer.byteLength(body),
-          ...extraHeaders,
-        },
-      },
-      (res) => {
-        // チャンクをBufferのまま集め、レスポンス完了後に一度だけUTF-8デコードする
-        // （geminiConversation.js postJsonと同じ理由。マルチバイト文字のチャンク
-        // 境界分割による文字化けを避ける）
-        const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => {
-          const data = Buffer.concat(chunks).toString("utf-8");
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch {
-              reject(new Error(`token endpoint returned invalid JSON: ${data}`));
-            }
-          } else {
-            reject(new Error(`token endpoint returned ${res.statusCode}: ${data}`));
-          }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.end(body);
-  });
-}
-
-function redirectResponse(location, setCookieValues) {
-  const headers = {
-    location: [{ key: "Location", value: location }],
-  };
-  if (setCookieValues && setCookieValues.length > 0) {
-    headers["set-cookie"] = setCookieValues.map((value) => ({ key: "Set-Cookie", value }));
-  }
-  return {
-    status: "302",
-    statusDescription: "Found",
-    headers,
-  };
-}
-
-function jsonResponse(statusCode, statusDescription, body) {
-  return {
-    status: String(statusCode),
-    statusDescription,
-    headers: {
-      "content-type": [{ key: "Content-Type", value: "application/json; charset=utf-8" }],
-    },
-    body: JSON.stringify(body),
-  };
-}
-
-function cookieString(name, value, maxAgeSeconds) {
-  return `${name}=${value}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
-}
-
-function forbiddenResponse() {
-  return {
-    status: "403",
-    statusDescription: "Forbidden",
-    headers: { "content-type": [{ key: "Content-Type", value: "text/plain; charset=utf-8" }] },
-    body: "アクセスが許可されていません",
-  };
-}
+const { issueCsrfNonce, consumeCsrfNonce } = createCsrfNonce({
+  ddb,
+  PutItemCommand,
+  DeleteItemCommand,
+  tableName: CSRF_NONCES_TABLE,
+  ttlSeconds: CSRF_NONCE_TTL_SECONDS,
+});
+const cognitoTokens = createCognitoTokens({ jose, config });
+const { buildLoginRedirect, authenticateCallback } = createLoginFlow({
+  csrfNonce: { issueCsrfNonce, consumeCsrfNonce },
+  cognitoTokens,
+  config,
+});
 
 // emailごとの許可判定を短時間キャッシュする。Lambda@Edgeの実行環境はエッジロケーション・
 // CacheBehaviorの関連付けごとに独立したコンテナのため、/_admin/emailsでの追加・削除や
@@ -390,32 +308,6 @@ async function createFamily({ email, situation, isE2ETest }) {
   return { slug, situation: trimmedSituation };
 }
 
-// CloudFrontのオリジンはS3のREST API経由（Origin Access Control）であり、S3静的
-// ウェブサイトホスティングのようなディレクトリリクエストへの自動index.html解決は
-// 行われない。DefaultRootObjectはディストリビューションのルート(/)にのみ適用され
-// サブパスには効かないため、MkDocsのディレクトリ形式URL（use_directory_urls既定）を
-// ここで正規化する
-function normalizeUri(uri) {
-  if (uri.endsWith("/")) {
-    return `${uri}index.html`;
-  }
-  if (!uri.includes(".")) {
-    return `${uri}/index.html`;
-  }
-  return uri;
-}
-
-function parseJsonBody(request) {
-  if (!request.body || !request.body.data) return null;
-  const raw =
-    request.body.encoding === "base64" ? Buffer.from(request.body.data, "base64").toString("utf-8") : request.body.data;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
 // 既存ロジックのテスト未整備のため、lint導入時点（examination#402）では
 // 挙動を変えるリファクタリングは見送る
 // eslint-disable-next-line sonarjs/super-linear-regex
@@ -425,11 +317,7 @@ async function verifyIdTokenFromCookie(request) {
   const cookies = parseCookies(request.headers);
   if (!cookies.id_token) return null;
   try {
-    const { payload } = await jwtVerify(cookies.id_token, getJwks(), {
-      issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
-      audience: config.clientId,
-    });
-    return payload;
+    return await cognitoTokens.verifyIdToken(cookies.id_token);
   } catch (error) {
     console.warn("id_token verification failed", error.message);
     return null;
@@ -443,71 +331,6 @@ async function verifyIdTokenFromCookie(request) {
 // 起因すると考えられる「invalid state」の再発を繰り返した。nonce自体の
 // 有効性をサーバー側で管理すれば、これらのクライアント側の要因に一切
 // 依存しなくなる
-async function issueCsrfNonce() {
-  const nonce = crypto.randomBytes(16).toString("hex");
-  await ddb.send(
-    new PutItemCommand({
-      TableName: CSRF_NONCES_TABLE,
-      Item: {
-        nonce: { S: nonce },
-        expiresAt: { N: String(Math.floor(Date.now() / 1000) + CSRF_NONCE_TTL_SECONDS) },
-      },
-    })
-  );
-  return nonce;
-}
-
-// nonceの検証と同時に削除する（DeleteItem + ConditionExpression）ことで、
-// 有効期限内・未使用の一度きりの利用のみを許可する。同じnonceでの
-// リプレイ（多重コールバック等）・期限切れ後の利用はどちらもfalseになる
-async function consumeCsrfNonce(nonce) {
-  if (!nonce) return false;
-  try {
-    await ddb.send(
-      new DeleteItemCommand({
-        TableName: CSRF_NONCES_TABLE,
-        Key: { nonce: { S: nonce } },
-        ConditionExpression: "attribute_exists(#n) AND expiresAt > :now",
-        ExpressionAttributeNames: { "#n": "nonce" },
-        ExpressionAttributeValues: { ":now": { N: String(Math.floor(Date.now() / 1000)) } },
-      })
-    );
-    return true;
-  } catch (error) {
-    if (error.name === "ConditionalCheckFailedException") return false;
-    throw error;
-  }
-}
-
-// 元のパス＋CSRF対策nonceをstateに載せてCognito Hosted UIのログイン画面へ
-// リダイレクトするレスポンスを組み立てる（examination#143、nonceはDynamoDBへ登録し
-// /_callback側で一度きりの検証・削除を行う）。明示的なログイン導線（/_login、
-// examination#437）とrefresh_token失効時のフォールバックの両方から呼ばれる
-async function buildLoginRedirect(destinationUri, domainName, cognitoDomainHost, extraCookies = []) {
-  const nonce = await issueCsrfNonce();
-  const state = Buffer.from(JSON.stringify({ uri: destinationUri, nonce }), "utf-8").toString("base64");
-  const redirectUri = `https://${domainName}/_callback`;
-  const authorizeUrl =
-    `https://${cognitoDomainHost}/oauth2/authorize?` +
-    new URLSearchParams({
-      client_id: config.clientId,
-      response_type: "code",
-      scope: "openid email profile",
-      redirect_uri: redirectUri,
-      state,
-    }).toString();
-  return redirectResponse(authorizeUrl, extraCookies);
-}
-
-// /_loginの?redirectで指定されたログイン後の戻り先を検証する。同一オリジンの
-// 相対パス（先頭が単一の"/"）のみを許可し、外部サイトへのオープンリダイレクトを防ぐ
-function sanitizeRedirectPath(redirectPath) {
-  if (!redirectPath || !redirectPath.startsWith("/") || redirectPath.startsWith("//")) {
-    return "/";
-  }
-  return redirectPath;
-}
-
 // 許可メールアドレスの一覧・追加・削除API。既に許可されているユーザーのみ利用でき、
 // 閲覧・追加・削除は自分の所属家族のメンバーに限定する（examination#243）。
 // 家族の新規作成は招待制ではなく公開登録制のため（examination#258）、この
@@ -684,20 +507,6 @@ async function handleMeApi(request) {
 // トークン交換と同じgrant_type違いのリクエストで、Cognitoは新しいrefresh_token
 // を返さない（既存のrefresh_tokenがそのまま有効期限まで使い続けられる）ため
 // refresh_tokenクッキー自体は書き換えない
-async function exchangeRefreshToken(refreshToken, cognitoDomainHost) {
-  const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
-  return postForm(
-    cognitoDomainHost,
-    "/oauth2/token",
-    {
-      grant_type: "refresh_token",
-      client_id: config.clientId,
-      refresh_token: refreshToken,
-    },
-    { Authorization: `Basic ${basicAuth}` }
-  );
-}
-
 // 音声対話ページ（クロスオリジンのbot-stack API）用の短期トークンを発行する
 // （examination#62）。HttpOnlyのid_tokenクッキーはクロスオリジンでは送られないため、
 // 同一オリジンのこのAPIでログイン中のユーザーを確認した上でBearerトークンを発行し、
@@ -823,61 +632,15 @@ exports.handler = async (event) => {
 
   // Cognito Hosted UIからのコールバック: 認可コードをトークンに交換してCookieへ保存する
   if (request.uri === "/_callback") {
-    const params = new URLSearchParams(request.querystring);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (!code || !state) {
-      return { status: "400", statusDescription: "Bad Request", body: "missing code or state" };
-    }
-
-    // ログインCSRF対策: 未認証時のリダイレクトでDynamoDBへ登録したnonceと、
-    // stateパラメータに埋め込んだnonceが一致し、かつ未使用・有効期限内であることを
-    // 確認する（第三者が発行させた認可コードをこのブラウザに横流しして紐付けさせる
-    // 攻撃を防ぐ）。以前はCookie（csrf_state）で照合していたが、examination#143
-    // 参照
-    let originalUri;
-    let decoded;
-    try {
-      decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
-    } catch {
-      return { status: "400", statusDescription: "Bad Request", body: "invalid state" };
-    }
-    if (!(await consumeCsrfNonce(decoded.nonce))) {
-      return { status: "400", statusDescription: "Bad Request", body: "invalid state" };
-    }
-    originalUri = decoded.uri || "/";
-
-    const redirectUri = `https://${domainName}/_callback`;
-    const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
-
-    let tokens;
-    try {
-      tokens = await postForm(
-        cognitoDomainHost,
-        "/oauth2/token",
-        {
-          grant_type: "authorization_code",
-          client_id: config.clientId,
-          code,
-          redirect_uri: redirectUri,
-        },
-        { Authorization: `Basic ${basicAuth}` }
-      );
-    } catch (error) {
-      console.error("Token exchange failed", error);
-      return { status: "502", statusDescription: "Bad Gateway", body: "authentication failed" };
-    }
-
-    let payload;
-    try {
-      ({ payload } = await jwtVerify(tokens.id_token, getJwks(), {
-        issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
-        audience: config.clientId,
-      }));
-    } catch (error) {
-      console.error("id_token verification failed at callback", error.message);
-      return forbiddenResponse();
-    }
+    // stateの検証（CSRF対策のnonce）・コードの交換・id_tokenの検証は、共有モジュールで行う
+    // （dev-standards#1378、shared/lambda/loginFlow.js）。失敗時は、400・502・403の応答を返す
+    const callback = await authenticateCallback({
+      querystring: request.querystring,
+      domainName,
+      cognitoDomainHost,
+    });
+    if (callback.response) return callback.response;
+    const { payload, tokens, originalUri } = callback;
     // 家族新規作成ユーザー（examination#242・#258）は、ログイン直後の時点では
     // まだisAllowedEmailを満たさない。公開登録制のため、この場合に403で
     // 行き止まりにするのではなく、家族新規作成ページへ案内する（examination#264。
@@ -921,11 +684,8 @@ exports.handler = async (event) => {
   const cookies = parseCookies(request.headers);
   if (cookies.refresh_token) {
     try {
-      const tokens = await exchangeRefreshToken(cookies.refresh_token, cognitoDomainHost);
-      const { payload: refreshedPayload } = await jwtVerify(tokens.id_token, getJwks(), {
-        issuer: `https://cognito-idp.${config.region}.amazonaws.com/${config.userPoolId}`,
-        audience: config.clientId,
-      });
+      const tokens = await cognitoTokens.exchangeRefreshToken(cookies.refresh_token, cognitoDomainHost);
+      const refreshedPayload = await cognitoTokens.verifyIdToken(tokens.id_token);
       // 未登録ユーザーは家族新規作成ページへ誘導する（examination#258・#264、
       // 上記/_callback・通常リクエストの2箇所と同じ方針）
       const isAllowed = await isAllowedEmail(refreshedPayload.email);
