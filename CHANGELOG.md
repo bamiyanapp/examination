@@ -1,3 +1,10 @@
+## [1.66.6](https://github.com/bamiyanapp/examination/compare/v1.66.5...v1.66.6) (2026-11-22)
+
+
+### Bug Fixes
+
+* **ci:** ALLOWED_EMAILSは、VariableでもSecretでも読めるようにする ([#749](https://github.com/bamiyanapp/examination/issues/749)) ([4b3ba23](https://github.com/bamiyanapp/examination/commit/4b3ba231168279d1166e9277405c752779b1cca8))
+
 ## [1.66.5](https://github.com/bamiyanapp/examination/compare/v1.66.4...v1.66.5) (2026-11-22)
 
 
