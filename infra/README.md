@@ -62,6 +62,19 @@ CloudFrontのドメイン名（`*.cloudfront.net`）はディストリビュー�
 
 ## 認証フロー（Lambda@Edge: `functions/checkAuth.js`）
 
+認証の汎用部分は、dev-standardsの共有モジュール（`functions/`配下のsymlink、dev-standards#1378）が担う。
+`checkAuth.js`は、それらを組み合わせ、プロダクト固有の処理（許可判定・Cookieの発行・遷移先の決定・各API）を持つ。
+
+| 共有モジュール | 役割 |
+|---|---|
+| `edgeHttp.js` | Cookieの解析と組み立て、リダイレクト・JSONの応答、URIの正規化 |
+| `redirectPath.js` | ログイン後の戻り先の検証（オープンリダイレクトの防止） |
+| `csrfNonce.js` | CSRF対策のnonceの発行と、一度きりの消費（DynamoDB） |
+| `cognitoTokens.js` | 認可コード・refresh tokenの交換、id_tokenの検証、JWKSのキャッシュ |
+| `loginFlow.js` | Hosted UIへのリダイレクトと、コールバックの検証 |
+
+共有モジュールの修正は、dev-standardsで行う。ここでは、submoduleの更新で取り込む。
+
 CloudFrontの`viewer-request`イベント（キャッシュヒット時も含め全リクエストで実行される）で動作する。[Issue #437](https://github.com/bamiyanapp/examination/issues/437)（PR #444）で、未認証ユーザーも静的コンテンツには到達できる構成（dev-standards統一標準、フロントエンド公開＋API単位認証）へ移行済み。「未認証なら常にログイン画面へリダイレクトする」という全ページ認証ゲートはもはや存在しない。
 
 1. `/_login`（examination#437で新設したログインの明示的な入口。各アプリのUserMenu等から遷移させる）へアクセスすると、元のパスを`state`パラメータに乗せてCognito Hosted UIのログイン画面へリダイレクトする
