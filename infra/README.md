@@ -231,7 +231,7 @@ LINE botはLINEアカウント自体に閲覧許可の概念を持たない（�
 | `SITE_BUCKET_NAME` | `bamiyanapp-examination-knowledge` | サイト配信用S3バケット名（**全AWSアカウント間でグローバルに一意**である必要がある。既定値が既に使われている場合はここで別名を指定する） |
 | `COGNITO_DOMAIN_PREFIX` | `bamiyanapp-examination` | Cognito Hosted UIのドメインprefix（**リージョン内でグローバルに一意**である必要がある） |
 | `ADMIN_NOTIFY_EMAIL` | なし（`ALLOWED_EMAILS`の先頭の1件。どちらも未設定ならデプロイは失敗する） | 新規家族登録の通知（[Issue #259](https://github.com/bamiyanapp/examination/issues/259)）を受け取る管理用Googleアカウントのメールアドレス。LINE連携（`/settings/line-link/`）済みである必要がある（未連携の場合は通知がスキップされるのみで、家族作成自体は失敗しない） |
-| `ALLOWED_EMAILS` | なし | `ADMIN_NOTIFY_EMAIL`が未設定のとき、先頭の1件を管理用アカウントのメールとして使う（区切りは、カンマ・セミコロン・空白・改行）。先頭は、LINE連携済みのアカウントにする |
+| `ALLOWED_EMAILS` | なし | VariableでもSecretでもよい。`ADMIN_NOTIFY_EMAIL`が未設定のとき、先頭の1件を管理用アカウントのメールとして使う（区切りは、カンマ・セミコロン・空白・改行）。先頭は、LINE連携済みのアカウントにする |
 
 ## 初回デプロイ時によくある失敗
 
