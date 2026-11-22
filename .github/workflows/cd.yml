@@ -63,17 +63,35 @@ jobs:
             app/profile-edit/package-lock.json
             app/family-create/package-lock.json
 
-      # 必須のRepository Variableが未設定のまま、後半のbot-stack設定生成で初めて失敗すると、
-      # それより前のauth-stack・site-stackだけが新しい内容でデプロイされた中途半端な状態になる。
-      # 実在の値を既定値として直書きしない（examination#695）ため、未設定はここで最初に止める
+      # 管理用アカウントのメール（ADMIN_NOTIFY_EMAIL）は、新規家族登録の通知（examination#259）と
+      # 運用監視の通知先（examination#604）に使う。Repository Variable ADMIN_NOTIFY_EMAILを優先し、
+      # 未設定なら、Repository Variable ALLOWED_EMAILS（区切りは、カンマ・セミコロン・空白・改行）の
+      # 先頭の1件を使う。実在の値を既定値として直書きしない（examination#695）ため、どちらも
+      # 未設定ならここで最初に止める。後半のbot-stack設定生成で初めて失敗すると、それより前の
+      # auth-stack・site-stackだけが新しい内容でデプロイされた中途半端な状態になる。
+      # 公開リポジトリのログは誰でも読めるため、値は出力しない。以降のステップへは$GITHUB_ENVで渡す
       - name: Validate required variables
         env:
-          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
+          ADMIN_NOTIFY_EMAIL_VAR: ${{ vars.ADMIN_NOTIFY_EMAIL }}
+          ALLOWED_EMAILS_VAR: ${{ vars.ALLOWED_EMAILS }}
+          ALLOWED_EMAILS_SECRET: ${{ secrets.ALLOWED_EMAILS }}
         run: |
+          ADMIN_NOTIFY_EMAIL="$ADMIN_NOTIFY_EMAIL_VAR"
           if [ -z "$ADMIN_NOTIFY_EMAIL" ]; then
-            echo "::error::Repository Variable ADMIN_NOTIFY_EMAIL が未設定です。設定場所は Settings > Secrets and variables > Actions > Variables です。"
-            exit 1
+            # ALLOWED_EMAILSは、VariableでもSecretでもよい（Variableを優先）
+            ADMIN_NOTIFY_EMAIL=$(printf '%s' "${ALLOWED_EMAILS_VAR:-$ALLOWED_EMAILS_SECRET}" | tr ',;' '  ' | awk '{print $1}')
+            [ -n "$ADMIN_NOTIFY_EMAIL" ] && echo "ADMIN_NOTIFY_EMAILは未設定のため、ALLOWED_EMAILSの先頭の1件を使います"
           fi
+          case "$ADMIN_NOTIFY_EMAIL" in
+            ?*@?*) ;;
+            *)
+              echo "::error::Repository Variable ADMIN_NOTIFY_EMAIL（または、先頭にメールアドレスを持つ、VariableかSecretのALLOWED_EMAILS）が未設定です。設定場所は Settings > Secrets and variables > Actions です。"
+              exit 1
+              ;;
+          esac
+          # Secretの一部（先頭の1件）は、そのままではマスクされない。以降のログへ出ないよう、先にマスクする
+          echo "::add-mask::${ADMIN_NOTIFY_EMAIL}"
+          echo "ADMIN_NOTIFY_EMAIL=${ADMIN_NOTIFY_EMAIL}" >> "$GITHUB_ENV"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -352,8 +370,8 @@ jobs:
           # site-stackからの内部API呼び出し（新規家族登録の通知、examination#259）を
           # 検証する共有シークレット。site-stack側にも同じ値を注入する
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
-          # 新規家族登録の通知（examination#259）を受け取る管理用Googleアカウントのメール
-          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
+          # 新規家族登録の通知（examination#259）を受け取る管理用Googleアカウントのメール。
+          # 「Validate required variables」が、$GITHUB_ENVで公開する
         run: npm run generate-config
 
       # Lambdaのサイレント障害検知（examination#604）の通知先。serverless.ymlの
@@ -364,8 +382,6 @@ jobs:
       # 新規シークレットは増やさず、上のステップと同じ管理用アカウントのメール（ADMIN_NOTIFY_EMAIL）を
       # 運用監視通知先としても再利用する（LINEチャンネル整備後は別の通知先に切り替える想定）
       - name: Export OPS_ALERT_EMAIL for serverless deploy
-        env:
-          ADMIN_NOTIFY_EMAIL: ${{ vars.ADMIN_NOTIFY_EMAIL }}
         run: echo "OPS_ALERT_EMAIL=${ADMIN_NOTIFY_EMAIL}" >> "$GITHUB_ENV"
 
       # --forceが無いと、functions/configuration.json（Secretから都度生成）だけが変わった
