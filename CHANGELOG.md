@@ -1,3 +1,10 @@
+## [1.66.5](https://github.com/bamiyanapp/examination/compare/v1.66.4...v1.66.5) (2026-11-22)
+
+
+### Bug Fixes
+
+* **ci:** ADMIN_NOTIFY_EMAILが未設定なら、ALLOWED_EMAILSの先頭の1件を使う ([#747](https://github.com/bamiyanapp/examination/issues/747)) ([2f4d639](https://github.com/bamiyanapp/examination/commit/2f4d639546746cc9ac5cb2a083fe949957058971))
+
 ## [1.66.4](https://github.com/bamiyanapp/examination/compare/v1.66.3...v1.66.4) (2026-11-18)
 
 
