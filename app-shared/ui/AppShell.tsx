@@ -63,7 +63,6 @@ export default function AppShell({ page, showBackToTop = true }: { page: ReactNo
       backendEndpoints={BACKEND_LIST_ENDPOINTS}
       getBackendAuthToken={getBackendAuthToken}
       warmedFlagKey="examination-backend-cache-warmed"
-      swUrl={undefined}
       showBackToTop={showBackToTop}
       page={page}
     />
