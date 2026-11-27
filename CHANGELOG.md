@@ -1,3 +1,10 @@
+# [1.67.0](https://github.com/bamiyanapp/examination/compare/v1.66.6...v1.67.0) (2026-11-27)
+
+
+### Features
+
+* **ci:** e2e_packagesで、6アプリのE2Eを1回のreusable-ci.yml呼び出しにまとめる ([#773](https://github.com/bamiyanapp/examination/issues/773)) ([3195cb7](https://github.com/bamiyanapp/examination/commit/3195cb7b169848be3877c133bc6a8bde9112ecc2)), closes [#772](https://github.com/bamiyanapp/examination/issues/772) [#772](https://github.com/bamiyanapp/examination/issues/772)
+
 ## [1.66.6](https://github.com/bamiyanapp/examination/compare/v1.66.5...v1.66.6) (2026-11-22)
 
 
