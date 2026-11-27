@@ -23,12 +23,12 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/coverage-v8": "^5.1.2",
     "jsdom": "^31.0.0",
     "monocart-reporter": "^2.13.1",
     "oxlint": "^1.75.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.1.2"
   }
 }
