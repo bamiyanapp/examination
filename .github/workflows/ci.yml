@@ -16,10 +16,10 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@claude/apply-common-dev-framework-jp4ovk
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.190.0
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: claude/apply-common-dev-framework-jp4ovk
+      self_ref: v2.190.0
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
       # 静的コンテンツ（Markdown）のみのままのため、matrix構成でapp/配下の
@@ -97,7 +97,8 @@ jobs:
       # PRコメント）を実証する。node_versionはpackages内の各要素とは独立した
       # トップレベル入力で、frontend-e2e-testジョブはこちらを参照するため
       # 上記packagesの各要素と同じ24を明示する
-      # 検証用（examination#772）: 複数アプリのE2Eを1回の呼び出しで実行する（dev-standards#1665）
+      # 複数アプリのE2Eを、1回の呼び出しで実行する（dev-standards#1665、examination#772）。
+      # 呼び出しを1つにすると、コミットメッセージ検証・標準化チェック・自動マージ判定の重複実行も無くなる
       e2e_packages: >-
         [{"dir":"app/top","coverage_threshold":40},
         {"dir":"app/voice-practice","coverage_threshold":40},
@@ -113,11 +114,10 @@ jobs:
       # branchesの実測値が55.68%まで上昇した（push-to-main run #42130000729）。
       # 過去のばらつき幅（約14ポイント）を踏まえたマージンを取り20→40へ引き上げる
       e2e_coverage_threshold: 40
-      # ci・e2e-*の6job全てがreusable-ci.ymlを独立して呼び出す構成（1 job per
-      # appパターン）のため、各呼び出し自身のmerge jobでは他の呼び出しの成否を
-      # 待てず、いずれかが失敗・実行中でもPRがマージされてしまう
-      # （dev-standards#421）。全呼び出しでenable_auto_merge: falseとし、
-      # 全ての完了を待つ専用のgate job（末尾のmergeジョブ）でマージする
+      # stylelintは、reusable-ci.ymlの外にある自前のjobのため、この呼び出し自身の
+      # merge jobでは、stylelintの成否を待てない（dev-standards#421）。
+      # enable_auto_merge: falseとし、ciとstylelintの完了を待つ専用のgate job
+      # （末尾のmergeジョブ）でマージする
       enable_auto_merge: false
     secrets:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -154,12 +154,10 @@ jobs:
       - run: npm ci
       - run: npm run lint:css
 
-  # dev-standards#421。ci・e2e-*の6job全てがenable_auto_merge: falseのため、
-  # 各呼び出し自身のmerge jobは実行されない。このgate jobが全6jobの完了を
-  # 待ってから、reusable-ci.ymlのmerge jobと同じ判定方式
-  # （skippedは許容、failure・cancelledは拒否）でPRをsquash mergeする
-  # （docs/cicd-pipeline-specification.md「複数アプリ向けにreusable-ci.ymlを
-  # 独立して複数回呼び出す構成」参照）
+  # dev-standards#421。ciがenable_auto_merge: falseのため、その呼び出し自身の
+  # merge jobは実行されない。このgate jobが、ciとstylelintの完了を待ってから、
+  # reusable-ci.ymlのmerge jobと同じ判定方式（skippedは許容、failure・cancelledは
+  # 拒否）でPRをsquash mergeする
   merge:
     needs: [ci, stylelint]
     if: |
@@ -174,6 +172,6 @@ jobs:
       group: merge-queue-${{ github.repository }}
       cancel-in-progress: false
     steps:
-      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.187.1
+      - uses: bamiyanapp/dev-standards/.github/actions/merge-pr@v2.190.0
         with:
           github-token: ${{ secrets.BOT_TOKEN != '' && secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
