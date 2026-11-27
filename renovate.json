@@ -4,6 +4,16 @@
   "git-submodules": {
     "enabled": true
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "reusable workflow呼び出しのself_refを、usesと同じdev-standardsのタグとして更新する（examination#753）。usesの更新（github-actionsマネージャー）と同じブランチ・PRにまとまり、standards-checkのuses/self_ref一致確認が通る",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["self_ref:\\s*[\"']?(?<currentValue>v\\d+\\.\\d+\\.\\d+)[\"']?"],
+      "depNameTemplate": "bamiyanapp/dev-standards",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
   "packageRules": [
     {
       "matchPackageNames": ["osls"],
