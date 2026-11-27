@@ -6,6 +6,7 @@ import SpeculationRules from "./SpeculationRules.jsx";
 import NavigationOverlay from "./NavigationOverlay.jsx";
 import UserMenu from "./UserMenu.tsx";
 import BackToTop from "./BackToTop.jsx";
+import SharedAppShell from "./SharedAppShell.jsx"; // dev-standardsのshared/ui/AppShell.jsx（symlink）
 
 // app/配下の各アプリ（family-create/を除く）が共通で使うアプリ起動時の設定・
 // ラッパー。以前は各App.tsxへ全く同じ内容をファイルコピーしており、jscpdの
@@ -38,24 +39,33 @@ async function getBackendAuthToken(): Promise<string | undefined> {
   return token;
 }
 
+// 部品の組み立て（描画順・空配列のときの省略）は、dev-standardsの共有版を使う
+// （dev-standards#1380、examination#768）。共有版は兄弟ファイルをimportできないため、
+// 部品はpartsで注入する。ここはexamination固有の値だけを渡す
+const PARTS = {
+  ServiceWorkerRegistration,
+  BackendCacheWarmer,
+  UpdateNotifier,
+  SpeculationRules,
+  NavigationOverlay,
+  UserMenu,
+  BackToTop,
+};
+
 // トップページ（examination#82でサイトルート採用）のみBackToTopを表示しない
 // （既存の挙動を維持。理由の記録は無いが、ランディングページとして
 // スクロール量が少なくボタンの必要性が薄いためと推測される）
 export default function AppShell({ page, showBackToTop = true }: { page: ReactNode; showBackToTop?: boolean }) {
   return (
-    <>
-      <ServiceWorkerRegistration />
-      <BackendCacheWarmer
-        endpoints={BACKEND_LIST_ENDPOINTS}
-        getAuthToken={getBackendAuthToken}
-        warmedFlagKey="examination-backend-cache-warmed"
-      />
-      <UpdateNotifier />
-      <SpeculationRules urls={PREFETCH_URLS} />
-      <NavigationOverlay />
-      <UserMenu />
-      {showBackToTop && <BackToTop />}
-      {page}
-    </>
+    <SharedAppShell
+      parts={PARTS}
+      prefetchUrls={PREFETCH_URLS}
+      backendEndpoints={BACKEND_LIST_ENDPOINTS}
+      getBackendAuthToken={getBackendAuthToken}
+      warmedFlagKey="examination-backend-cache-warmed"
+      swUrl={undefined}
+      showBackToTop={showBackToTop}
+      page={page}
+    />
   );
 }

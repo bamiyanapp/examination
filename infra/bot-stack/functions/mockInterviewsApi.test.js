@@ -84,4 +84,29 @@ describe("mockInterviewsApi handler", () => {
     const queryCall = ddbMock.commandCalls(QueryCommand)[0];
     expect(queryCall.args[0].input.ExpressionAttributeValues).toEqual({ ":slug": { S: "tanaka" } });
   });
+
+  // 認可の漏れの確認（dev-standards docs/authorization-test-pattern.md、dev-standards#1616）。
+  // 家族の境界は認証の結果から決まり、リクエストが運ぶ別の家族のIDは無視される
+  it("ignores another family's slug supplied in the request and queries only the caller's family", async () => {
+    const validExpiresAt = Math.floor(Date.now() / 1000) + 3600;
+    ddbMock
+      .on(GetItemCommand, { TableName: "examination-voice-tokens" })
+      .resolves({ Item: { email: { S: "family@example.com" }, expiresAt: { N: String(validExpiresAt) } } });
+    ddbMock
+      .on(GetItemCommand, { TableName: "examination-allowed-emails" })
+      .resolves({ Item: { familySlug: { S: "tanaka" } } });
+    ddbMock.on(QueryCommand, { TableName: "examination-mock-interviews" }).resolves({ Items: [] });
+
+    const response = await handler({
+      ...event("GET", "Bearer valid-token"),
+      queryStringParameters: { familySlug: "suzuki" },
+      pathParameters: { familySlug: "suzuki" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const queries = ddbMock.commandCalls(QueryCommand);
+    expect(queries).toHaveLength(1);
+    expect(queries[0].args[0].input.ExpressionAttributeValues).toEqual({ ":slug": { S: "tanaka" } });
+    expect(response.body).not.toContain("suzuki");
+  });
 });
