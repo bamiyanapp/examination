@@ -16,10 +16,10 @@ permissions:
 
 jobs:
   ci:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
+    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@claude/apply-common-dev-framework-jp4ovk
     with:
       # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
+      self_ref: claude/apply-common-dev-framework-jp4ovk
       # 音声対話・管理画面等のインタラクティブなページはapp/配下のページごとに
       # 独立したReact（Vite）アプリへ段階移行中（examination#78）。それ以外は
       # 静的コンテンツ（Markdown）のみのままのため、matrix構成でapp/配下の
@@ -97,6 +97,14 @@ jobs:
       # PRコメント）を実証する。node_versionはpackages内の各要素とは独立した
       # トップレベル入力で、frontend-e2e-testジョブはこちらを参照するため
       # 上記packagesの各要素と同じ24を明示する
+      # 検証用（examination#772）: 複数アプリのE2Eを1回の呼び出しで実行する（dev-standards#1665）
+      e2e_packages: >-
+        [{"dir":"app/top","coverage_threshold":40},
+        {"dir":"app/voice-practice","coverage_threshold":40},
+        {"dir":"app/interview-questions","coverage_threshold":25},
+        {"dir":"app/mock-interviews","coverage_threshold":20},
+        {"dir":"app/allowed-emails","coverage_threshold":35},
+        {"dir":"app/family-create","coverage_threshold":40}]
       enable_e2e_test: true
       frontend_dir: app/top
       node_version: "24"
@@ -126,148 +134,6 @@ jobs:
       # この静的secret方式に変更した
       E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
 
-  # examination#415（examination#404の子Issue）。frontend-e2e-testジョブはmatrix
-  # 非対応でfrontend_dir単一値のみのため、対象アプリ1つにつき1つの追加jobを
-  # 個別に呼び出す（packages・enable_duplication_checkは指定せず、上記ciジョブとは
-  # 完全に独立させる。examination#404「Playwright E2E導入 詳細計画」で確定した方式）
-  e2e-voice-practice:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
-    with:
-      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
-      enable_e2e_test: true
-      frontend_dir: app/voice-practice
-      node_version: "24"
-      # examination#465。ロール切り替えテストケースをPR #628で追加したが、
-      # branchesの実測値は53.61%（push-to-main run #42051653285）で、既存の
-      # 閾値（40）からのマージンが過去の変動幅（約14ポイント）に対して十分では
-      # ないため、このjobは今回引き上げを見送る。新たな会話分岐・エラーケースの
-      # テスト追加で実測値がさらに上がった時点で再度ラチェットする
-      e2e_coverage_threshold: 40
-      # packagesを省略するとreusable-ci.ymlのfrontend-test/backend-testジョブ
-      # （examinationが使わない固定ディレクトリ構成向けのレガシージョブ、CLAUDE.md
-      # 「backend_dir: backend」既定値で発火しbackend/が存在せず失敗、frontend-test側も
-      # submodules: falseでチェックアウトされdev-standards symlinkが解決できず失敗）が
-      # 有効化されてしまう。packages: '[]'（空配列）を明示的に渡すことで
-      # frontend-test/backend-test/package-testの3つとも無効化する
-      # （reusable-ci.ymlのpackage-testジョブのコメント#151参照）
-      packages: "[]"
-      # frontend-e2e-testジョブのcheckoutはsubmodules: ${{ inputs.enable_standards_check }}
-      # という設計（reusable-ci.yml）のため、falseのままだとdev-standardsサブモジュールが
-      # チェックアウトされず、app-shared/ui/AppShell.tsx等が参照するdev-standards/shared/ui/
-      # 配下実ファイルへのsymlinkが解決できずビルド失敗する（examination#415、PR #454
-      # マージ後のmain push・PR #456・#457で実際に発生）。trueにするとstandards-checkジョブ
-      # （リポジトリ全体のsymlink/.gitignore drift検査）が上記ciジョブと重複実行される
-      # 副作用があるが、正しいビルドを優先する。恒久対応（submodulesチェックアウトの可否を
-      # enable_standards_checkから分離する設計変更）はdev-standards側でのIssue化を検討する
-      enable_standards_check: true
-      # dev-standards#421。詳細は上記ciジョブのコメント参照
-      enable_auto_merge: false
-    secrets:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
-
-  # examination#416（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
-  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
-  # コメント参照）
-  e2e-interview-questions:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
-    with:
-      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
-      enable_e2e_test: true
-      frontend_dir: app/interview-questions
-      node_version: "24"
-      # examination#465。質問追加フォームの開閉・バリデーション分岐テストをPR
-      # #628で追加し、branchesの実測値が43.86%まで上昇した（push-to-main run
-      # #42130000729）。過去のばらつき幅（約14ポイント）を踏まえたマージンを
-      # 取り20→25へ引き上げる
-      e2e_coverage_threshold: 25
-      packages: "[]"
-      enable_standards_check: true
-      # dev-standards#421。詳細は上記ciジョブのコメント参照
-      enable_auto_merge: false
-    secrets:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
-
-  # examination#417（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
-  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
-  # コメント参照）
-  e2e-mock-interviews:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
-    with:
-      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
-      enable_e2e_test: true
-      frontend_dir: app/mock-interviews
-      node_version: "24"
-      # examination#465。branchesの実測値は29.27%（push-to-main run
-      # #42130000729）で、既存の閾値（20）からのマージンが過去の変動幅（約14
-      # ポイント）に対して十分ではないため、このjobは今回引き上げを見送る。
-      # mock-interviewsページは一覧表示のみでテストケースが少なく（既存1件）、
-      # 分岐網羅のためのテスト追加が今後必要（空状態・エラー表示等）
-      e2e_coverage_threshold: 20
-      packages: "[]"
-      enable_standards_check: true
-      # dev-standards#421。詳細は上記ciジョブのコメント参照
-      enable_auto_merge: false
-    secrets:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
-
-  # examination#418（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
-  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
-  # コメント参照）
-  e2e-allowed-emails:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
-    with:
-      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
-      enable_e2e_test: true
-      frontend_dir: app/allowed-emails
-      node_version: "24"
-      # examination#465。重複所属エラーのテストケース追加を試みたが、CI失敗の
-      # 原因をログから特定できず取り下げた（PR #632参照）。現時点のbranches
-      # 実測値は54.70%（push-to-main run #42130000729、既存の追加・削除テストの
-      # みの状態）。過去のばらつき幅（約14ポイント）を踏まえたマージンを取り
-      # 30→35へ引き上げる
-      e2e_coverage_threshold: 35
-      packages: "[]"
-      enable_standards_check: true
-      # dev-standards#421。詳細は上記ciジョブのコメント参照
-      enable_auto_merge: false
-    secrets:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
-
-  # examination#419（examination#404の子Issue）。e2e-voice-practiceジョブと同じ設計・
-  # 同じ理由でpackages/enable_standards_checkを設定する（詳細は上記e2e-voice-practiceの
-  # コメント参照）。家族の新規作成という性質上、テスト実行のたびに新規作成しても
-  # 実データが増え続けないよう、infra/site-stack/functions/checkAuth.js側にテスト
-  # 専用の使い捨て経路（examination#419）を用意し、共有E2Eテストユーザーの家族所属
-  # 状態を変えずに検証する
-  e2e-family-create:
-    uses: bamiyanapp/dev-standards/.github/workflows/reusable-ci.yml@v2.187.1
-    with:
-      # self_ref: 上記usesのrefと同じ値を渡す必須入力（dev-standards#1071、PR #1124）
-      self_ref: v2.187.1
-      enable_e2e_test: true
-      frontend_dir: app/family-create
-      node_version: "24"
-      # examination#465。所属済みアカウント向けの案内表示テストケースをPR #634
-      # で追加し、branchesの実測値は58.82%（push-to-main run #42130000729）。
-      # 既存の閾値（40）からのマージンが過去の変動幅（約14ポイント）に対して
-      # 十分ではないため、このjobは今回引き上げを見送る
-      e2e_coverage_threshold: 40
-      packages: "[]"
-      enable_standards_check: true
-      # dev-standards#421。詳細は上記ciジョブのコメント参照
-      enable_auto_merge: false
-    secrets:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      E2E_SECRETS_JSON: ${{ secrets.E2E_SECRETS_JSON }}
-
   # stylelintはreusable-ci.ymlの機能（enable_*入力）ではないため、独立した
   # jobとして自前で用意する（examination#476）。stylelint.config.cjs
   # （dev-standards submodule配下からのsymlink）が必要なためsubmodules: true。
@@ -295,25 +161,11 @@ jobs:
   # （docs/cicd-pipeline-specification.md「複数アプリ向けにreusable-ci.ymlを
   # 独立して複数回呼び出す構成」参照）
   merge:
-    needs:
-      [
-        ci,
-        e2e-voice-practice,
-        e2e-interview-questions,
-        e2e-mock-interviews,
-        e2e-allowed-emails,
-        e2e-family-create,
-        stylelint,
-      ]
+    needs: [ci, stylelint]
     if: |
       always() &&
       github.event_name == 'pull_request' &&
       !contains(fromJSON('["failure", "cancelled"]'), needs.ci.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-voice-practice.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-interview-questions.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-mock-interviews.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-allowed-emails.result) &&
-      !contains(fromJSON('["failure", "cancelled"]'), needs.e2e-family-create.result) &&
       !contains(fromJSON('["failure", "cancelled"]'), needs.stylelint.result)
     runs-on: ubuntu-latest
     # reusable-ci.yml自身のmerge jobと同じグループ名にすることで、万が一
