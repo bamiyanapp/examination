@@ -1,3 +1,10 @@
+# [1.68.0](https://github.com/bamiyanapp/examination/compare/v1.67.0...v1.68.0) (2026-11-27)
+
+
+### Features
+
+* **renovate:** self_refをdev-standardsのタグとして自動更新する ([#781](https://github.com/bamiyanapp/examination/issues/781)) ([0e9fa6b](https://github.com/bamiyanapp/examination/commit/0e9fa6b3eb23f60360bb9d2d33b0d3e338bb333a)), closes [#753](https://github.com/bamiyanapp/examination/issues/753)
+
 # [1.67.0](https://github.com/bamiyanapp/examination/compare/v1.66.6...v1.67.0) (2026-11-27)
 
 
